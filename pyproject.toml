@@ -1,0 +1,29 @@
+[project]
+name = "pysd"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "numpy>=2.3.2",
+    "pydantic>=2.0.0",
+    "shapely>=2.1.1",
+    "typing-extensions>=4.0.0",
+]
+[project.urls]
+Repository = "https://github.com/sveinomork/pysd"
+Issues = "https://github.com/sveinomork/pysd/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pysd"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src/pysd",
+    "/README.md",
+    "/LICENSE",
+]
