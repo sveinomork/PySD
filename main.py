@@ -4,7 +4,7 @@ from src.pysd.statements import (
     TABLE, RMPEC, CaseBuilder, Cases
 )
 from src.pysd.sdmodel import SD_BASE
-from src.helpers import create_axes_based_on_3_points_in_plane
+from pysd.helpers import create_axes_based_on_3_points_in_plane
 from shapely.geometry import Point
 
 
