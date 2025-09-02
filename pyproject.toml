@@ -1,18 +1,33 @@
 [project]
 name = "pysd"
 version = "0.1.0"
-description = "Add your description here"
+description = "Python library for ShellDesign (SD) modeling and analysis"
 readme = "README.md"
 requires-python = ">=3.13"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Typing :: Typed",
+]
+keywords = ["shelldesign", "modeling", "engineering"]
 dependencies = [
     "numpy>=2.3.2",
     "pydantic>=2.0.0",
     "shapely>=2.1.1",
     "typing-extensions>=4.0.0",
 ]
+
 [project.urls]
 Repository = "https://github.com/sveinomork/pysd"
 Issues = "https://github.com/sveinomork/pysd/issues"
+Documentation = "https://github.com/sveinomork/pysd#readme"
 
 [build-system]
 requires = ["hatchling"]
@@ -27,3 +42,7 @@ include = [
     "/README.md",
     "/LICENSE",
 ]
+
+# Ensure py.typed is included in the package
+[tool.hatch.build.targets.wheel.force-include]
+"src/pysd/py.typed" = "pysd/py.typed"

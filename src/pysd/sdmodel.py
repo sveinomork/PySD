@@ -8,14 +8,14 @@ from typing import List, Union, Protocol, runtime_checkable, Sequence, Optional
 from .statements.rfile import RFILE
 from .statements.shaxe import SHAXE
 from .statements.desec import DESEC
-from. statements.cmpec import CMPEC
+from .statements.cmpec import CMPEC
 from .statements.loadc import LOADC
 from .statements.lores import LORES
 from .statements.basco import BASCO
 from .statements.greco import GRECO
 from .statements.filst import FILST
 from .statements.retyp import RETYP
-from. statements.reloc import RELOC
+from .statements.reloc import RELOC
 from .statements.decas import DECAS
 from .statements.table import TABLE
 from .statements.incdf import INCDF
