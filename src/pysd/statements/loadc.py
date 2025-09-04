@@ -19,22 +19,22 @@ LOADC(alc=2, olc=102)
 
 # Tuple syntax for ranges - automatically sets RN from first ALC value
 LOADC(alc=(1,6), olc=(101,106))
-# -> 'LOADC RN=1 LC=1-6 OLC=101-106'
+# -> 'LOADC RN=1 LC=1-6,101-106'
 
 LOADC(alc=(5,10), olc=(201,206))
-# -> 'LOADC RN=5 LC=5-10 OLC=201-206'
+# -> 'LOADC RN=5 LC=5-10,201-206'
 
 # Traditional syntax using Cases
 LOADC(run_number=1, alc=Cases(ranges=[1, (2, 6)]), olc=Cases(ranges=[(101, 106)]))
-# -> 'LOADC RN=1 LC=1,2-6 OLC=101-106'
+# -> 'LOADC RN=1 LC=1,2-6,101-106'
 
 # Using string format
 LOADC(run_number=1, alc="1,2-6", olc="101-106")
-# -> 'LOADC RN=1 LC=1,2-6 OLC=101-106'
+# -> 'LOADC RN=1 LC=1,2-6,101-106'
 
 # Using list format  
 LOADC(run_number=1, alc=[1, (2, 6)], olc=[(101, 106)])
-# -> 'LOADC RN=1 LC=1,2-6 OLC=101-106'
+# -> 'LOADC RN=1 LC=1,2-6,101-106'
 
 # Enable table output for load results
 LOADC(table=True)
@@ -209,7 +209,7 @@ LOADC(pri=True)
             
             if alc_is_single_range and olc_is_single_range:
                 # Use LC=alc OLC=olc format for tuple inputs
-                lc_part = f"LC={str(self.alc)} OLC={str(self.olc)}"
+                lc_part = f"LC={str(self.alc)},{str(self.olc)}"
             else:
                 # Use traditional LC=alc,olc format
                 lc_part = f"LC={str(self.alc)},{str(self.olc)}"
