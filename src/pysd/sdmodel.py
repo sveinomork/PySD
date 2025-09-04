@@ -26,6 +26,9 @@ from .statements.xtfil import XTFIL
 from .statements.headl import HEADL
 from .statements.depar import DEPAR
 
+# Import container system
+from .containers import GrecoContainer
+
 
 # Define a protocol that all statement classes implement
 @runtime_checkable
@@ -57,7 +60,10 @@ class SD_BASE():
   
     filst: List[FILST] = field(default_factory=list)  # type: ignore[misc]
     desec: dict[str, DESEC] = field(default_factory=dict)  # type: ignore[misc]
-    greco: dict[str, GRECO] = field(default_factory=dict)  # type: ignore[misc]
+    
+    # Enhanced GRECO with container-based validation
+    greco: GrecoContainer = field(default_factory=GrecoContainer)  # type: ignore[misc]
+    
     loadc: dict[str, LOADC] = field(default_factory=dict)  # type: ignore[misc] # key is string key
     lores: List[LORES] = field(default_factory=list)  # type: ignore[misc]
     table: List[TABLE] = field(default_factory=list)  # type: ignore[misc]
@@ -91,54 +97,9 @@ class SD_BASE():
             return
 
         # Add to type-specific collection
-        if isinstance(item, RFILE):
-            self.rfile.append(item)
-        elif isinstance(item, HEADL):
-            self.headl.append(item)
-        elif isinstance(item, FILST):
-            self.filst.append(item)
-        elif isinstance(item, SHSEC):
-            self.shsec[item.input] = item
-        elif isinstance(item, SHAXE):
-            self.shaxe[item.key] = item
-        elif isinstance(item, XTFIL):
-            self.xtfil[item.key] = item
-        elif isinstance(item, DESEC):
-            self.desec[item.pa] = item
-        elif isinstance(item, GRECO):
-            if item.id is not None:
-                self.greco[item.id] = item
-            else:
-                raise ValueError("GRECO item must have a non-None id to be stored in SD_BASE")
-        elif isinstance(item, LOADC):
-            self.loadc[item.key] = item
-        elif isinstance(item, LORES):
-            self.lores.append(item)
-        elif isinstance(item, DECAS):
-            self.decas.append(item)
-        elif isinstance(item, TABLE):
-            self.table.append(item)
-        elif isinstance(item, INCDF):
-            self.incdf.append(item)
-        elif isinstance(item, EXECD):
-            self.execd.append(item)
-        elif isinstance(item, BASCO):
-            self.basco[item.id] = item
-        elif isinstance(item, RETYP):
-            self.retyp[item.id] = item
-        elif isinstance(item, RELOC):
-            self.reloc[item.id] = item
-        elif isinstance(item, CMPEC):
-            if item.id is not None:
-                self.cmpec[item.id] = item
-            else:
-                raise ValueError("CMPEC item must have a non-None id to be stored in SD_BASE")
-        elif isinstance(item, RMPEC):  # type: ignore[misc]
-            if item.id is not None:
-                self.rmpec[item.id] = item
-            else:
-                raise ValueError("RMPEC item must have a non-None id to be stored in SD_BASE")
-        
+        if isinstance(item, GRECO):
+            # Use enhanced container with validation
+            self.greco.add(item)
         
         else:  
             raise TypeError(f"Unsupported type for add(): {type(item).__name__}")

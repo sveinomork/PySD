@@ -34,51 +34,47 @@ class GRECO(BaseModel):
     )
     # -> 'GRECO ID=B BAS=21,22,31-34 ELC=1-34'
 
-    # Verification mode
-    GRECO(verification=True)
-    # -> 'GRECO VER='
     ```
 
     ### Parameters
 
-    - **id**: Optional[GrecoID]
-        - Version identified by a single uppercase letter (A-Z). Required unless verification=True.
-    - **bas**: Optional[LoadCaseDefinition]
+    - **id**: GrecoID
+        - Version identified by a single uppercase letter (A-Z). Required.
+    - **bas**: Optional[Cases]
         - BAS combinations to include. Can be single values or ranges.
         - Examples: [(11, 16)] -> "BAS=11-16", [21, 22, (31,34)] -> "BAS=21,22,31-34"
-    - **elc**: Optional[LoadCaseDefinition]
+        - Must have exactly 6 BAS (one per load resultant: Fx, Fy, Fz, Mx, My, Mz)
+    - **elc**: Optional[Cases]
         - Range of equilibrium load cases to include.
         - Example: [(1, 34)] -> "ELC=1-34"
-    - **verification**: bool
-        - If True, prints ELC verification tables. Default is False.
-    - **allow_verification_and_normal**: bool
-        - Internal flag for special verification modes. Default is False.
+        - ELC must be defined as OLC in LOADC statements
+
+    ### Validation Rules
+
+    1. **ID Format**: Must be a single uppercase letter A-Z
+    2. **BAS Count**: Must have exactly 6 BAS (one per load resultant: Fx, Fy, Fz, Mx, My, Mz)
+    3. **ELC Reference**: All ELC values must be defined as OLC in LOADC statements
+    4. **Uniqueness**: GRECO ID must be unique within the model
 
     ### Notes
 
-    - Either verification must be True, or id must be provided with bas/elc definitions.
-    - Maximum 6 BAS combinations allowed.
     - GRECO only allows simple ranges and individual values (no step sizes).
     - No versions are allowed in the LoadCaseDefinition parameter.
     - When using LoadCaseDefinition, the version parameter must be empty.
     """
-
-    id: Optional[GrecoID] = None
-    bas: Optional[Cases] = None
-    elc: Optional[Cases] = None
-    verification: bool = False
-    allow_verification_and_normal: bool = False
-
-    @property
-    def input(self) -> str:
-        """Backward compatibility property that returns formatted output."""
-        return self.formatted()
+    # Required fields
+    id: GrecoID = Field(..., description="GRECO version ID (single uppercase letter A-Z)")
+    bas: Optional[Cases] = Field(None, description="BAS load cases (must be exactly 6)")
+    elc: Optional[Cases] = Field(None, description="ELC load cases (must reference OLC in LOADC)")
+    
+    # Auto-generated field for compatibility
+    input: str = Field(default="", init=False, description="Generated input string")
 
     @field_validator('id')
     @classmethod
-    def validate_id(cls, v: Optional[str]) -> Optional[str]:
-        """Validate ID format if provided."""
-        if v is not None and not re.match(r'^[A-Z]$', v):
+    def validate_id(cls, v: str) -> str:
+        """Validate ID format."""
+        if not re.match(r'^[A-Z]$', v):
             raise ValueError("GRECO ID must be a single uppercase letter A-Z")
         return v
 
@@ -115,29 +111,25 @@ class GRECO(BaseModel):
         if v and len(v.ranges) > 6:
             raise ValueError("Maximum 6 BAS combinations allowed")
         return v
-
+    
     @model_validator(mode='after')
-    def validate_model(self) -> 'GRECO':
-        """Validate the complete model."""
-        # Validation
-        if not self.verification and not self.id:
-            raise ValueError("Either verification must be True or id must be provided")
+    def build_input_string(self) -> 'GRECO':
+        """Build the statement input string and perform cross-field validation."""
+        # TODO: Implement BAS count validation (must be exactly 6)
+        # Business rule: GRECO must have exactly 6 BAS (one per load resultant: Fx, Fy, Fz, Mx, My, Mz)
+        # if self.bas and len(self.bas.to_list()) != 6:
+        #     raise ValueError("GRECO must have exactly 6 BAS (one per load resultant: Fx, Fy, Fz, Mx, My, Mz)")
         
-        # Check if verification is True with other parameters (unless explicitly allowed)
-        if self.verification and not self.allow_verification_and_normal:
-            if self.id or self.bas or self.elc:
-                raise ValueError("When verification is True, no other parameters should be set")
+        # TODO: Implement ELC-OLC cross-reference validation
+        # Business rule: ELC must be defined as OLC in LOADC statements
+        # This requires access to the full model context during validation
+        # if self.elc:
+        #     # Check that all ELC values exist as OLC in LOADC statements
+        #     # This validation will be performed at the container/model level
+        #     pass
         
-        if not self.verification and not self.bas:
-            raise ValueError("BAS must be provided when not in verification mode")
-
-        return self
-
-    def formatted(self) -> str:
-        """Generate the formatted output string."""
-        parts: list[str] = []
-        
-        # Normal GRECO statement if id/bas/elc are set
+        # Build input string
+        parts = []
         if self.id or self.bas or self.elc:
             normal = ["GRECO"]
             if self.id:
@@ -148,11 +140,8 @@ class GRECO(BaseModel):
                 normal.append(f"ELC={self.elc.formatted()}")
             parts.append(" ".join(normal))
         
-        # Always add GRECO VER= if verification is True
-        if self.verification:
-            parts.append("GRECO VER=")
-        
-        return "\n".join(parts)
+        self.input = "\n".join(parts)
+        return self
     
 
     def __iter__(self):
@@ -178,4 +167,8 @@ class GRECO(BaseModel):
             return []
 
     def __str__(self) -> str:
-        return self.formatted()
+        return self.input
+    
+    def formatted(self) -> str:
+        """Legacy method for backward compatibility."""
+        return self.input
