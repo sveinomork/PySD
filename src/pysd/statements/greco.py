@@ -1,12 +1,15 @@
 from __future__ import annotations
-from typing import Optional, Literal, Any
+from typing import Optional, Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 import re
 from .cases import Cases, normalize_cases
 from ..validation.messages import ErrorMessageBuilder
+from ..validation.core import ValidationIssue, ValidationContext, ValidationSeverity
+from ..validation.error_codes import ErrorCodes
 
 # Define the type for valid GRECO IDs (single uppercase letters A-Z)
-GrecoID = Literal['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
+# Note: Using str instead of Literal to allow custom validation control
+# GrecoID = Literal['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
 
 class GRECO(BaseModel):
     """
@@ -39,7 +42,7 @@ class GRECO(BaseModel):
 
     ### Parameters
 
-    - **id**: GrecoID
+    - **id**: str
         - Version identified by a single uppercase letter (A-Z). Required.
     - **bas**: Optional[Cases]
         - BAS combinations to include. Can be single values or ranges.
@@ -63,27 +66,13 @@ class GRECO(BaseModel):
     - No versions are allowed in the LoadCaseDefinition parameter.
     - When using LoadCaseDefinition, the version parameter must be empty.
     """
-    # Required fields
-    id: GrecoID = Field(..., description="GRECO version ID (single uppercase letter A-Z)")
+    # Required fields - using str instead of Literal for flexible validation
+    id: str = Field(..., description="GRECO version ID (single uppercase letter A-Z)")
     bas: Optional[Cases] = Field(None, description="BAS load cases (must be exactly 6)")
     elc: Optional[Cases] = Field(None, description="ELC load cases (must reference OLC in LOADC)")
     
     # Auto-generated field for compatibility
     input: str = Field(default="", init=False, description="Generated input string")
-
-    @field_validator('id')
-    @classmethod
-    def validate_id(cls, v: str) -> str:
-        """Validate ID format."""
-        if not re.match(r'^[A-Z]$', v):
-            raise ValueError(
-                ErrorMessageBuilder.build_message(
-                    'INVALID_FORMAT',
-                    field='ID',
-                    format_desc='single uppercase letter A-Z'
-                )
-            )
-        return v
 
     @field_validator('bas', 'elc', mode='before')
     @classmethod
@@ -111,28 +100,55 @@ class GRECO(BaseModel):
             
         return v
     
-    @field_validator('bas')
-    @classmethod
-    def validate_max_bas_combinations(cls, v: Optional[Cases]) -> Optional[Cases]:
-        """Maximum 6 BAS combinations allowed."""
-        if v and len(v.ranges) > 6:
-            raise ValueError(
-                ErrorMessageBuilder.build_message(
+    @model_validator(mode='after')
+    def build_input_string(self) -> 'GRECO':
+        """Build the statement input string and perform cross-field validation with severity-aware error handling."""
+        
+        # Create validation context for this GRECO
+        context = ValidationContext(current_object=self)
+        
+        # Validate ID format - create ValidationIssue instead of raising directly
+        if not re.match(r'^[A-Z]$', self.id):
+            issue = ValidationIssue(
+                severity=ValidationSeverity.ERROR.value,
+                code=ErrorCodes.GRECO_ID_INVALID,
+                message=ErrorMessageBuilder.build_message(
+                    'INVALID_FORMAT',
+                    field='ID',
+                    format_desc='single uppercase letter A-Z'
+                ),
+                location=f'GRECO.{self.id}',
+                suggestion='Use a single uppercase letter from A to Z'
+            )
+            context.add_issue(issue)  # This will auto-raise if configured to do so
+        
+        # Validate BAS count - create ValidationIssue for better control
+        if self.bas and len(self.bas.ranges) > 6:
+            issue = ValidationIssue(
+                severity=ValidationSeverity.ERROR.value,
+                code=ErrorCodes.GRECO_BAS_COUNT_INVALID,
+                message=ErrorMessageBuilder.build_message(
                     'INVALID_COUNT',
                     field='BAS combinations',
                     expected_count='maximum 6',
-                    actual_count=len(v.ranges)
-                )
+                    actual_count=len(self.bas.ranges)
+                ),
+                location=f'GRECO.{self.id}.bas',
+                suggestion='Reduce BAS combinations to 6 or fewer'
             )
-        return v
-    
-    @model_validator(mode='after')
-    def build_input_string(self) -> 'GRECO':
-        """Build the statement input string and perform cross-field validation."""
+            context.add_issue(issue)  # This will auto-raise if configured to do so
+        
         # TODO: Implement BAS count validation (must be exactly 6)
         # Business rule: GRECO must have exactly 6 BAS (one per load resultant: Fx, Fy, Fz, Mx, My, Mz)
         # if self.bas and len(self.bas.to_list()) != 6:
-        #     raise ValueError("GRECO must have exactly 6 BAS (one per load resultant: Fx, Fy, Fz, Mx, My, Mz)")
+        #     issue = ValidationIssue(
+        #         severity=ValidationSeverity.WARNING.value,
+        #         code=ErrorCodes.GRECO_BAS_COUNT_INVALID,
+        #         message="GRECO must have exactly 6 BAS (one per load resultant: Fx, Fy, Fz, Mx, My, Mz)",
+        #         location=f'GRECO.{self.id}.bas',
+        #         suggestion='Adjust BAS to have exactly 6 values'
+        #     )
+        #     context.add_issue(issue)
         
         # TODO: Implement ELC-OLC cross-reference validation
         # Business rule: ELC must be defined as OLC in LOADC statements
