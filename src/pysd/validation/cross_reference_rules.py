@@ -4,8 +4,9 @@ Cross-reference validation rules for PySD statements.
 
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
-from .core import ValidationIssue, ValidationRule
+from .core import ValidationIssue
 from .error_codes import ErrorCodes
+from .messages import ErrorMessageBuilder
 
 if TYPE_CHECKING:
     from ..statements.greco import GRECO
@@ -30,7 +31,13 @@ class GrecoELCCrossReferenceRule:
                 issues.append(ValidationIssue(
                     severity='error',
                     code=ErrorCodes.GRECO_ELC_REFERENCE_INVALID,
-                    message=f'GRECO {greco.id} ELC {elc_value} is not defined as OLC in LOADC',
+                    message=ErrorMessageBuilder.build_message(
+                        'CROSS_REFERENCE_MISSING',
+                        statement_type='GRECO',
+                        source_id=greco.id,
+                        target_type='LOADC.OLC',
+                        target_id=str(elc_value)
+                    ),
                     location=f'GRECO.{greco.id}.elc',
                     suggestion=f'Add LOADC statement with OLC={elc_value} or remove {elc_value} from GRECO {greco.id} ELC'
                 ))

@@ -3,6 +3,7 @@ from typing import Optional, Literal, Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 import re
 from .cases import Cases, normalize_cases
+from ..validation.messages import ErrorMessageBuilder
 
 # Define the type for valid GRECO IDs (single uppercase letters A-Z)
 GrecoID = Literal['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
@@ -75,7 +76,13 @@ class GRECO(BaseModel):
     def validate_id(cls, v: str) -> str:
         """Validate ID format."""
         if not re.match(r'^[A-Z]$', v):
-            raise ValueError("GRECO ID must be a single uppercase letter A-Z")
+            raise ValueError(
+                ErrorMessageBuilder.build_message(
+                    'INVALID_FORMAT',
+                    field='ID',
+                    format_desc='single uppercase letter A-Z'
+                )
+            )
         return v
 
     @field_validator('bas', 'elc', mode='before')
@@ -109,7 +116,14 @@ class GRECO(BaseModel):
     def validate_max_bas_combinations(cls, v: Optional[Cases]) -> Optional[Cases]:
         """Maximum 6 BAS combinations allowed."""
         if v and len(v.ranges) > 6:
-            raise ValueError("Maximum 6 BAS combinations allowed")
+            raise ValueError(
+                ErrorMessageBuilder.build_message(
+                    'INVALID_COUNT',
+                    field='BAS combinations',
+                    expected_count='maximum 6',
+                    actual_count=len(v.ranges)
+                )
+            )
         return v
     
     @model_validator(mode='after')

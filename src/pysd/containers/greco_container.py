@@ -3,11 +3,11 @@ Specialized container for GRECO statements.
 """
 
 from __future__ import annotations
-from typing import List, Optional, TYPE_CHECKING, Any
-from pydantic import field_validator, model_validator
+from typing import List, Optional, TYPE_CHECKING
 from .base_container import BaseContainer
 from ..validation.core import ValidationIssue
 from ..validation.error_codes import ErrorCodes
+from ..validation.messages import ErrorMessageBuilder
 
 if TYPE_CHECKING:
     from ..statements.greco import GRECO
@@ -76,7 +76,11 @@ class GrecoContainer(BaseContainer):
             issues.append(ValidationIssue(
                 severity='error',
                 code=ErrorCodes.GRECO_DUPLICATE_ID,
-                message=f'GRECO ID {item.id} already exists in container',
+                message=ErrorMessageBuilder.build_message(
+                    'DUPLICATE_ID',
+                    statement_type='GRECO',
+                    id_value=item.id
+                ),
                 location=f'GRECO.{item.id}'
             ))
         
