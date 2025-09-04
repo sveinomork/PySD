@@ -36,11 +36,17 @@ class BaseContainer(BaseModel, Generic[T]):
     @model_validator(mode='after')
     def validate_unique_ids(self) -> Self:
         """Ensure all item IDs are unique."""
-        seen_ids: set[int] = set()
+        seen_ids: set[Union[int, str]] = set()
         for item in self.items:
-            if item.id in seen_ids:
-                raise ValueError(f"Duplicate ID found: {item.id}")
-            seen_ids.add(item.id)
+            # Handle both object and dict forms during deserialization
+            item_id = item.id if hasattr(item, 'id') else item.get('id') if isinstance(item, dict) else None
+            
+            if item_id is None:
+                continue  # Skip items without IDs
+                
+            if item_id in seen_ids:
+                raise ValueError(f"Duplicate ID found: {item_id}")
+            seen_ids.add(item_id)
         return self
     
     def add(self, item: Any) -> None:

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from contextlib import contextmanager
-from typing import List, Union, Protocol, runtime_checkable, Sequence, Optional
+from typing import List, Union, Protocol, runtime_checkable, Sequence, Optional, Dict, Any
+from pydantic import BaseModel, Field, model_validator
 
 # Import all statement types for runtime use
 from .statements.rfile import RFILE
@@ -28,6 +28,9 @@ from .statements.depar import DEPAR
 
 # Import container system
 from .containers import GrecoContainer
+from .validation.core import ValidationContext, ValidationIssue
+from .validation.error_codes import ErrorCodes
+from .validation.cross_reference_rules import GrecoELCCrossReferenceRule, GrecoBasCountRule
 
 
 # Define a protocol that all statement classes implement
@@ -44,105 +47,308 @@ StatementType = Union[
 ]
 
 
-
-@dataclass
-class SD_BASE():
-    # Maintain order of all items
-    _all_items: List[StatementType] = field(default_factory=list)  # type: ignore[misc]
+class SD_BASE(BaseModel):
+    """
+    Enhanced ShellDesign model with Pydantic validation and container-based architecture.
+    
+    Features:
+    - Automatic container creation and validation
+    - Cross-object reference validation
+    - Layered validation (object -> container -> model)
+    - Backward compatible API
+    - Model-level validation for business rules
+    """
+    
+    # Maintain order of all items (excluded from serialization but tracked internally)
+    all_items: List[StatementType] = Field(default_factory=list, exclude=True, description="Ordered list of all items")
    
     # Collections for type-specific access  
-    rfile: List[RFILE] = field(default_factory=list)  # type: ignore[misc]
-    incdf: List[INCDF] = field(default_factory=list)  # type: ignore[misc]
-    headl: List[HEADL] = field(default_factory=list)  # type: ignore[misc]
-    shaxe: dict[str, SHAXE] = field(default_factory=dict)  # type: ignore[misc] # key is PA_FS_HS
-    shsec: dict[str, SHSEC] = field(default_factory=dict)  # type: ignore[misc] # key is based on pa and sections
-    xtfil: dict[str, XTFIL] = field(default_factory=dict)  # type: ignore[misc] # key is FN_PA_FS_HS
+    rfile: List[RFILE] = Field(default_factory=list, description="RFILE statements")
+    incdf: List[INCDF] = Field(default_factory=list, description="INCDF statements")
+    headl: List[HEADL] = Field(default_factory=list, description="HEADL statements")
+    shaxe: Dict[str, SHAXE] = Field(default_factory=dict, description="SHAXE statements (key: PA_FS_HS)")
+    shsec: Dict[str, SHSEC] = Field(default_factory=dict, description="SHSEC statements (key: pa+sections)")
+    xtfil: Dict[str, XTFIL] = Field(default_factory=dict, description="XTFIL statements (key: FN_PA_FS_HS)")
   
-    filst: List[FILST] = field(default_factory=list)  # type: ignore[misc]
-    desec: dict[str, DESEC] = field(default_factory=dict)  # type: ignore[misc]
+    filst: List[FILST] = Field(default_factory=list, description="FILST statements")
+    desec: Dict[str, DESEC] = Field(default_factory=dict, description="DESEC statements")
     
     # Enhanced GRECO with container-based validation
-    greco: GrecoContainer = field(default_factory=GrecoContainer)  # type: ignore[misc]
+    greco: GrecoContainer = Field(default_factory=GrecoContainer, description="GRECO statements with validation")
     
-    loadc: dict[str, LOADC] = field(default_factory=dict)  # type: ignore[misc] # key is string key
-    lores: List[LORES] = field(default_factory=list)  # type: ignore[misc]
-    table: List[TABLE] = field(default_factory=list)  # type: ignore[misc]
-    execd: List[EXECD] = field(default_factory=list)  # type: ignore[misc]
-    decas: List[DECAS] = field(default_factory=list)  # type: ignore[misc] # DECAS objects are uniquely identified by their input
-    cmpec: dict[int, CMPEC] = field(default_factory=dict)  # type: ignore[misc] # key is numeric id
-    rmpec: dict[int, RMPEC] = field(default_factory=dict)  # type: ignore[misc] # key is numeric id
-    basco: dict[int, BASCO] = field(default_factory=dict)  # type: ignore[misc] # key is numeric id
-    retyp: dict[int, RETYP] = field(default_factory=dict)  # type: ignore[misc] # key is numeric id
+    loadc: Dict[str, LOADC] = Field(default_factory=dict, description="LOADC statements")
+    lores: List[LORES] = Field(default_factory=list, description="LORES statements")
+    table: List[TABLE] = Field(default_factory=list, description="TABLE statements")
+    execd: List[EXECD] = Field(default_factory=list, description="EXECD statements")
+    decas: List[DECAS] = Field(default_factory=list, description="DECAS statements")
+    cmpec: Dict[int, CMPEC] = Field(default_factory=dict, description="CMPEC statements")
+    rmpec: Dict[int, RMPEC] = Field(default_factory=dict, description="RMPEC statements")
+    basco: Dict[int, BASCO] = Field(default_factory=dict, description="BASCO statements")
+    retyp: Dict[int, RETYP] = Field(default_factory=dict, description="RETYP statements")
    
-    reloc: dict[str, RELOC] = field(default_factory=dict)  # type: ignore[misc] # key is string id
-    depar: Optional[DEPAR] = None  # Global design parameters - single instance
+    reloc: Dict[str, RELOC] = Field(default_factory=dict, description="RELOC statements")
+    depar: Optional[DEPAR] = Field(None, description="DEPAR statement (singleton)")
+    
+    # Validation settings
+    validation_enabled: bool = Field(default=True, exclude=True, description="Enable validation during operations")
     
 
 
     def add(self, item: Union[StatementType, Sequence[StatementType]]) -> None:
         """
-        Adds a model component or a list of components to the appropriate collection.
-
-        If 'item' is a list, this method will be called for each element in the list.
-
-        Components are stored both in type-specific collections and in a master list
-        that maintains the order in which they were added.
-
+        Enhanced add method with automatic container routing and validation.
+        
+        Features:
+        - Automatic container selection based on type
+        - Batch processing for lists
+        - Layered validation (object -> container -> model)
+        - Cross-object reference validation
+        - Maintains backward compatibility
+        
         Args:
             item: The component to add, or a list of components.
         """
         if isinstance(item, list):
-            for sub_item in item:
-                self.add(sub_item)
+            self._add_batch(item)
             return
 
-        # Add to type-specific collection
+        # Route to appropriate container/collection
+        self._route_item(item)
+        
+        # Add to the master list to maintain order
+        if isinstance(item, EXECD):
+            # Remove any existing EXECD items and add at end
+            self.all_items = [x for x in self.all_items if not isinstance(x, EXECD)]
+        
+        self.all_items.append(item)
+        
+        # Perform model-level cross-object validation
+        if self.validation_enabled:
+            self._validate_cross_references()
+    
+    def _route_item(self, item: StatementType) -> None:
+        """Route item to appropriate container or collection with validation."""
+        
+        # Enhanced GRECO routing with container validation
         if isinstance(item, GRECO):
-            # Use enhanced container with validation
             self.greco.add(item)
+        
+        # TODO: Add routing for other statement types as they are migrated
+        # elif isinstance(item, BASCO):
+        #     self.basco_container.add(item)
+        # elif isinstance(item, RETYP):
+        #     self.retyp_container.add(item)
         
         else:  
             raise TypeError(f"Unsupported type for add(): {type(item).__name__}")
+    
+    def _add_batch(self, items: List[StatementType]) -> None:
+        """Add multiple items with optimized batch validation."""
         
-        # Add to the master list to maintain order
-        # Handle EXECD specially - always add it at the end
-        if isinstance(item, EXECD):
-            # Remove any existing EXECD items
-            self._all_items = [x for x in self._all_items if not isinstance(x, EXECD)]
+        # Group items by type for batch processing
+        grouped_items = {}
+        for item in items:
+            item_type = type(item)
+            if item_type not in grouped_items:
+                grouped_items[item_type] = []
+            grouped_items[item_type].append(item)
         
-        # Add the item to the master list
-        self._all_items.append(item)
+        # Process each group
+        for item_type, type_items in grouped_items.items():
+            if item_type == GRECO:
+                self.greco.add_batch(type_items)
+            # TODO: Add batch processing for other container types
+            else:
+                # Fall back to individual processing for non-container types
+                for item in type_items:
+                    self._route_item(item)
+        
+        # Add all to master list
+        self.all_items.extend(items)
+        
+        # Model-level cross-object validation
+        if self.validation_enabled:
+            self._validate_cross_references()
+    
+    def _validate_cross_references(self) -> None:
+        """Perform model-level cross-object validation."""
+        issues = self._collect_validation_issues()
+        
+        # Check for critical errors
+        errors = [issue for issue in issues if issue.severity == 'error']
+        if errors:
+            error_messages = [f"[{error.code}] {error.message}" for error in errors]
+            raise ValueError("Model validation failed:\n" + "\n".join(error_messages))
+    
+    def _collect_validation_issues(self) -> List[ValidationIssue]:
+        """Collect all validation issues from cross-object validation."""
+        issues = []
+        
+        # GRECO-specific cross-object validation
+        issues.extend(self._validate_greco_cross_references())
+        
+        # TODO: Add other cross-object validations as more statements are migrated
+        # issues.extend(self._validate_reloc_cross_references())
+        # issues.extend(self._validate_basco_cross_references())
+        
+        return issues
+    
+    def _validate_greco_cross_references(self) -> List[ValidationIssue]:
+        """Validate GRECO cross-references with other statements."""
+        issues = []
+        
+        # Initialize validation rules
+        elc_rule = GrecoELCCrossReferenceRule()
+        bas_count_rule = GrecoBasCountRule()
+        
+        for greco in self.greco.items:
+            # Validate ELC cross-references
+            issues.extend(elc_rule.validate(greco, self))
+            
+            # Validate BAS count requirements
+            issues.extend(bas_count_rule.validate(greco, self))
+        
+        return issues
+    
+    @model_validator(mode='after')
+    def validate_complete_model(self) -> 'SD_BASE':
+        """Final model validation after all fields are set."""
+        if self.validation_enabled:
+            self._validate_cross_references()
+        return self
+    def get_all_ids(self, statement_type: type) -> List[Union[int, str]]:
+        """Get all IDs for a specific statement type."""
+        if statement_type == GRECO:
+            return self.greco.get_ids()
+        # TODO: Add other container types as they are migrated
+        # elif statement_type == BASCO:
+        #     return list(self.basco_container.get_ids())
+        else:
+            # For non-container collections, extract IDs manually
+            if statement_type == BASCO:
+                return list(self.basco.keys())
+            elif statement_type == RETYP:
+                return list(self.retyp.keys())
+            # Add more as needed
+        return []
+    
+    def get_cross_references(self) -> Dict[str, List[str]]:
+        """Get all cross-references in the model."""
+        references = {}
+        
+        # GRECO -> LOADC references (ELC -> OLC)
+        for greco in self.greco.items:
+            if greco.elc and hasattr(greco.elc, 'to_list'):
+                key = f"GRECO.{greco.id}.elc"
+                elc_values = greco.elc.to_list()
+                references[key] = [f"LOADC.OLC.{elc}" for elc in elc_values]
+        
+        # TODO: Add other cross-references as more statements are migrated
+        # RELOC -> RETYP references
+        # for reloc in self.reloc_container.items:
+        #     if hasattr(reloc, 'rt'):
+        #         key = f"RELOC.{reloc.id}"
+        #         references[key] = [f"RETYP.{reloc.rt}"]
+        
+        return references
+    
+    def validate_integrity(self) -> Dict[str, List[str]]:
+        """Comprehensive integrity validation returning all issues by severity."""
+        issues_by_severity = {
+            'errors': [],
+            'warnings': [],
+            'info': []
+        }
+        
+        try:
+            # Collect all validation issues
+            all_issues = self._collect_validation_issues()
+            
+            # Group by severity
+            for issue in all_issues:
+                severity_key = issue.severity + 's'  # 'error' -> 'errors'
+                if severity_key in issues_by_severity:
+                    issue_msg = f"[{issue.code}] {issue.message}"
+                    if issue.suggestion:
+                        issue_msg += f" Suggestion: {issue.suggestion}"
+                    issues_by_severity[severity_key].append(issue_msg)
+        
+        except Exception as e:
+            issues_by_severity['errors'].append(f"Validation system error: {str(e)}")
+        
+        return issues_by_severity
+    
+    def get_validation_summary(self) -> Dict[str, Any]:
+        """Get a comprehensive validation summary."""
+        integrity = self.validate_integrity()
+        cross_refs = self.get_cross_references()
+        
+        return {
+            'validation_enabled': self.validation_enabled,
+            'total_items': len(self.all_items),
+            'containers': {
+                'greco': len(self.greco),
+                # TODO: Add other containers as they are migrated
+            },
+            'cross_references': cross_refs,
+            'integrity_issues': integrity,
+            'has_errors': len(integrity['errors']) > 0,
+            'has_warnings': len(integrity['warnings']) > 0
+        }
+    
+    def disable_validation(self) -> None:
+        """Disable validation for batch operations."""
+        self.validation_enabled = False
+    
+    def enable_validation(self) -> None:
+        """Re-enable validation and perform full model validation."""
+        self.validation_enabled = True
+        self._validate_cross_references()
+    
+    @contextmanager
+    def validation_disabled(self):
+        """Context manager to temporarily disable validation."""
+        original_state = self.validation_enabled
+        self.validation_enabled = False
+        try:
+            yield
+        finally:
+            self.validation_enabled = original_state
+            if original_state:  # Only validate if it was originally enabled
+                self._validate_cross_references()
+    
     @classmethod
     @contextmanager
-    def create_writer(cls, output_file: str):
+    def create_writer(cls, output_file: str, validation_enabled: bool = True):
         """
-        A context manager to create and write an SD_BASE model to a file.
-
-        Yields an SD_BASE instance to be populated. Upon exiting the
-        context, the contents are written to the specified file.
-
-        Usage:
-            with SD_BASE.create_writer("output.dat") as sd:
-                # For dictionary-based components (using keys)
-                shaxe_obj = SHAXE(pa="part1", fs=(1,10))
-                sd.add(shaxe_obj)  # Added using its generated key
-                
-                # For list-based components
-                sd.add(FILST(...))  # Appended to list
-                
-                # For components with numeric ids
-                basco_obj = BASCO(id=1, ...)
-                sd.add(basco_obj)  # Added using its id
+        Enhanced context manager with validation control.
+        
+        Args:
+            output_file: Output file path
+            validation_enabled: Enable/disable validation during construction
         """
-        sd_model = cls()
+        sd_model = cls(validation_enabled=validation_enabled)
         try:
             yield sd_model
         finally:
+            # Re-enable validation for final check if it was disabled
+            if not validation_enabled:
+                sd_model.validation_enabled = True
+                sd_model._validate_cross_references()
+            
+            # Write to file
             with open(output_file, "w", encoding="utf-8") as f:
-                # Write all components in the order they were added
-                # EXECD statements are automatically handled at the end
-                for item in sd_model._all_items:
-                    f.write(item.input + "\n")
+                for item in sd_model.all_items:
+                    f.write(str(item) + "\n")
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Export model to dictionary for serialization."""
+        return self.model_dump()
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'SD_BASE':
+        """Import model from dictionary."""
+        return cls.model_validate(data)
               
 
 
