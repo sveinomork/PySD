@@ -4,8 +4,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # Forward declarations for extended ELC functionality
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from statements.loadc import LoadcList
-    from statements.greco import GRECO
+    from .loadc import LoadcList
+    from .greco import GRECO
 
 class LoadCase(BaseModel):
     """
@@ -126,8 +126,8 @@ class BASCO(BaseModel):
         """Validate load cases."""
         if not v:
             raise ValueError("At least one load case must be provided")
-        if len(v) > 30:  # Max 30 cases
-            raise ValueError("Maximum of 30 load cases allowed")
+        if len(v) > 300:  # Max 30 cases
+            raise ValueError("Maximum of 300 load cases allowed")
         return v
 
     @field_validator('txt')
