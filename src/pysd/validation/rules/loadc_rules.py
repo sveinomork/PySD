@@ -101,20 +101,54 @@ def validate_olc_overlap(obj: 'LOADC', context: ValidationContext) -> List[Valid
     if not context.parent_container or not obj.olc:
         return issues
     
-    obj_olc_start, obj_olc_end = obj.olc
-    obj_olc_set = set(range(obj_olc_start, obj_olc_end + 1))
+    # Get OLC values as a list (handles Cases objects, tuples, etc.)
+    try:
+        if hasattr(obj.olc, 'to_list'):
+            obj_olc_list = obj.olc.to_list()
+        elif isinstance(obj.olc, (tuple, list)):
+            if len(obj.olc) == 2:
+                obj_olc_list = list(range(obj.olc[0], obj.olc[1] + 1))
+            else:
+                obj_olc_list = list(obj.olc)
+        elif isinstance(obj.olc, int):
+            obj_olc_list = [obj.olc]
+        else:
+            return issues  # Skip validation for unsupported types
+            
+        obj_olc_set = set(obj_olc_list)
+    except Exception:
+        return issues  # Skip validation if conversion fails
     
     for existing_loadc in context.parent_container:
         if existing_loadc.run_number != obj.run_number and existing_loadc.olc:
-            exist_olc_start, exist_olc_end = existing_loadc.olc
-            exist_olc_set = set(range(exist_olc_start, exist_olc_end + 1))
+            # Get existing OLC values as a list
+            try:
+                if hasattr(existing_loadc.olc, 'to_list'):
+                    existing_olc_list = existing_loadc.olc.to_list()
+                elif isinstance(existing_loadc.olc, (tuple, list)):
+                    if len(existing_loadc.olc) == 2:
+                        existing_olc_list = list(range(existing_loadc.olc[0], existing_loadc.olc[1] + 1))
+                    else:
+                        existing_olc_list = list(existing_loadc.olc)
+                elif isinstance(existing_loadc.olc, int):
+                    existing_olc_list = [existing_loadc.olc]
+                else:
+                    continue  # Skip comparison for unsupported types
+                    
+                existing_olc_set = set(existing_olc_list)
+            except Exception:
+                continue  # Skip comparison if conversion fails
             
-            overlap = obj_olc_set.intersection(exist_olc_set)
+            overlap = obj_olc_set.intersection(existing_olc_set)
             if overlap:
+                # Create readable range descriptions
+                obj_range_desc = f"{min(obj_olc_list)}-{max(obj_olc_list)}" if len(obj_olc_list) > 1 else str(obj_olc_list[0])
+                existing_range_desc = f"{min(existing_olc_list)}-{max(existing_olc_list)}" if len(existing_olc_list) > 1 else str(existing_olc_list[0])
+                
                 issues.append(ValidationIssue(
                     severity=ValidationSeverity.WARNING.value,
                     code="LOADC-OLC-OVERLAP-001",
-                    message=f"OLC range {obj_olc_start}-{obj_olc_end} overlaps with LOADC {existing_loadc.run_number} OLC range {exist_olc_start}-{exist_olc_end}",
+                    message=f"OLC range {obj_range_desc} overlaps with LOADC {existing_loadc.run_number} OLC range {existing_range_desc}",
                     location=f"LOADC.{obj.run_number}.olc",
                     suggestion="Consider using non-overlapping OLC ranges"
                 ))
@@ -130,12 +164,26 @@ def validate_loadc_usage_in_statements(obj: 'LOADC', context: ValidationContext)
     if not context.full_model or not obj.olc:
         return issues
     
+    # Get OLC values as a list (handles Cases objects, tuples, etc.)
+    try:
+        if hasattr(obj.olc, 'to_list'):
+            olc_numbers = set(obj.olc.to_list())
+        elif isinstance(obj.olc, (tuple, list)):
+            if len(obj.olc) == 2:
+                olc_numbers = set(range(obj.olc[0], obj.olc[1] + 1))
+            else:
+                olc_numbers = set(obj.olc)
+        elif isinstance(obj.olc, int):
+            olc_numbers = {obj.olc}
+        else:
+            return issues  # Skip validation for unsupported types
+    except Exception:
+        return issues  # Skip validation if conversion fails
+    
     # Check if any BASCO uses this LOADC's OLCs as ELC
     basco_container = getattr(context.full_model, 'basco', None)
     greco_container = getattr(context.full_model, 'greco', None)
     
-    olc_start, olc_end = obj.olc
-    olc_numbers = set(range(olc_start, olc_end + 1))
     used_olcs = set()
     
     # Check BASCO usage

@@ -27,10 +27,12 @@ from .statements.headl import HEADL
 from .statements.depar import DEPAR
 
 # Import container system
-from .containers import GrecoContainer, BascoContainer, LoadcContainer, ShsecContainer
-from .validation.core import ValidationContext, ValidationIssue, ValidationMode, ValidationSeverity
+from .containers import (
+    GrecoContainer, BascoContainer, LoadcContainer, ShsecContainer, ShaxeContainer,
+    CmpecContainer, RmpecContainer, RetypContainer, RelocContainer
+)
+from .validation.core import ValidationContext, ValidationIssue
 from .validation.rule_system import execute_validation_rules
-from .validation.error_codes import ErrorCodes
 
 
 # Define a protocol that all statement classes implement
@@ -66,7 +68,7 @@ class SD_BASE(BaseModel):
     rfile: List[RFILE] = Field(default_factory=list, description="RFILE statements")
     incdf: List[INCDF] = Field(default_factory=list, description="INCDF statements")
     headl: List[HEADL] = Field(default_factory=list, description="HEADL statements")
-    shaxe: Dict[str, SHAXE] = Field(default_factory=dict, description="SHAXE statements (key: PA_FS_HS)")
+    shaxe: ShaxeContainer = Field(default_factory=ShaxeContainer, description="SHAXE statements with validation")
     shsec: ShsecContainer = Field(default_factory=ShsecContainer, description="SHSEC statements with validation")
     xtfil: Dict[str, XTFIL] = Field(default_factory=dict, description="XTFIL statements (key: FN_PA_FS_HS)")
   
@@ -77,15 +79,16 @@ class SD_BASE(BaseModel):
     greco: GrecoContainer = Field(default_factory=GrecoContainer, description="GRECO statements with validation")
     basco: BascoContainer = Field(default_factory=BascoContainer, description="BASCO statements with validation")
     loadc: LoadcContainer = Field(default_factory=LoadcContainer, description="LOADC statements with validation")
+    cmpec: CmpecContainer = Field(default_factory=CmpecContainer, description="CMPEC statements with validation")
+    rmpec: RmpecContainer = Field(default_factory=RmpecContainer, description="RMPEC statements with validation")
+    retyp: RetypContainer = Field(default_factory=RetypContainer, description="RETYP statements with validation")
+    reloc: RelocContainer = Field(default_factory=RelocContainer, description="RELOC statements with validation")
     lores: List[LORES] = Field(default_factory=list, description="LORES statements")
     table: List[TABLE] = Field(default_factory=list, description="TABLE statements")
     execd: List[EXECD] = Field(default_factory=list, description="EXECD statements")
     decas: List[DECAS] = Field(default_factory=list, description="DECAS statements")
-    cmpec: Dict[int, CMPEC] = Field(default_factory=dict, description="CMPEC statements")
-    rmpec: Dict[int, RMPEC] = Field(default_factory=dict, description="RMPEC statements")
-    retyp: Dict[int, RETYP] = Field(default_factory=dict, description="RETYP statements")
    
-    reloc: Dict[str, RELOC] = Field(default_factory=dict, description="RELOC statements")
+    reloc: RelocContainer = Field(default_factory=RelocContainer, description="RELOC statements with validation")
     depar: Optional[DEPAR] = Field(None, description="DEPAR statement (singleton)")
     
     # Validation settings
@@ -137,6 +140,22 @@ class SD_BASE(BaseModel):
             self.loadc.add(item)
         elif isinstance(item, SHSEC):
             self.shsec.add(item)
+        elif isinstance(item, SHAXE):
+            self.shaxe.add(item)
+        elif isinstance(item, CMPEC):
+            self.cmpec.add(item)
+        elif isinstance(item, RMPEC):
+            self.rmpec.add(item)
+        elif isinstance(item, RETYP):
+            self.retyp.add(item)
+        elif isinstance(item, RELOC):
+            self.reloc.add(item)
+        
+        # List-based routing for singleton/simple statements
+        elif isinstance(item, RFILE):
+            self.rfile.append(item)
+        elif isinstance(item, FILST):
+            self.filst.append(item)
         
         # Dictionary-based routing for other statements
         # TODO: Add new statement types here or migrate to containers
@@ -165,6 +184,16 @@ class SD_BASE(BaseModel):
                 self.loadc.add_batch(type_items)
             elif item_type == SHSEC:
                 self.shsec.add_batch(type_items)
+            elif item_type == SHAXE:
+                self.shaxe.add_batch(type_items)
+            elif item_type == CMPEC:
+                self.cmpec.add_batch(type_items)
+            elif item_type == RMPEC:
+                self.rmpec.add_batch(type_items)
+            elif item_type == RETYP:
+                self.retyp.add_batch(type_items)
+            elif item_type == RELOC:
+                self.reloc.add_batch(type_items)
             else:
                 # Fall back to individual processing for non-container types
                 for item in type_items:
@@ -197,24 +226,31 @@ class SD_BASE(BaseModel):
         all_statements.extend(self.basco.items)
         all_statements.extend(self.loadc.items)
         all_statements.extend(self.shsec.items)
+        all_statements.extend(self.shaxe.items)
+        all_statements.extend(self.cmpec.items)
+        all_statements.extend(self.rmpec.items)
+        all_statements.extend(self.retyp.items)
+        all_statements.extend(self.reloc.items)
+        all_statements.extend(self.rfile)
+        all_statements.extend(self.filst)
         
         for statement in all_statements:
             context = ValidationContext(
-                statement=statement,
-                container=self,
-                mode=ValidationMode.STRICT,
-                severity=ValidationSeverity.ERROR
+                current_object=statement,
+                full_model=self
             )
             try:
-                execute_validation_rules(statement, context, level='model')
+                validation_issues = execute_validation_rules(statement, context, level='model')
+                issues.extend(validation_issues)
             except Exception as e:
                 # Convert any validation errors to issues
                 statement_type = type(statement).__name__
                 statement_id = getattr(statement, 'id', getattr(statement, 'key', 'unknown'))
                 issues.append(ValidationIssue(
+                    severity="error",
                     code=f"{statement_type.upper()}_MODEL_ERROR",
                     message=f"{statement_type} {statement_id} model validation failed: {str(e)}",
-                    severity="error"
+                    location=f"{statement_type}.{statement_id}"
                 ))
         
         return issues
@@ -235,8 +271,16 @@ class SD_BASE(BaseModel):
             return self.loadc.get_keys()  # LOADC uses keys, not IDs
         elif statement_type == SHSEC:
             return self.shsec.get_keys()  # SHSEC uses keys, not IDs
+        elif statement_type == SHAXE:
+            return self.shaxe.get_ids()
+        elif statement_type == CMPEC:
+            return self.cmpec.get_ids()
+        elif statement_type == RMPEC:
+            return self.rmpec.get_ids()
         elif statement_type == RETYP:
-            return list(self.retyp.keys())
+            return self.retyp.get_ids()
+        elif statement_type == RELOC:
+            return self.reloc.get_ids()
         # Add more as needed
         return []
     
@@ -278,6 +322,11 @@ class SD_BASE(BaseModel):
                 'basco': len(self.basco),
                 'loadc': len(self.loadc),
                 'shsec': len(self.shsec),
+                'shaxe': len(self.shaxe),
+                'cmpec': len(self.cmpec),
+                'rmpec': len(self.rmpec),
+                'retyp': len(self.retyp),
+                'reloc': len(self.reloc),
             },
             'integrity_issues': integrity,
             'has_errors': len(integrity['errors']) > 0,

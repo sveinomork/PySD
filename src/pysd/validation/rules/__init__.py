@@ -6,5 +6,12 @@ from . import basco_rules
 from . import loadc_rules
 from . import cases_rules
 from . import shsec_rules
+from . import rfile_rules
+from . import rules_incdf  # FILST rules
+from . import shaxe_rules
+from . import cmpec_rules
+from . import rmpec_rules
+from . import retyp_rules
+from . import reloc_rules
 
 __all__ = []

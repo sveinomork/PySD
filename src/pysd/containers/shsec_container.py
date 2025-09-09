@@ -22,10 +22,10 @@ class ShsecContainer(BaseContainer):
         for item in items:
             self.add(item)
     
-    def get_by_key(self, key: str) -> Optional['SHSEC']:
+    def get_by_id(self, id: int) -> Optional['SHSEC']:
         """Get SHSEC by key (override to handle string keys)."""
         for item in self.items:
-            if getattr(item, 'key', None) == key:
+            if getattr(item, 'id', None) == id:
                 return item
         return None
     

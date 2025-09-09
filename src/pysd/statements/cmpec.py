@@ -1,74 +1,117 @@
-from dataclasses import dataclass, field
+from __future__ import annotations
 from typing import Optional, Tuple, Literal
+from pydantic import BaseModel, Field, field_validator, model_validator
+from ..validation.rule_system import execute_validation_rules
+from ..validation.core import ValidationContext
 
-@dataclass
-class CMPEC:
+
+class CMPEC(BaseModel):
     """
     Define concrete material property sets according to EuroCode 2.
     Most parameters are optional. Values belonging to the chosen concrete quality will be used if not specified.
+
+    ### Validation Rules
+
+    1. **ID Range**: Must be between 1 and 99999999
+    2. **GR Format**: Must start with 'B' and be between B12-B90
+    3. **RH Range**: Density must be between 1150-2150 kg/m3 for lightweight concrete
+    4. **PA Length**: Structural part cannot exceed 8 characters
+    5. **Uniqueness**: ID must be unique within container
     """
     # Required for identification
-    id: Optional[int] = None
+    id: Optional[int] = Field(None, description="Material property set ID (1-99999999)")
     
     # Concrete grade definition
-    gr: Optional[str] = None  # concrete grade, legal range 12-90 (integer) [MPa]
-    rh: Optional[float] = None  # density for lightweight concrete (1150-2150 kg/m3)
+    gr: Optional[str] = Field(None, description="Concrete grade, legal range 12-90 (integer) [MPa]")
+    rh: Optional[float] = Field(None, description="Density for lightweight concrete (1150-2150 kg/m3)")
     
     # Single data parameters (when no concrete grade is defined)
-    fck: Optional[float] = None  # cylinder compression strength after 28 days [Pa]
-    ecm: Optional[float] = None  # secant modulus of elasticity [kPa]
-    fcn: Optional[float] = None  # in situ compression strength [kPa]
-    ftm: Optional[float] = None  # in situ tensile strength [kPa]
-    acc: float = 0.85  # coefficient for longterm effects
+    fck: Optional[float] = Field(None, description="Cylinder compression strength after 28 days [Pa]")
+    ecm: Optional[float] = Field(None, description="Secant modulus of elasticity [kPa]")
+    fcn: Optional[float] = Field(None, description="In situ compression strength [kPa]")
+    ftm: Optional[float] = Field(None, description="In situ tensile strength [kPa]")
+    acc: float = Field(0.85, description="Coefficient for longterm effects")
     
     # Figure 3.3 related parameters
-    exp: Optional[float] = None  # exponent n in equation 3.17
-    ec2: Optional[float] = None  # strain at start stress plateau
-    ecu: Optional[float] = None  # ultimate strain
+    exp: Optional[float] = Field(None, description="Exponent n in equation 3.17")
+    ec2: Optional[float] = Field(None, description="Strain at start stress plateau")
+    ecu: Optional[float] = Field(None, description="Ultimate strain")
     
     # Design properties with defaults
-    mfu: float = 1.5   # design material factor (ULS)
-    mfa: float = 1.2   # design material factor (ALS)
-    mfs: float = 1.0   # design material factor (SLS/CRW)
-    k1c: float = 0.15  # Shear parameter k1 for compression
-    k1t: float = 0.30  # Shear parameter k1 for tension
-    k2: float = 0.15   # Shear parameter k2
-    cot: float = 2.5   # Shear cot(theta)
+    mfu: float = Field(1.5, description="Design material factor (ULS)")
+    mfa: float = Field(1.2, description="Design material factor (ALS)")
+    mfs: float = Field(1.0, description="Design material factor (SLS/CRW)")
+    k1c: float = Field(0.15, description="Shear parameter k1 for compression")
+    k1t: float = Field(0.30, description="Shear parameter k1 for tension")
+    k2: float = Field(0.15, description="Shear parameter k2")
+    cot: float = Field(2.5, description="Shear cot(theta)")
     
     # Reduced compression strength parameters
-    tsp: float = 100.0  # design fc2d = fcd/(0.8+tsp*ept)
-    tsd: float = 1.0    # design min(fc2d) = fac*fcd
+    tsp: float = Field(100.0, description="Design fc2d = fcd/(0.8+tsp*ept)")
+    tsd: float = Field(1.0, description="Design min(fc2d) = fac*fcd")
     
     # Location parameters
-    la: Optional[int] = None  # LAREA id-number
-    pa: Optional[str] = None  # structural part (max 8 chars)
-    fs: Optional[Tuple[int, int]] = None  # F-section range
-    hs: Optional[Tuple[int, int]] = None  # H-section range
+    la: Optional[int] = Field(None, description="LAREA id-number")
+    pa: Optional[str] = Field(None, description="Structural part (max 8 chars)")
+    fs: Optional[Tuple[int, int]] = Field(None, description="F-section range")
+    hs: Optional[Tuple[int, int]] = Field(None, description="H-section range")
     
     # Print options
-    pri: Optional[Literal['', 'TAB']] = None
+    pri: Optional[Literal['', 'TAB']] = Field(None, description="Print options")
     
-    # Output string
-    input: str = field(init=False, default="CMPEC")
-    
-    def __post_init__(self):
-        # Validation
-        if self.id is not None and not (1 <= self.id <= 99999999):
+    # Auto-generated fields
+    input: str = Field(default="", init=False, description="Generated input string")
+
+    @field_validator('id')
+    @classmethod
+    def validate_id_range(cls, v):
+        """Validate ID is within acceptable range."""
+        if v is not None and not (1 <= v <= 99999999):
             raise ValueError("ID must be between 1 and 99999999")
-            
-        if self.gr and not self.gr.startswith('B'):
-            raise ValueError("Concrete grade (GR) must start with 'B'")
-            
-        if self.gr:
-            grade = int(self.gr[1:])
-            if not (12 <= grade <= 90):
-                raise ValueError("Concrete grade must be between B12 and B90")
-                
-        if self.rh is not None and not (1150 <= self.rh <= 2150):
+        return v
+
+    @field_validator('gr')
+    @classmethod
+    def validate_concrete_grade(cls, v):
+        """Validate concrete grade format and range."""
+        if v is not None:
+            if not v.startswith('B'):
+                raise ValueError("Concrete grade (GR) must start with 'B'")
+            try:
+                grade = int(v[1:])
+                if not (12 <= grade <= 90):
+                    raise ValueError("Concrete grade must be between B12 and B90")
+            except ValueError:
+                raise ValueError("Invalid concrete grade format")
+        return v
+
+    @field_validator('rh')
+    @classmethod
+    def validate_density(cls, v):
+        """Validate density range for lightweight concrete."""
+        if v is not None and not (1150 <= v <= 2150):
             raise ValueError("Density (RH) must be between 1150 and 2150 kg/m3")
-            
-        if self.pa and len(self.pa) > 8:
+        return v
+
+    @field_validator('pa')
+    @classmethod
+    def validate_part_name(cls, v):
+        """Validate structural part name length."""
+        if v is not None and len(v) > 8:
             raise ValueError("Structural part (PA) cannot exceed 8 characters")
+        return v
+
+    @model_validator(mode='after')
+    def build_input_string(self) -> 'CMPEC':
+        """Build input string and run instance-level validation."""
+        
+        # Execute instance-level validation rules
+        context = ValidationContext(current_object=self)
+        issues = execute_validation_rules(self, context, level='instance')
+        
+        # Handle issues according to global config
+        for issue in issues:
+            context.add_issue(issue)  # Auto-raises if configured
 
         # Build the CMPEC input string
         parts = ["CMPEC"]
@@ -132,6 +175,27 @@ class CMPEC:
             
         # Join all parts with spaces
         self.input = " ".join(parts)
+        
+        return self
+    
+    def execute_cross_container_validation(self, sd_model) -> list:
+        """
+        Execute cross-container validation rules for this CMPEC instance.
+        
+        This method is called when the CMPEC is added to the SD_BASE model,
+        allowing validation against other containers.
+        """
+        context = ValidationContext(
+            current_object=self,
+            full_model=sd_model  # This enables access to all containers
+        )
+        
+        # Execute model-level (cross-container) validation rules
+        return execute_validation_rules(self, context, level='model')
 
     def __str__(self) -> str:
+        return self.input
+    
+    def formatted(self) -> str:
+        """Legacy method for backward compatibility."""
         return self.input

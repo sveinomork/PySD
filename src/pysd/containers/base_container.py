@@ -63,9 +63,17 @@ class BaseContainer(BaseModel):
                 ids.append(item_id)
         return ids
     
+    def contains(self, id_value: Union[int, str]) -> bool:
+        """Check if container contains an item with the given ID."""
+        return self.get_by_id(id_value) is not None
+    
     def __len__(self) -> int:
         """Return the number of items in the container."""
         return len(self.items)
+    
+    def __iter__(self):
+        """Allow iteration over items in the container."""
+        return iter(self.items)
     
     def __getitem__(self, index: int) -> Any:
         """Get item by index."""

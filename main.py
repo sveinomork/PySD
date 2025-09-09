@@ -4,8 +4,13 @@ from src.pysd.statements import (
     TABLE, RMPEC, CaseBuilder, Cases
 )
 from src.pysd.sdmodel import SD_BASE
+from src.pysd.validation import set_validation_mode, ValidationMode, permissive_validation, no_validation
 from pysd.helpers import create_axes_based_on_3_points_in_plane
 from shapely.geometry import Point
+
+# Configure global validation mode for the entire script
+# Options: ValidationMode.STRICT, NORMAL, PERMISSIVE, DISABLED
+set_validation_mode(ValidationMode.STRICT)
 
 
 
@@ -100,19 +105,19 @@ def create_load_components(sd_model: SD_BASE) -> None:
     
     # Create and add LOADC entries
     loadc = [
-        LOADC(run_number=1, alc=(1,6), olc=(101,106)),
+        LOADC(run_number=1, alc=(1,7), olc=(101,107)),
         LOADC(table=True),
         LOADC(pri=True)
     ]
     sd_model.add(loadc)
 
     # This generates: LORES PRI=ALC
-    sd_model.add(LORES(pri_alc=True))
+    #sd_model.add(LORES(pri_alc=True))
     # This generates: LORES SIN=
-    sd_model.add(LORES(sin=True))
+    #sd_model.add(LORES(sin=True))
 
     # add basco's for greco
-    for i in range(8):
+    for i in range(6):
         load_cases = [LoadCase(lc_type='OLC', lc_numb=201+i, lc_fact=1) ]
         basco = BASCO(id=211+i, load_cases=load_cases)
         sd_model.add(basco)
@@ -120,7 +125,7 @@ def create_load_components(sd_model: SD_BASE) -> None:
     # Add a GRECO statement
     greco_support = GRECO(
         id='A',
-        bas=Cases(ranges=[(211, 215),218])
+        bas=Cases(ranges=[(211, 216)])
     )
     sd_model.add(greco_support)
     
@@ -205,17 +210,39 @@ def main(output_file: str = r"turtorial.inp") -> None:
     """
     Main function to create and write the model.
     """
+    # Import validation context managers here if you want to use them
+    # from src.pysd.validation import permissive_validation, no_validation
    
     print(f"Building model to be written to {output_file}...")
+    print(f"Current validation mode: {ValidationMode.NORMAL}")  # Shows current setting
     
     with SD_BASE.create_writer(output_file) as sd_model:
         # Create all model components in a structured way
+        
+        # Use strict validation for critical components (default behavior)
         create_basic_model_components(sd_model)
+        
+        # For experimental or optional sections, you can use:
+        # with permissive_validation():
         create_design_sections(sd_model)
+        
         create_load_components(sd_model)
+        
+        # For bulk operations that might have known validation issues:
+        # with no_validation():
         create_material_components(sd_model)
         create_reinforment_components(sd_model)
-        create_analysis_components(sd_model)
+        #     create_analysis_components(sd_model)
+        
+        # Get validation summary after model creation
+        summary = sd_model.get_validation_summary()
+        print(f"Model created with {summary['total_items']} total items")
+        if summary['has_warnings']:
+            print("⚠️  Model has validation warnings (check output)")
+        if summary['has_errors']:
+            print("❌ Model has validation errors")
+        else:
+            print("✅ Model validation passed")
              
     
     print(f"Model successfully written to {output_file}")

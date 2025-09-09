@@ -1,20 +1,28 @@
-from dataclasses import dataclass, field
+from __future__ import annotations
 from typing import Optional, Tuple, Union, Literal
+from pydantic import BaseModel, Field, field_validator, model_validator
+from ..validation.rule_system import execute_validation_rules
+from ..validation.core import ValidationContext
 
-@dataclass
-class RELOC:
+
+class RELOC(BaseModel):
     """
-
-   ### Purpose:
-    --------
     Defines rebar locations and properties.
-
+    
+    ### Validation Rules
+    
+    1. **ID Length**: Must be max 4 characters
+    2. **Angle Range**: AL (angle) must be between -90 and +90 degrees
+    3. **Location Exclusivity**: Cannot use both LA and combination of PA/FS/HS
+    4. **Positive Values**: COV, OS must be positive if specified
+    5. **Reference Validation**: RT must reference existing RETYP statements
+    
     This statement is used to specify where and how reinforcement bars (rebars)
     are placed within shell sections. It links to a rebar type defined by a
     RETYP statement and can specify the location through part names, section
     ranges, or location areas.
 
-   ### Examples:
+    ### Examples:
     ---------------
     ```python
     # Rebar in a specific section range:
@@ -33,75 +41,67 @@ class RELOC:
     RELOC(id="Y02", pa="VEGG", rt=2, fa=0, al=90)
     → "RELOC ID=Y02 PA=VEGG RT=2 FA=0 AL=90"
     ```
-
-    ### Parameters:
-    -----------
-    id : str
-        Location identity (max 4 characters).
-    
-    rt : Union[int, Tuple[int, int]]
-        Rebar type number or range (rt1, rt2), see RETYP.
-    
-    cov : Optional[float]
-        Rebar cover in mm. Overrides C2 from RETYP.
-    
-    fa : Literal[0, 1, 2]
-        Shell face (0=center, 1=face1, 2=face2). Default is 0.
-    
-    al : float
-        Direction angle in degrees (-90 to +90). Default is 0.0.
-    
-    os : Optional[float]
-        Offset to layer center in meters. Overrides offset from RETYP.
-    
-    rp : Literal["12", "XY", "XZ", "YZ"]
-        Reference plane for the direction angle AL. Default is "12".
-    
-    pa : Optional[str]
-        Part identity (name). Default applies to all parts.
-    
-    fs : Optional[Union[int, Tuple[int, int]]]
-        F-section number or range (f1, f2). Default applies to all F-sections.
-    
-    hs : Optional[Union[int, Tuple[int, int]]]
-        H-section number or range (h1, h2). Default applies to all H-sections.
-    
-    la : Optional[int]
-        Section set number from LAREA statement. Mutually exclusive with pa, fs, hs.
     """
-    id: str
-    rt: Union[int, Tuple[int, int]]
-    cov: Optional[float] = None
-    fa: Literal[0, 1, 2] = 0
-    al: float = 0.0
-    os: Optional[float] = None
-    rp: Literal["12", "XY", "XZ", "YZ"] = "12"
+    
+    # Required fields
+    id: str = Field(..., description="Location identity (max 4 characters)")
+    rt: Union[int, Tuple[int, int]] = Field(..., description="Rebar type number or range (rt1, rt2), see RETYP")
+    
+    # Optional parameters
+    cov: Optional[float] = Field(None, description="Rebar cover in mm. Overrides C2 from RETYP")
+    fa: Literal[0, 1, 2] = Field(0, description="Shell face (0=center, 1=face1, 2=face2)")
+    al: float = Field(0.0, description="Direction angle in degrees (-90 to +90)")
+    os: Optional[float] = Field(None, description="Offset to layer center in meters. Overrides offset from RETYP")
+    rp: Literal["12", "XY", "XZ", "YZ"] = Field("12", description="Reference plane for the direction angle AL")
     
     # Location area alternative 1
-    pa: Optional[str] = None
-    fs: Optional[Union[int, Tuple[int, int]]] = None
-    hs: Optional[Union[int, Tuple[int, int]]] = None
+    pa: Optional[str] = Field(None, description="Part identity (name). Default applies to all parts")
+    fs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="F-section number or range (f1, f2)")
+    hs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="H-section number or range (h1, h2)")
     
     # Location area alternative 2
-    la: Optional[int] = None
+    la: Optional[int] = Field(None, description="Section set number from LAREA statement. Mutually exclusive with pa, fs, hs")
     
-    input: str = field(init=False, default="RELOC")
-
-    def __post_init__(self):
-        # --- Validation ---
-        if len(self.id) > 4:
-            raise ValueError("ID must be max 4 characters.")
-        
-        if not -90 <= self.al <= 90:
-            raise ValueError("AL (angle) must be between -90 and +90 degrees.")
-
+    # Auto-generated fields
+    input: str = Field(default="", init=False, description="Generated input string")
+    
+    @field_validator('id')
+    @classmethod
+    def validate_id_length(cls, v):
+        """Validate ID length."""
+        if len(v) > 4:
+            raise ValueError("ID must be max 4 characters")
+        return v
+    
+    @field_validator('al')
+    @classmethod
+    def validate_angle_range(cls, v):
+        """Validate angle is within acceptable range."""
+        if not -90 <= v <= 90:
+            raise ValueError("AL (angle) must be between -90 and +90 degrees")
+        return v
+    
+    @field_validator('cov', 'os')
+    @classmethod
+    def validate_positive_values(cls, v):
+        """Validate that numeric values are positive when specified."""
+        if v is not None and v <= 0:
+            raise ValueError("Value must be positive")
+        return v
+    
+    @model_validator(mode='after')
+    def validate_location_exclusivity(self) -> 'RELOC':
+        """Validate that location area alternatives are mutually exclusive."""
         location_alt1 = any([self.pa, self.fs, self.hs])
         location_alt2 = self.la is not None
         
         if location_alt1 and location_alt2:
-            raise ValueError("Location area alternatives are mutually exclusive. Use either 'la' or a combination of 'pa', 'fs', 'hs'.")
-
-        # --- String Building ---
+            raise ValueError("Location area alternatives are mutually exclusive. Use either 'la' or a combination of 'pa', 'fs', 'hs'")
+        return self
+    
+    @model_validator(mode='after')
+    def build_input_string(self) -> 'RELOC':
+        """Build the input string after validation."""
         parts = ["RELOC", f"ID={self.id}"]
         
         # RT (Rebar Type)
@@ -133,6 +133,14 @@ class RELOC:
                 else: parts.append(f"HS={self.hs}")
 
         self.input = " ".join(parts)
-
+        return self
+    
+    def validate_cross_container_references(self, context: ValidationContext) -> None:
+        """Validate cross-container references."""
+        issues = execute_validation_rules(self, context, level='model')
+        if any(issue.severity == 'error' for issue in issues):
+            error_messages = [issue.message for issue in issues if issue.severity == 'error']
+            raise ValueError(f"Cross-container validation failed: {'; '.join(error_messages)}")
+    
     def __str__(self) -> str:
         return self.input

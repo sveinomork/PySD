@@ -1,5 +1,8 @@
-from dataclasses import dataclass, field
+from __future__ import annotations
 from typing import Optional, Literal, TypeAlias, Final
+from pydantic import BaseModel, Field, model_validator
+from ..validation.rule_system import execute_validation_rules
+from ..validation.core import ValidationContext
 
 # Type aliases to make the types more meaningful and colorful in IDE
 FilePath: TypeAlias = str
@@ -9,8 +12,7 @@ ElementType: TypeAlias = Literal["SHE", "SOL"]
 # Constants for default values
 DEFAULT_UNIT_FACTOR: Final[int] = 1000  # Default for both length and force units
 
-@dataclass
-class RFILE:
+class RFILE(BaseModel):
     """Defines input and result file references for a Sestra finite element (FE) analysis.
     
     The RFILE statement specifies the location and properties of input/result files for analysis.
@@ -44,6 +46,13 @@ class RFILE:
             ...     fun=1000,  # N
             ...     typ="SHE"
             ... )
+
+    ### Validation Rules
+
+    1. **FNM Format**: Filename (FNM) is required and cannot be empty
+    2. **File Dependencies**: L-file (LFI) requires T-file (TFI) to be specified
+    3. **Unit Factors**: Length (LUN) and force (FUN) unit factors must be positive
+    4. **Uniqueness**: Typically only one RFILE per model (warning if multiple)
 
     Args:
         pre (Optional[str]): Path to the folder containing the FE input/result files.
@@ -86,29 +95,36 @@ class RFILE:
         - Paths with spaces are automatically quoted in the output
     """
     # File identifiers
-    fnm: FileName = "R1"
-    pre: Optional[FilePath] = None  # Path to the folder containing the FE input/result files
-    tfi: Optional[FileName] = None  # T-file name
-    suf: Optional[str] = None  # Result file suffix
-    lfi: Optional[FileName] = None  # L-file name
+    fnm: FileName = Field("R1", description="Basename of the Sestra result file")
+    pre: Optional[FilePath] = Field(None, description="Path to the folder containing the FE input/result files")
+    tfi: Optional[FileName] = Field(None, description="T-file name")
+    suf: Optional[str] = Field(None, description="Result file suffix")
+    lfi: Optional[FileName] = Field(None, description="L-file name")
     
     # Unit conversion factors
-    lun: int = DEFAULT_UNIT_FACTOR  # Length unit in mm
-    fun: int = DEFAULT_UNIT_FACTOR  # Force unit in N
+    lun: int = Field(DEFAULT_UNIT_FACTOR, description="Length unit in mm")
+    fun: int = Field(DEFAULT_UNIT_FACTOR, description="Force unit in N")
     
     # Element type selection
-    typ: Optional[ElementType] = None
+    typ: Optional[ElementType] = Field(None, description="Element type selection")
     
-    # Generated SESAM input string
-    input: str = field(init=False, default="RFILE")
-    
-    def __post_init__(self):
-        if self.tfi is None and self.lfi is not None:
-            raise ValueError("T-file (tfi) is required when L-file (lfi) is provided.")
-        if self.lfi is not None and self.tfi is None:
-            raise ValueError("L-file (lfi) requires a T-file (tfi).")
+    # Auto-generated field
+    input: str = Field(default="", init=False, description="Generated input string")
 
-        parts:list[str] = ["RFILE"]
+    @model_validator(mode='after')
+    def build_input_string(self) -> 'RFILE':
+        """Build input string and run instance-level validation."""
+        
+        # Execute instance-level validation rules
+        context = ValidationContext(current_object=self)
+        issues = execute_validation_rules(self, context, level='instance')
+        
+        # Handle issues according to global config
+        for issue in issues:
+            context.add_issue(issue)  # Auto-raises if configured
+        
+        # Build input string
+        parts: list[str] = ["RFILE"]
         if self.pre is not None:
             # Add quotes if path contains spaces, as per docstring.
             pre_val = f'"{self.pre}"' if " " in self.pre else self.pre
@@ -131,6 +147,25 @@ class RFILE:
             parts.append(f"TYP={self.typ}")
         
         self.input = " ".join(parts)
+        return self
+    
+    def execute_cross_container_validation(self, sd_model) -> list:
+        """
+        Execute cross-container validation rules for this RFILE instance.
+        
+        This method is called when the RFILE is added to the SD_BASE model.
+        """
+        context = ValidationContext(
+            current_object=self,
+            full_model=sd_model  # This enables access to all containers
+        )
+        
+        # Execute model-level validation rules
+        return execute_validation_rules(self, context, level='model')
 
     def __str__(self) -> str:
+        return self.input
+    
+    def formatted(self) -> str:
+        """Legacy method for backward compatibility."""
         return self.input

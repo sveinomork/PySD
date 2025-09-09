@@ -1,9 +1,11 @@
-from dataclasses import dataclass, field
+from __future__ import annotations
 from typing import Optional, Tuple, Literal
+from pydantic import BaseModel, Field, model_validator
+from ..validation.rule_system import execute_validation_rules
+from ..validation.core import ValidationContext
 
 
-@dataclass
-class SHAXE:
+class SHAXE(BaseModel):
     """
     Define local 1-2-3 axes for FE sections based on one of three mutually exclusive modes:
 
@@ -23,89 +25,87 @@ class SHAXE:
     Examples:
     Independent of section location:
         >>> shaxe1 = SHAXE(pa="A1", x1=(1, 0, 0), x2=(0, 1, 0), x3=(0, 0, -1), fs=(1, 10))
-        >>> print(SHAXE.input)
+        >>> print(shaxe1.input)
         'SHAXE PA=A1 X1=1,0,0 X2=0,1,0 X3=0,0,-1 FS=1-10'
 
     Cylinder walls:
         >>> shaxe2 = SHAXE(pa="A2", xp=(0, 0, 0), xa=(0, 0, 1), al=-90, fs=(1, 10), hs=(1, 5))
-        >>> print(SHAXE.input)  
+        >>> print(shaxe2.input)  
         'SHAXE PA=A2 XP=0,0,0 XA=0,0,1 AL=-90 FS=1-10 HS=1-5'
 
     Circlar plate /dome with radial arrangement:
         >>> shaxe3 = SHAXE(pa="A3", xc=(0, 0, 0), xa=(0, 0, 1), fs=(1, 10), hs=(15, 50))
-        >>> print(SHAXE.input)  
+        >>> print(shaxe3.input)  
         'SHAXE PA=A3 XC=0,0,0 XA=0,0,1 FS=1-10 HS=15-50'
 
+    ### Validation Rules
 
-    
+    1. **PA Format**: Must be provided and non-empty
+    2. **Mode Validation**: Exactly one of the three modes must be active
+    3. **Vector Components**: All vector components must be valid floats
+    4. **Cross-Reference**: PA must exist as a part name in SHSEC statements
     """
 
     # ─── Common Parameters ──────────────────────────────────────────────
 
-    pa: str 
-    """PA: Structural part name to which the axes apply."""
+    pa: str = Field(..., description="PA: Structural part name to which the axes apply")
 
-    fs: Optional[Tuple[int, int]] = None
-    """FS: F-section index range (i1, i2). If omitted, applies to all F-sections."""
+    fs: Optional[Tuple[int, int]] = Field(None, description="FS: F-section index range (i1, i2). If omitted, applies to all F-sections")
 
-    hs: Optional[Tuple[int, int]] = None
-    """HS: H-section index range (j1, j2). If omitted, applies to all H-sections."""
+    hs: Optional[Tuple[int, int]] = Field(None, description="HS: H-section index range (j1, j2). If omitted, applies to all H-sections")
 
     # ─── Mode 1: Explicit Axes ──────────────────────────────────────────
 
-    x1: Optional[Tuple[float, float, float]] = None
-    """X1: XYZ components of the local 1-axis."""
+    x1: Optional[Tuple[float, float, float]] = Field(None, description="X1: XYZ components of the local 1-axis")
 
-    x2: Optional[Tuple[float, float, float]] = None
-    """X2: XYZ components of the local 2-axis."""
+    x2: Optional[Tuple[float, float, float]] = Field(None, description="X2: XYZ components of the local 2-axis")
 
-    x3: Optional[Tuple[float, float, float]] = None
-    """X3: XYZ components of the local 3-axis."""
+    x3: Optional[Tuple[float, float, float]] = Field(None, description="X3: XYZ components of the local 3-axis")
 
     # ─── Mode 2: Point-Axis Definition ─────────────────────────────────
 
-    xp: Optional[Tuple[float, float, float]] = None
-    """XP: Coordinates of point P (target for 3-axis direction)."""
+    xp: Optional[Tuple[float, float, float]] = Field(None, description="XP: Coordinates of point P (target for 3-axis direction)")
 
-    xa: Optional[Tuple[float, float, float]] = None
-    """XA: Components of direction vector A (approximate direction for 1-axis in Mode 2; shell normal in Mode 3)."""
+    xa: Optional[Tuple[float, float, float]] = Field(None, description="XA: Components of direction vector A (approximate direction for 1-axis in Mode 2; shell normal in Mode 3)")
 
     # ─── Mode 3: Center-Axis (Polar Coordinate System) ─────────────────
 
-    xc: Optional[Tuple[float, float, float]] = None
-    """XC: Coordinates of center point C for radial/polar systems (used in Mode 3)."""
+    xc: Optional[Tuple[float, float, float]] = Field(None, description="XC: Coordinates of center point C for radial/polar systems (used in Mode 3)")
 
     # ─── Optional Axes Modifiers ───────────────────────────────────────
 
-    sy: Optional[Literal["R", "L"]] = "R"
-    """SY: Handedness of the axis system. 'R' = right-hand (default), 'L' = left-hand."""
+    sy: Literal["R", "L"] = Field("R", description="SY: Handedness of the axis system. 'R' = right-hand (default), 'L' = left-hand")
 
-    al: Optional[float] = 0.0
-    """AL: Rotation angle (degrees) for adjusting the 1-axis direction toward the 2-axis."""
+    al: float = Field(0.0, description="AL: Rotation angle (degrees) for adjusting the 1-axis direction toward the 2-axis")
 
-    # Key for dictionary storage - computed during initialization
-    key: str = field(init=False)
-    
-    # ─── Validation ────────────────────────────────────────────────────
-    
-    input: str = field(init=False, default="SHAXE")
+    # Auto-generated fields
+    input: str = Field(default="", init=False, description="Generated input string")
+    key: str = Field(default="", init=False, description="Unique key for container storage")
 
-    def __post_init__(self):
+    @model_validator(mode='after')
+    def build_input_string_and_key(self) -> 'SHAXE':
+        """Build input string, key, and run instance-level validation."""
+        
+        # Execute instance-level validation rules
+        context = ValidationContext(current_object=self)
+        issues = execute_validation_rules(self, context, level='instance')
+        
+        # Handle issues according to global config
+        for issue in issues:
+            context.add_issue(issue)  # Auto-raises if configured
+        
         # Generate the key
-        if not self.pa:
-            raise ValueError("PA (structural part name) is required")
-            
-        key_parts = [f"{self.pa}"]
+        key_parts = [self.pa]
         if self.fs is not None:
-            key_parts.append(f"{self.fs[0]}-{self.fs[1]}")
+            key_parts.append(f"fs{self.fs[0]}-{self.fs[1]}")
         if self.hs is not None:
-            key_parts.append(f"{self.hs[0]}-{self.hs[1]}")
+            key_parts.append(f"hs{self.hs[0]}-{self.hs[1]}")
         self.key = "_".join(key_parts)
             
         # Establish method of defining axes
         mode1 = all([self.x1, self.x2, self.x3])
-        mode2 = all([self.xp,self.xa])
-        mode3 = all([self.xc,self.xa])
+        mode2 = all([self.xp, self.xa])
+        mode3 = all([self.xc, self.xa])
 
         mode_count = sum([mode1, mode2, mode3])
         if mode_count == 0:
@@ -114,21 +114,8 @@ class SHAXE:
         if mode_count > 1:
             raise ValueError("Only one SHAXE mode may be used at a time (fields are mutually exclusive).")
 
-        if mode1:
-            if not all([self.x1, self.x2, self.x3]):
-                raise ValueError("Mode 1 requires all of x1, x2, and x3 to be defined.")
-        elif mode2:
-            if not self.xp or not self.xa:
-                raise ValueError("Mode 2 requires xp and xa to be defined.")
-        elif mode3:
-            if not self.xc or not self.xa:
-                raise ValueError("Mode 3 requires xc and xa to be defined.")
-
-        # Then build the input string
+        # Build the input string
         parts = ["SHAXE"]
-
-       
-        
         parts.append(f"PA={self.pa}")
         
         if self.fs is not None:
@@ -161,6 +148,27 @@ class SHAXE:
 
         # Join all parts with spaces
         self.input = " ".join(parts)
+        
+        return self
+    
+    def execute_cross_container_validation(self, sd_model) -> list:
+        """
+        Execute cross-container validation rules for this SHAXE instance.
+        
+        This method is called when the SHAXE is added to the SD_BASE model,
+        allowing validation against other containers.
+        """
+        context = ValidationContext(
+            current_object=self,
+            full_model=sd_model  # This enables access to all containers
+        )
+        
+        # Execute model-level (cross-container) validation rules
+        return execute_validation_rules(self, context, level='model')
 
     def __str__(self) -> str:
+        return self.input
+    
+    def formatted(self) -> str:
+        """Legacy method for backward compatibility."""
         return self.input

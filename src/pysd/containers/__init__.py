@@ -7,6 +7,11 @@ from .greco_container import GrecoContainer
 from .basco_container import BascoContainer
 from .loadc_container import LoadcContainer
 from .shsec_container import ShsecContainer
+from .shaxe_container import ShaxeContainer
+from .cmpec_container import CmpecContainer
+from .rmpec_container import RmpecContainer
+from .retyp_container import RetypContainer
+from .reloc_container import RelocContainer
 
 __all__ = [
     "BaseContainer",
@@ -14,5 +19,10 @@ __all__ = [
     "GrecoContainer",
     "BascoContainer",
     "LoadcContainer",
-    "ShsecContainer"
+    "ShsecContainer",
+    "ShaxeContainer",
+    "CmpecContainer",
+    "RmpecContainer",
+    "RetypContainer",
+    "RelocContainer"
 ]

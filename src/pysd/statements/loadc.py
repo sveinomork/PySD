@@ -1,4 +1,4 @@
-from typing import Optional, Union, Any, Tuple
+from typing import Optional, Union, Any
 from typing_extensions import Annotated, Doc
 from pydantic import BaseModel, Field, field_validator, model_validator
 from .cases import Cases, normalize_cases
