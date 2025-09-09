@@ -1,10 +1,12 @@
-from dataclasses import dataclass, field
-from typing import Any, Optional, Tuple, Literal
+from __future__ import annotations
+from typing import Optional, Tuple, Literal
+from pydantic import BaseModel, Field, model_validator
+from ..validation.rule_system import execute_validation_rules
+from ..validation.core import ValidationContext
 
 
 
-@dataclass
-class SHSEC:
+class SHSEC(BaseModel):
     """
     ### Purpose
     Creation of shell sections/design sections.
@@ -50,48 +52,53 @@ class SHSEC:
         
     Note: For alternative 3 and 4, local shell axis system from the analysis is used as
           123-axes if no SHAXE-statement is given.
+
+    ### Validation Rules
+
+    1. **PA Format**: Must be max 8 characters
+    2. **Element Specification**: Exactly one element specification must be provided
+    3. **NE Range**: If provided, must be 1-10
+    4. **Section Ranges**: FS and HS ranges must be valid (start <= end)
+    5. **Uniqueness**: Key (generated from PA + sections) must be unique within container
     """
     # Required parameters
-    pa: str  # structural part name (max 8 chars)
-    se: Optional[int] = None    # start super element number
+    pa: str = Field(..., description="Structural part name (max 8 chars)")
+    se: Optional[int] = Field(None, description="Start super element number")
     
     # Element specification (one of these must be provided)
-    el: Optional[int] = None         # start element number (external)
-    xp: Optional[Tuple[float, float, float]] = None    # start element coordinates
-    elset: Optional[int] = None      # element group number
-    elsetname: Optional[str] = None  # element group name (Sesam)
-    te: Optional[Tuple[int, int]] = None  # triangular elements range
+    el: Optional[int] = Field(None, description="Start element number (external)")
+    xp: Optional[Tuple[float, float, float]] = Field(None, description="Start element coordinates")
+    elset: Optional[int] = Field(None, description="Element group number")
+    elsetname: Optional[str] = Field(None, description="Element group name (Sesam)")
+    te: Optional[Tuple[int, int]] = Field(None, description="Triangular elements range")
     
     # Optional parameters
-    et: Literal['LI', 'VS'] = 'VS'   # stiffness calculation type
-    ne: Optional[int] = None         # number of elements over thickness (max 10)
-    td: Optional[Tuple[float, float, float]] = None    # thickness direction vector
-    xf: Optional[Tuple[float, float, float]] = None    # F-direction start vector
-    xh: Optional[Tuple[float,float,float]] = None    # H-direction start vector
-    fs: Optional[Tuple[int, int]] = None  # F-section range
-    hs: Optional[Tuple[int, int]] = None  # H-section range
-    ns: int = 4  # number of sections per element
-    tab: bool = False  # element table wanted or not
-    ver: Optional[int] = None  # OLC number to be verified
+    et: Literal['LI', 'VS'] = Field('VS', description="Stiffness calculation type")
+    ne: Optional[int] = Field(None, description="Number of elements over thickness (max 10)")
+    td: Optional[Tuple[float, float, float]] = Field(None, description="Thickness direction vector")
+    xf: Optional[Tuple[float, float, float]] = Field(None, description="F-direction start vector")
+    xh: Optional[Tuple[float, float, float]] = Field(None, description="H-direction start vector")
+    fs: Optional[Tuple[int, int]] = Field(None, description="F-section range")
+    hs: Optional[Tuple[int, int]] = Field(None, description="H-section range")
+    ns: int = Field(4, description="Number of sections per element")
+    tab: bool = Field(False, description="Element table wanted or not")
+    ver: Optional[int] = Field(None, description="OLC number to be verified")
     
-    # Output string
-    input: str = field(init=False, default="SHSEC")
+    # Auto-generated fields
+    input: str = Field(default="", init=False, description="Generated input string")
+    key: str = Field(default="", init=False, description="Unique key for container storage")
 
-    def __post_init__(self):
-        # Validation
-        if len(self.pa) > 8:
-            raise ValueError("Structural part name (PA) cannot exceed 8 characters")
-            
-        # At least one element specification must be provided
-        specs: list[Any] = [self.el, self.xp, self.elset, self.elsetname, self.te]
-        if not any(spec is not None for spec in specs):
-            raise ValueError("One element specification (EL, XP, ELSET, ELSETNAME, or TE) must be provided")
-            
-        if sum(spec is not None for spec in specs) > 1:
-            raise ValueError("Only one element specification can be provided")
-            
-        if self.ne is not None and (self.ne < 1 or self.ne > 10):
-            raise ValueError("Number of elements over thickness (NE) must be between 1 and 10")
+    @model_validator(mode='after')
+    def build_input_string_and_key(self) -> 'SHSEC':
+        """Build input string, key, and run instance-level validation."""
+        
+        # Execute instance-level validation rules
+        context = ValidationContext(current_object=self)
+        issues = execute_validation_rules(self, context, level='instance')
+        
+        # Handle issues according to global config
+        for issue in issues:
+            context.add_issue(issue)  # Auto-raises if configured
         
         # Build the SHSEC input string
         parts = ["SHSEC"]
@@ -121,7 +128,7 @@ class SHSEC:
             parts.append(f"NE={self.ne}")
             
         if self.td is not None:
-            parts.append(f"TD={self.td}")
+            parts.append(f"TD={self.td[0]},{self.td[1]},{self.td[2]}")
             
         if self.xf is not None:
             parts.append(f"XF={self.xf[0]},{self.xf[1]},{self.xf[2]}")
@@ -146,6 +153,41 @@ class SHSEC:
             
         # Join all parts with spaces
         self.input = " ".join(parts)
+        
+        # Generate unique key for container storage
+        # Use PA + section info to create unique identifier
+        key_parts = [self.pa]
+        if self.fs:
+            key_parts.append(f"fs{self.fs[0]}-{self.fs[1]}")
+        if self.hs:
+            key_parts.append(f"hs{self.hs[0]}-{self.hs[1]}")
+        if self.elset:
+            key_parts.append(f"elset{self.elset}")
+        if self.elsetname:
+            key_parts.append(f"elsetname{self.elsetname}")
+        
+        self.key = "_".join(key_parts)
+        
+        return self
+    
+    def execute_cross_container_validation(self, sd_model) -> list:
+        """
+        Execute cross-container validation rules for this SHSEC instance.
+        
+        This method is called when the SHSEC is added to the SD_BASE model,
+        allowing validation against other containers.
+        """
+        context = ValidationContext(
+            current_object=self,
+            full_model=sd_model  # This enables access to all containers
+        )
+        
+        # Execute model-level (cross-container) validation rules
+        return execute_validation_rules(self, context, level='model')
 
     def __str__(self) -> str:
+        return self.input
+    
+    def formatted(self) -> str:
+        """Legacy method for backward compatibility."""
         return self.input

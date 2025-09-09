@@ -1,40 +1,42 @@
 
-from dataclasses import dataclass, field
 from typing import Optional, Literal
+from pydantic import BaseModel, Field, field_validator, model_validator
 
-@dataclass
-class RMPEC:
+
+class RMPEC(BaseModel):
     """
     Define rebar material property sets according to Eurocode 2.
     The ID is related to the MP statement in the RETYP statement.
     """
     # Required for identification
-    id: Optional[int] = 1
+    id: int = Field(..., description="Material property set ID (1-99999999)")
     
     # Material properties
-    gr: Optional[str] = None  # steel grade
-    esk: float = 200.0E6     # modulus of elasticity [kPa]
-    fyk: Optional[float] = None  # yield strength [kPa]
-    fsk: Optional[float] = None  # ultimate strength (design) [kPa]
+    gr: Optional[float] = Field(None, description="Steel grade, eg. 500 [kPa]")
+    esk: Optional[float] = Field(default=200.0E6, description="Modulus of elasticity [kPa] [default 200*1.0E6]")
+    fyk: Optional[float] = Field(None, description="Yield strength [kPa]")
+    fsk: Optional[float] = Field(None, description="Ultimate strength [kPa]")
+   
     den: float = 7850.0      # steel density [kg/m3]
     
     # Design properties - ULS
-    mfu: float = 1.15    # design material factor ULS
-    epu: float = 0.010   # ultimate tensile strain ULS [m/m]
-    
+    mfu: float = Field(default=1.15, description="Design material factor ULS [default 1.15]")
+    epu: float = Field(default=0.010, description="Ultimate tensile strain ULS [m/m] [default 0.010]")
+
     # Design properties - ALS
-    mfa: float = 1.00    # design material factor ALS
-    epa: float = 0.010   # ultimate tensile strains ALS [m/m]
-    
+    mfa: float = Field(default=1.00, description="Design material factor ALS [default 1.00]")
+    epa: float = Field(default=0.010, description="Ultimate tensile strains ALS [m/m] [default 0.010]")
+
     # Design properties - SLS
-    mfs: float = 1.00    # design material factor SLS, CRW
-    eps: Optional[float] = None  # ultimate tensile strain SLS [m/m]
+    mfs: Optional[float] = Field(None, description="Design material factor SLS [default 1.00]")
+    eps: Optional[float] = Field(default=None, description="Design material factor SLS, CRW [default 1.00]")
+    eps: Optional[float] = Field(None, description="Ultimate tensile strain SLS [m/m]")
     
     # Print option
     pri: Optional[Literal['']] = None
     
     # Output string
-    input: str = field(init=False, default="RMPEC")
+    input: str = Field(default="", init=False, description="Generated input string")
     
     def __post_init__(self):
         # Validation

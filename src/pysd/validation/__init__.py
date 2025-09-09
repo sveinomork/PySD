@@ -24,6 +24,17 @@ from .core import (
 )
 from .error_codes import ErrorCodes
 from .messages import ErrorMessageBuilder
+from .rule_system import (
+    instance_rule,
+    container_rule,
+    model_rule,
+    execute_validation_rules,
+    ValidationRegistry,
+    validation_registry
+)
+
+# Import all validation rules to register them
+from .rules import *
 
 __all__ = [
     "ValidationContext",
@@ -45,5 +56,11 @@ __all__ = [
     "no_validation",
     "validate_with_mode",
     "ErrorCodes",
-    "ErrorMessageBuilder"
+    "ErrorMessageBuilder",
+    "instance_rule",
+    "container_rule", 
+    "model_rule",
+    "execute_validation_rules",
+    "ValidationRegistry",
+    "validation_registry"
 ]

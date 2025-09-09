@@ -1,19 +1,38 @@
-from typing import List
-from ..statements import greco
+"""
+Specialized container for BASCO statements.
+"""
+
+from __future__ import annotations
+from typing import List, Optional, TYPE_CHECKING
 from .base_container import BaseContainer
 
-class BascoContainer(BaseContainer[greco.GRECO]):
+if TYPE_CHECKING:
+    from ..statements.basco import BASCO
+
+class BascoContainer(BaseContainer):
     """
-    Container for multiple BASCO statements that ensure no duplicate IDs.
-    Inherits from BaseContainer with BASCO-specific typing.
+    Container for BASCO statements.
+    
+    Note: All validation is now handled by the rule system.
+    This container provides specialized accessor methods for BASCO statements.
     """
     
-    @property
-    def bascos(self) -> List[greco.GRECO]:
-        """Alias for items to maintain backward compatibility."""
-        return self.items  # type: ignore
+    def add_batch(self, items: List['BASCO']) -> None:
+        """Add multiple BASCO items with batch validation."""
+        for item in items:
+            self.add(item)
     
-    @bascos.setter
-    def bascos(self, value: List[greco.GRECO]) -> None:
-        """Setter for bascos property."""
-        self.items = value
+    def get_by_id(self, id_value: int) -> Optional['BASCO']:
+        """Get BASCO by ID (override to handle int IDs)."""
+        for item in self.items:
+            if int(item.id) == id_value:
+                return item
+        return None
+    
+    def has_id(self, id_value: int) -> bool:
+        """Check if BASCO with given ID exists."""
+        return self.get_by_id(id_value) is not None
+    
+    def get_ids(self) -> List[int]:
+        """Get all BASCO IDs as integers."""
+        return [int(item.id) for item in self.items]

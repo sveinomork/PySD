@@ -1,11 +1,9 @@
 from __future__ import annotations
 from typing import Optional, Any
 from pydantic import BaseModel, Field, field_validator, model_validator
-import re
 from .cases import Cases, normalize_cases
-from ..validation.messages import ErrorMessageBuilder
-from ..validation.core import ValidationIssue, ValidationContext, ValidationSeverity
-from ..validation.error_codes import ErrorCodes
+from ..validation.rule_system import execute_validation_rules
+from ..validation.core import ValidationContext
 
 # Define the type for valid GRECO IDs (single uppercase letters A-Z)
 # Note: Using str instead of Literal to allow custom validation control
@@ -81,82 +79,18 @@ class GRECO(BaseModel):
         if v is None:
             return v
         return normalize_cases(v)
-
-    @field_validator('bas', 'elc')
-    @classmethod
-    def validate_no_steps_or_greco(cls, v: Optional[Cases]) -> Optional[Cases]:
-        """GRECO doesn't support steps or GRECO letters."""
-        if v is None:
-            return v
-        
-        # Check for steps
-        for range_item in v.ranges:
-            if isinstance(range_item, tuple) and len(range_item) > 2:
-                raise ValueError("GRECO does not support stepped ranges")
-        
-        # Check for GRECO letters
-        if v.greco:
-            raise ValueError("GRECO does not support GRECO letters in Cases")
-            
-        return v
     
     @model_validator(mode='after')
     def build_input_string(self) -> 'GRECO':
-        """Build the statement input string and perform cross-field validation with severity-aware error handling."""
+        """Build input string and run instance-level validation."""
         
-        # Create validation context for this GRECO
+        # Execute instance-level validation rules
         context = ValidationContext(current_object=self)
+        issues = execute_validation_rules(self, context, level='instance')
         
-        # Validate ID format - create ValidationIssue instead of raising directly
-        if not re.match(r'^[A-Z]$', self.id):
-            issue = ValidationIssue(
-                severity=ValidationSeverity.ERROR.value,
-                code=ErrorCodes.GRECO_ID_INVALID,
-                message=ErrorMessageBuilder.build_message(
-                    'INVALID_FORMAT',
-                    field='ID',
-                    format_desc='single uppercase letter A-Z'
-                ),
-                location=f'GRECO.{self.id}',
-                suggestion='Use a single uppercase letter from A to Z'
-            )
-            context.add_issue(issue)  # This will auto-raise if configured to do so
-        
-        # Validate BAS count - create ValidationIssue for better control
-        if self.bas and len(self.bas.ranges) > 6:
-            issue = ValidationIssue(
-                severity=ValidationSeverity.ERROR.value,
-                code=ErrorCodes.GRECO_BAS_COUNT_INVALID,
-                message=ErrorMessageBuilder.build_message(
-                    'INVALID_COUNT',
-                    field='BAS combinations',
-                    expected_count='maximum 6',
-                    actual_count=len(self.bas.ranges)
-                ),
-                location=f'GRECO.{self.id}.bas',
-                suggestion='Reduce BAS combinations to 6 or fewer'
-            )
-            context.add_issue(issue)  # This will auto-raise if configured to do so
-        
-        # TODO: Implement BAS count validation (must be exactly 6)
-        # Business rule: GRECO must have exactly 6 BAS (one per load resultant: Fx, Fy, Fz, Mx, My, Mz)
-        # if self.bas and len(self.bas.to_list()) != 6:
-        #     issue = ValidationIssue(
-        #         severity=ValidationSeverity.WARNING.value,
-        #         code=ErrorCodes.GRECO_BAS_COUNT_INVALID,
-        #         message="GRECO must have exactly 6 BAS (one per load resultant: Fx, Fy, Fz, Mx, My, Mz)",
-        #         location=f'GRECO.{self.id}.bas',
-        #         suggestion='Adjust BAS to have exactly 6 values'
-        #     )
-        #     context.add_issue(issue)
-        
-        # TODO: Implement ELC-OLC cross-reference validation
-        # Business rule: ELC must be defined as OLC in LOADC statements
-        # This requires access to the full model context during validation
-        # if self.elc:
-        #     # Check that all ELC values exist as OLC in LOADC statements
-        #     # This validation will be performed at the container/model level
-        #     pass
+        # Handle issues according to global config
+        for issue in issues:
+            context.add_issue(issue)  # Auto-raises if configured
         
         # Build input string
         parts = []
@@ -172,6 +106,21 @@ class GRECO(BaseModel):
         
         self.input = "\n".join(parts)
         return self
+    
+    def execute_cross_container_validation(self, sd_model) -> list:
+        """
+        Execute cross-container validation rules for this GRECO instance.
+        
+        This method is called when the GRECO is added to the SD_BASE model,
+        allowing validation against other containers (especially BASCO for BAS references).
+        """
+        context = ValidationContext(
+            current_object=self,
+            full_model=sd_model  # This enables access to all containers
+        )
+        
+        # Execute model-level (cross-container) validation rules
+        return execute_validation_rules(self, context, level='model')
     
 
     def __iter__(self):

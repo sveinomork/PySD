@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic, List, Protocol, runtime_checkable, Self, Any, Union
+from typing import List, Protocol, runtime_checkable, Self, Any, Union
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -8,28 +8,19 @@ class HasID(Protocol):
     id: Union[int, str]  # Support both int and string IDs
 
 
-T = TypeVar('T', bound=HasID)
-
-
-class BaseContainer(BaseModel, Generic[T]):
+class BaseContainer(BaseModel):
     """
-    Generic container for statement types with unique ID validation.
+    Base container for statement types with unique ID validation.
     
     This container ensures that all items have unique IDs and provides
-    list-like functionality for statement collections.
-    
-    Type Parameters:
-        T: Any type that implements the HasID protocol (has an 'id' field)
+    essential functionality for statement collections.
     
     Examples:
         # For BASCO statements
-        basco_container = GrecoContainer[BASCO](items=[basco1, basco2])
+        basco_container = BascoContainer(items=[basco1, basco2])
 
-        # For GRECO statements
-        greco_container = GrecoContainer[GRECO](items=[greco1, greco2])
-
-        # For RETYP statements
-        retyp_container = BaseContainer[RETYP](items=[retyp1, retyp2])
+        # For GRECO statements  
+        greco_container = GrecoContainer(items=[greco1, greco2])
     """
     items: List[Any] = Field(default_factory=list, description="List of items with unique IDs")
     
@@ -38,48 +29,39 @@ class BaseContainer(BaseModel, Generic[T]):
         """Ensure all item IDs are unique."""
         seen_ids: set[Union[int, str]] = set()
         for item in self.items:
-            # Handle both object and dict forms during deserialization
-            item_id = item.id if hasattr(item, 'id') else item.get('id') if isinstance(item, dict) else None
-            
-            if item_id is None:
-                continue  # Skip items without IDs
-                
-            if item_id in seen_ids:
+            # Support both 'id' and 'key' fields for identification
+            item_id = getattr(item, 'id', None) or getattr(item, 'key', None)
+            if item_id and item_id in seen_ids:
                 raise ValueError(f"Duplicate ID found: {item_id}")
-            seen_ids.add(item_id)
+            if item_id:
+                seen_ids.add(item_id)
         return self
     
     def add(self, item: Any) -> None:
         """Add an item to the container, checking for duplicate IDs."""
-        if any(existing.id == item.id for existing in self.items):
-            raise ValueError(f"Item with ID {item.id} already exists")
+        item_id = getattr(item, 'id', None) or getattr(item, 'key', None)
+        for existing in self.items:
+            existing_id = getattr(existing, 'id', None) or getattr(existing, 'key', None)
+            if existing_id == item_id:
+                raise ValueError(f"Item with ID {item_id} already exists")
         self.items.append(item)
-    
-    def remove(self, id_value: Union[int, str]) -> Any:
-        """Remove and return an item by ID."""
-        for i, item in enumerate(self.items):
-            if item.id == id_value:
-                return self.items.pop(i)
-        raise KeyError(f"No item found with ID: {id_value}")
     
     def get_by_id(self, id_value: Union[int, str]) -> Any:
         """Get an item by ID."""
         for item in self.items:
-            if item.id == id_value:
+            item_id = getattr(item, 'id', None) or getattr(item, 'key', None)
+            if item_id == id_value:
                 return item
-        return None  # Changed from raising KeyError to returning None for compatibility
-    
-    def has_id(self, id_value: Union[int, str]) -> bool:
-        """Check if an item with the given ID exists."""
-        return any(item.id == id_value for item in self.items)
+        return None
     
     def get_ids(self) -> List[Union[int, str]]:
         """Get a list of all IDs in the container."""
-        return [item.id for item in self.items]
-    
-    def clear(self) -> None:
-        """Remove all items from the container."""
-        self.items.clear()
+        ids = []
+        for item in self.items:
+            item_id = getattr(item, 'id', None) or getattr(item, 'key', None)
+            if item_id:
+                ids.append(item_id)
+        return ids
     
     def __len__(self) -> int:
         """Return the number of items in the container."""
@@ -88,9 +70,3 @@ class BaseContainer(BaseModel, Generic[T]):
     def __getitem__(self, index: int) -> Any:
         """Get item by index."""
         return self.items[index]
-    
-    def __contains__(self, item: Any) -> bool:
-        """Check if item or ID is in the container."""
-        if isinstance(item, (int, str)):
-            return self.has_id(item)
-        return item in self.items

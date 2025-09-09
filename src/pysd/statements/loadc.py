@@ -2,6 +2,8 @@ from typing import Optional, Union, Any, Tuple
 from typing_extensions import Annotated, Doc
 from pydantic import BaseModel, Field, field_validator, model_validator
 from .cases import Cases, normalize_cases
+from ..validation.rule_system import execute_validation_rules
+from ..validation.core import ValidationContext
 
 class LOADC(BaseModel):
     """
@@ -122,22 +124,6 @@ LOADC(pri=True)
         # If we get here, it's an unsupported tuple format
         raise ValueError(f"Unsupported tuple format: {v}. Expected (start, end) with integers.")
 
-    @field_validator('alc', 'olc')
-    @classmethod
-    def validate_simple_ranges_only(cls, v: Optional[Cases]) -> Optional[Cases]:
-        """LOADC only supports simple ranges, no steps or GRECO letters."""
-        if v is None:
-            return v
-            
-        for range_item in v.ranges:
-            if isinstance(range_item, tuple) and len(range_item) > 2:
-                raise ValueError("LOADC does not support stepped ranges")
-                
-        if v.greco:
-            raise ValueError("LOADC does not support GRECO letters")
-            
-        return v
-
     @model_validator(mode='after')
     def validate_loadc_requirements(self) -> 'LOADC':
         """Validate LOADC requirements and build input string."""
@@ -152,6 +138,14 @@ LOADC(pri=True)
                 elif isinstance(first_range, tuple) and len(first_range) == 2:
                     # Use the start of the range as run_number
                     self.run_number = first_range[0]
+                    
+        # Execute instance-level validation rules AFTER auto-setting
+        context = ValidationContext(current_object=self)
+        issues = execute_validation_rules(self, context, level='instance')
+        
+        # Handle issues according to global config
+        for issue in issues:
+            context.add_issue(issue)  # Auto-raises if configured
                     
         # Generate the key
         key_parts: list[str] = []
@@ -175,23 +169,6 @@ LOADC(pri=True)
                 key_parts.append(f"ALC{start}-{end}")
                 
         self.key = "_".join(key_parts) if key_parts else str(id(self))
-
-        # Validation
-        mode_count = sum([
-            bool(self.alc),
-            bool(self.olc),
-            self.table,
-            self.pri
-        ])
-
-        if mode_count == 0:
-            raise ValueError("LOADC must have one mode active: alc/olc, table, or pri")
-        
-        if (self.alc and not self.olc) or (self.olc and not self.alc):
-            raise ValueError("Both alc and olc must be provided together")
-            
-        if (self.alc or self.olc) and self.run_number is None:
-            raise ValueError("run_number is required when using alc or olc")
 
         # Build input string
         parts: list[str] = ["LOADC"]
@@ -232,6 +209,21 @@ LOADC(pri=True)
 
     def __str__(self) -> str:
         return self.input
+    
+    def execute_cross_container_validation(self, sd_model) -> list:
+        """
+        Execute cross-container validation rules for this LOADC instance.
+        
+        This method is called when the LOADC is added to the SD_BASE model,
+        allowing validation against other containers.
+        """
+        context = ValidationContext(
+            current_object=self,
+            full_model=sd_model  # This enables access to all containers
+        )
+        
+        # Execute model-level (cross-container) validation rules
+        return execute_validation_rules(self, context, level='model')
     
     def is_olc(self, olc: int) -> bool:
         """

@@ -1,5 +1,7 @@
 from typing import Optional, List, Literal, Self
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
+from ..validation.rule_system import execute_validation_rules
+from ..validation.core import ValidationContext
 
 # Forward declarations for extended ELC functionality
 from typing import TYPE_CHECKING
@@ -26,6 +28,9 @@ class LoadCase(BaseModel):
 class LoadCaseList(BaseModel):
     """
     Container for multiple LOADC statements.
+    # TODO: Implement if lc_type is 'ELC' or 'OLC' that it is in loadc_container Loadc.olc. 
+    # TODO: Implement if lc_type is 'ELC' greco_container must have at least one GRECO with bas containing lc_numb
+    # TODO: Implement if lc_type is 'BAS' basco_container must contain the bas with lc_numb
     """
     loadcases: list[LoadCase] = Field(default_factory=list)
 
@@ -112,35 +117,18 @@ class BASCO(BaseModel):
     txt: Optional[str] = None
     input: str = Field(default="BASCO", init=False)
 
-    @field_validator('id')
-    @classmethod
-    def validate_id_range(cls, v: int) -> int:
-        """Validate ID range."""
-        if not 1 <= v <= 99999999:
-            raise ValueError("ID must be between 1 and 99999999")
-        return v
-
-    @field_validator('load_cases')
-    @classmethod
-    def validate_load_cases(cls, v: List[LoadCase]) -> List[LoadCase]:
-        """Validate load cases."""
-        if not v:
-            raise ValueError("At least one load case must be provided")
-        if len(v) > 300:  # Max 30 cases
-            raise ValueError("Maximum of 300 load cases allowed")
-        return v
-
-    @field_validator('txt')
-    @classmethod
-    def validate_text_length(cls, v: Optional[str]) -> Optional[str]:
-        """Validate text length."""
-        if v and len(v) > 80:
-            raise ValueError("Text description cannot exceed 80 characters")
-        return v
-
     @model_validator(mode='after')
     def build_input_string(self) -> 'BASCO':
-        """Build the BASCO input string."""
+        """Build BASCO input string and run instance-level validation."""
+        
+        # Execute instance-level validation rules
+        context = ValidationContext(current_object=self)
+        issues = execute_validation_rules(self, context, level='instance')
+        
+        # Handle issues according to global config
+        for issue in issues:
+            context.add_issue(issue)  # Auto-raises if configured
+        
         # Build the BASCO input string
         final_lines: list[str] = []
         
@@ -201,6 +189,21 @@ class BASCO(BaseModel):
 
     def __str__(self) -> str:
         return self.input
+    
+    def execute_cross_container_validation(self, sd_model) -> list:
+        """
+        Execute cross-container validation rules for this BASCO instance.
+        
+        This method is called when the BASCO is added to the SD_BASE model,
+        allowing validation against other containers.
+        """
+        context = ValidationContext(
+            current_object=self,
+            full_model=sd_model  # This enables access to all containers
+        )
+        
+        # Execute model-level (cross-container) validation rules
+        return execute_validation_rules(self, context, level='model')
     
 
     

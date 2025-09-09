@@ -27,10 +27,10 @@ from .statements.headl import HEADL
 from .statements.depar import DEPAR
 
 # Import container system
-from .containers import GrecoContainer
-from .validation.core import ValidationContext, ValidationIssue
+from .containers import GrecoContainer, BascoContainer, LoadcContainer, ShsecContainer
+from .validation.core import ValidationContext, ValidationIssue, ValidationMode, ValidationSeverity
+from .validation.rule_system import execute_validation_rules
 from .validation.error_codes import ErrorCodes
-from .validation.cross_reference_rules import GrecoELCCrossReferenceRule, GrecoBasCountRule
 
 
 # Define a protocol that all statement classes implement
@@ -67,23 +67,22 @@ class SD_BASE(BaseModel):
     incdf: List[INCDF] = Field(default_factory=list, description="INCDF statements")
     headl: List[HEADL] = Field(default_factory=list, description="HEADL statements")
     shaxe: Dict[str, SHAXE] = Field(default_factory=dict, description="SHAXE statements (key: PA_FS_HS)")
-    shsec: Dict[str, SHSEC] = Field(default_factory=dict, description="SHSEC statements (key: pa+sections)")
+    shsec: ShsecContainer = Field(default_factory=ShsecContainer, description="SHSEC statements with validation")
     xtfil: Dict[str, XTFIL] = Field(default_factory=dict, description="XTFIL statements (key: FN_PA_FS_HS)")
   
     filst: List[FILST] = Field(default_factory=list, description="FILST statements")
     desec: Dict[str, DESEC] = Field(default_factory=dict, description="DESEC statements")
     
-    # Enhanced GRECO with container-based validation
+    # Enhanced containers with validation
     greco: GrecoContainer = Field(default_factory=GrecoContainer, description="GRECO statements with validation")
-    
-    loadc: Dict[str, LOADC] = Field(default_factory=dict, description="LOADC statements")
+    basco: BascoContainer = Field(default_factory=BascoContainer, description="BASCO statements with validation")
+    loadc: LoadcContainer = Field(default_factory=LoadcContainer, description="LOADC statements with validation")
     lores: List[LORES] = Field(default_factory=list, description="LORES statements")
     table: List[TABLE] = Field(default_factory=list, description="TABLE statements")
     execd: List[EXECD] = Field(default_factory=list, description="EXECD statements")
     decas: List[DECAS] = Field(default_factory=list, description="DECAS statements")
     cmpec: Dict[int, CMPEC] = Field(default_factory=dict, description="CMPEC statements")
     rmpec: Dict[int, RMPEC] = Field(default_factory=dict, description="RMPEC statements")
-    basco: Dict[int, BASCO] = Field(default_factory=dict, description="BASCO statements")
     retyp: Dict[int, RETYP] = Field(default_factory=dict, description="RETYP statements")
    
     reloc: Dict[str, RELOC] = Field(default_factory=dict, description="RELOC statements")
@@ -129,15 +128,18 @@ class SD_BASE(BaseModel):
     def _route_item(self, item: StatementType) -> None:
         """Route item to appropriate container or collection with validation."""
         
-        # Enhanced GRECO routing with container validation
+        # Container-based routing with validation
         if isinstance(item, GRECO):
             self.greco.add(item)
+        elif isinstance(item, BASCO):
+            self.basco.add(item)
+        elif isinstance(item, LOADC):
+            self.loadc.add(item)
+        elif isinstance(item, SHSEC):
+            self.shsec.add(item)
         
-        # TODO: Add routing for other statement types as they are migrated
-        # elif isinstance(item, BASCO):
-        #     self.basco_container.add(item)
-        # elif isinstance(item, RETYP):
-        #     self.retyp_container.add(item)
+        # Dictionary-based routing for other statements
+        # TODO: Add new statement types here or migrate to containers
         
         else:  
             raise TypeError(f"Unsupported type for add(): {type(item).__name__}")
@@ -153,11 +155,16 @@ class SD_BASE(BaseModel):
                 grouped_items[item_type] = []
             grouped_items[item_type].append(item)
         
-        # Process each group
+        # Process each group using containers
         for item_type, type_items in grouped_items.items():
             if item_type == GRECO:
                 self.greco.add_batch(type_items)
-            # TODO: Add batch processing for other container types
+            elif item_type == BASCO:
+                self.basco.add_batch(type_items)
+            elif item_type == LOADC:
+                self.loadc.add_batch(type_items)
+            elif item_type == SHSEC:
+                self.shsec.add_batch(type_items)
             else:
                 # Fall back to individual processing for non-container types
                 for item in type_items:
@@ -181,32 +188,34 @@ class SD_BASE(BaseModel):
             raise ValueError("Model validation failed:\n" + "\n".join(error_messages))
     
     def _collect_validation_issues(self) -> List[ValidationIssue]:
-        """Collect all validation issues from cross-object validation."""
+        """Collect all validation issues from model-level validation using the rule system."""
         issues = []
         
-        # GRECO-specific cross-object validation
-        issues.extend(self._validate_greco_cross_references())
+        # Execute model-level validation for all statement types using the rule system
+        all_statements = []
+        all_statements.extend(self.greco.items)
+        all_statements.extend(self.basco.items)
+        all_statements.extend(self.loadc.items)
+        all_statements.extend(self.shsec.items)
         
-        # TODO: Add other cross-object validations as more statements are migrated
-        # issues.extend(self._validate_reloc_cross_references())
-        # issues.extend(self._validate_basco_cross_references())
-        
-        return issues
-    
-    def _validate_greco_cross_references(self) -> List[ValidationIssue]:
-        """Validate GRECO cross-references with other statements."""
-        issues = []
-        
-        # Initialize validation rules
-        elc_rule = GrecoELCCrossReferenceRule()
-        bas_count_rule = GrecoBasCountRule()
-        
-        for greco in self.greco.items:
-            # Validate ELC cross-references
-            issues.extend(elc_rule.validate(greco, self))
-            
-            # Validate BAS count requirements
-            issues.extend(bas_count_rule.validate(greco, self))
+        for statement in all_statements:
+            context = ValidationContext(
+                statement=statement,
+                container=self,
+                mode=ValidationMode.STRICT,
+                severity=ValidationSeverity.ERROR
+            )
+            try:
+                execute_validation_rules(statement, context, level='model')
+            except Exception as e:
+                # Convert any validation errors to issues
+                statement_type = type(statement).__name__
+                statement_id = getattr(statement, 'id', getattr(statement, 'key', 'unknown'))
+                issues.append(ValidationIssue(
+                    code=f"{statement_type.upper()}_MODEL_ERROR",
+                    message=f"{statement_type} {statement_id} model validation failed: {str(e)}",
+                    severity="error"
+                ))
         
         return issues
     
@@ -220,37 +229,16 @@ class SD_BASE(BaseModel):
         """Get all IDs for a specific statement type."""
         if statement_type == GRECO:
             return self.greco.get_ids()
-        # TODO: Add other container types as they are migrated
-        # elif statement_type == BASCO:
-        #     return list(self.basco_container.get_ids())
-        else:
-            # For non-container collections, extract IDs manually
-            if statement_type == BASCO:
-                return list(self.basco.keys())
-            elif statement_type == RETYP:
-                return list(self.retyp.keys())
-            # Add more as needed
+        elif statement_type == BASCO:
+            return self.basco.get_ids()
+        elif statement_type == LOADC:
+            return self.loadc.get_keys()  # LOADC uses keys, not IDs
+        elif statement_type == SHSEC:
+            return self.shsec.get_keys()  # SHSEC uses keys, not IDs
+        elif statement_type == RETYP:
+            return list(self.retyp.keys())
+        # Add more as needed
         return []
-    
-    def get_cross_references(self) -> Dict[str, List[str]]:
-        """Get all cross-references in the model."""
-        references = {}
-        
-        # GRECO -> LOADC references (ELC -> OLC)
-        for greco in self.greco.items:
-            if greco.elc and hasattr(greco.elc, 'to_list'):
-                key = f"GRECO.{greco.id}.elc"
-                elc_values = greco.elc.to_list()
-                references[key] = [f"LOADC.OLC.{elc}" for elc in elc_values]
-        
-        # TODO: Add other cross-references as more statements are migrated
-        # RELOC -> RETYP references
-        # for reloc in self.reloc_container.items:
-        #     if hasattr(reloc, 'rt'):
-        #         key = f"RELOC.{reloc.id}"
-        #         references[key] = [f"RETYP.{reloc.rt}"]
-        
-        return references
     
     def validate_integrity(self) -> Dict[str, List[str]]:
         """Comprehensive integrity validation returning all issues by severity."""
@@ -281,16 +269,16 @@ class SD_BASE(BaseModel):
     def get_validation_summary(self) -> Dict[str, Any]:
         """Get a comprehensive validation summary."""
         integrity = self.validate_integrity()
-        cross_refs = self.get_cross_references()
         
         return {
             'validation_enabled': self.validation_enabled,
             'total_items': len(self.all_items),
             'containers': {
                 'greco': len(self.greco),
-                # TODO: Add other containers as they are migrated
+                'basco': len(self.basco),
+                'loadc': len(self.loadc),
+                'shsec': len(self.shsec),
             },
-            'cross_references': cross_refs,
             'integrity_issues': integrity,
             'has_errors': len(integrity['errors']) > 0,
             'has_warnings': len(integrity['warnings']) > 0
