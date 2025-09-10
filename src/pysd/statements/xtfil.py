@@ -1,8 +1,11 @@
-from dataclasses import dataclass, field
-from typing import Optional, Tuple, List
+from __future__ import annotations
+from typing import Optional, Tuple, List, Union
+from pydantic import BaseModel, Field, field_validator, model_validator
+from ..validation.rule_system import execute_validation_rules
+from ..validation.core import ValidationContext
 
-@dataclass
-class XTFIL:
+
+class XTFIL(BaseModel):
     """Define XTRACT plot files.
     
     Data is fetched from an OLC-file and optionally from a DEC-file.
@@ -64,35 +67,70 @@ class XTFIL:
             Whether to show time used for plotting
     """
     # Required parameters
-    fn: str  # Plot file name (max 32 chars)
-    pa: str  # Structural part name (max 8 chars)
-
-    
+    fn: str = Field(..., description="Name of plot file (max 32 characters)")
+    pa: str = Field(..., description="Structural part name (max 8 characters)")
 
     # Optional section ranges
-    fs: Optional[Tuple[int, int]|int] = None  # F-section range
-    hs: Optional[Tuple[int, int]|int] = None  # H-section range
-
-    # Key for dictionary storage - computed during initialization
-    key: str = field(init=False)
+    fs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="F-section range")
+    hs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="H-section range")
 
     # Plot items
-    plot_items: List[str] = field(default_factory=lambda: [])  # List of plot items to include
+    plot_items: List[str] = Field(default_factory=list, description="List of plot items to include")
 
     # Plot options
-    peak_value_only: bool = False  # Only plot peak values
-    reb_tol: float = 10.0  # Rebar tolerance (mm²)
-    ten_tol: float = 100.0  # Tendon tolerance (mm²)
-    thi_tol: float = 10.0  # Thickness tolerance (mm)
-    num_levels: int = 64  # Number of legend levels
-    reb_labels: bool = True  # Show rebar labels
-    thi_labels: bool = True  # Show thickness labels
-    time_it: bool = False  # Show plotting time
+    peak_value_only: bool = Field(False, description="Only plot peak values")
+    reb_tol: float = Field(10.0, description="Rebar tolerance (mm²)")
+    ten_tol: float = Field(100.0, description="Tendon tolerance (mm²)")
+    thi_tol: float = Field(10.0, description="Thickness tolerance (mm)")
+    num_levels: int = Field(64, description="Number of legend levels")
+    reb_labels: bool = Field(True, description="Show rebar labels")
+    thi_labels: bool = Field(True, description="Show thickness labels")
+    time_it: bool = Field(False, description="Show plotting time")
     
-    # Output string
-    input: str = field(init=False, default="XTFIL")
+    # Auto-generated fields
+    key: str = Field(default="", init=False, description="Key for dictionary storage")
+    input: str = Field(default="", init=False, description="Generated input string")
 
-    def __post_init__(self):
+    def model_post_init(self, __context):
+        """Generate unique key and input string for this XTFIL statement."""
+        self.key = f"XTFIL_{self.fn}_{self.pa}"
+        # Generate the input string
+        self.build_input_string()
+
+    @field_validator('fn')
+    @classmethod
+    def validate_filename_length(cls, v):
+        """Validate filename length."""
+        if len(v) > 32:
+            raise ValueError("Plot file name (FN) cannot exceed 32 characters")
+        return v
+    
+    @field_validator('pa')
+    @classmethod
+    def validate_part_name_length(cls, v):
+        """Validate part name length."""
+        if len(v) > 8:
+            raise ValueError("Structural part name (PA) cannot exceed 8 characters")
+        return v
+    
+    @field_validator('reb_tol', 'ten_tol', 'thi_tol')
+    @classmethod
+    def validate_positive_tolerances(cls, v):
+        """Validate that tolerances are positive."""
+        if v <= 0:
+            raise ValueError("Tolerance values must be positive")
+        return v
+    
+    @field_validator('num_levels')
+    @classmethod
+    def validate_num_levels(cls, v):
+        """Validate number of levels."""
+        if v < 1:
+            raise ValueError("Number of legend levels must be positive")
+        return v
+
+    def build_input_string(self) -> str:
+        """Build the XTFIL input string."""
         # Generate the key
         key_parts = [f"FN={self.fn}"]
         key_parts.append(f"{self.pa}")
@@ -107,24 +145,6 @@ class XTFIL:
             else:
                 key_parts.append(f"HS{self.hs}")
         self.key = "_".join(key_parts)
-
-        # Validate filenames and ranges
-        if len(self.fn) > 32:
-            raise ValueError("Plot file name (FN) cannot exceed 32 characters")
-        if len(self.pa) > 8:
-            raise ValueError("Structural part name (PA) cannot exceed 8 characters")
-            
-        # Validate tolerances
-        if self.reb_tol <= 0:
-            raise ValueError("Rebar tolerance must be positive")
-        if self.ten_tol <= 0:
-            raise ValueError("Tendon tolerance must be positive")
-        if self.thi_tol <= 0:
-            raise ValueError("Thickness tolerance must be positive")
-            
-        # Validate number of levels
-        if self.num_levels < 1:
-            raise ValueError("Number of legend levels must be positive")
             
         # Build the XTFIL input string
         parts = ["XTFIL"]
@@ -177,6 +197,13 @@ class XTFIL:
             
         # Join all parts with spaces
         self.input = " ".join(parts)
+        return self.input
+    
+    def validate_cross_references(self, context: ValidationContext) -> None:
+        """Validate cross-references with other containers."""
+        if context.full_model is None:
+            return
+        execute_validation_rules(self, context)
 
     def __str__(self) -> str:
-        return self.input
+        return self.input if self.input else self.build_input_string()

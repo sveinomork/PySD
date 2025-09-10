@@ -5,7 +5,7 @@ from src.pysd.statements import (
 )
 from src.pysd.sdmodel import SD_BASE
 from src.pysd.validation import set_validation_mode, ValidationMode, permissive_validation, no_validation
-from pysd.helpers import create_axes_based_on_3_points_in_plane
+from src.pysd.helpers import create_axes_based_on_3_points_in_plane
 from shapely.geometry import Point
 
 # Configure global validation mode for the entire script
@@ -134,7 +134,17 @@ def create_load_components(sd_model: SD_BASE) -> None:
         LoadCase(lc_type='ELC', lc_numb=i, lc_fact=1.5)
         for i in range(101, 107)
     ]
+
+    load_cases2 = [
+        LoadCase(lc_type='ELC', lc_numb=i, lc_fact=1.8)
+        for i in range(101, 107)
+    ]
+
+
+
     basco = BASCO(id=101, load_cases=load_cases)
+    sd_model.add(basco)
+    basco = BASCO(id=102, load_cases=load_cases2)
     sd_model.add(basco)
 
 def create_material_components(sd_model: SD_BASE) -> None:
@@ -162,11 +172,15 @@ def create_reinforment_components(sd_model: SD_BASE) -> None:
 
     
     slabs=["PLATE"]
+    vegg_parts = ["VEGG_2", "VEGG_3", "VEGG_4", "VEGG_5", "VEGG_6", "VEGG_7", "VEGG_8", "VEGG_9"]
     
-    sd_model.add(RELOC(id="X11",pa="VEGG", rt=1, fa=1, al=0))
-    sd_model.add(RELOC(id="Y02",pa="VEGG", rt=2, fa=0, al=90))
-    sd_model.add(RELOC(id="X21",pa="VEGG", rt=1, fa=2, al=0))
+    # Add reinforcement for all VEGG parts
+    for i, vegg_part in enumerate(vegg_parts):
+        sd_model.add(RELOC(id=f"X1{i+1}", pa=vegg_part, rt=1, fa=1, al=0))
+        sd_model.add(RELOC(id=f"Y0{i+1}", pa=vegg_part, rt=2, fa=0, al=90))
+        sd_model.add(RELOC(id=f"X2{i+1}", pa=vegg_part, rt=1, fa=2, al=0))
 
+    # Add reinforcement for slabs
     for slab in slabs:
         sd_model.add(RELOC(id="Y12", pa=slab, rt=1, fa=1, al=90))
         sd_model.add(RELOC(id="X01", pa=slab, rt=2, fa=0, al=0))
@@ -178,7 +192,7 @@ def create_analysis_components(sd_model: SD_BASE) -> None:
     
     """
     # select the design section to be checked
-    parts = ["VEGG", "PLATE"]
+    parts = ["VEGG_2", "PLATE"]
     for part in parts:
         sd_model.add(DESEC(pa=part))
     
@@ -188,7 +202,7 @@ def create_analysis_components(sd_model: SD_BASE) -> None:
     sd_model.add(DECAS(ls='ULS',bas=CaseBuilder.create().add_range(101,102).with_greco('A')))
 
     # Add DECAS using string represtation of the load case
-    sd_model.add(DECAS(ls='ULS', bas="400-409"))
+    #sd_model.add(DECAS(ls='ULS', bas="400-409"))
     
     # xtract ploting data
     for part in parts:
@@ -232,7 +246,7 @@ def main(output_file: str = r"turtorial.inp") -> None:
         # with no_validation():
         create_material_components(sd_model)
         create_reinforment_components(sd_model)
-        #     create_analysis_components(sd_model)
+        create_analysis_components(sd_model)
         
         # Get validation summary after model creation
         summary = sd_model.get_validation_summary()

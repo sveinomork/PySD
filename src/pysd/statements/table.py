@@ -1,7 +1,8 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
 from typing import Optional, Tuple, Union, Literal
-
+from pydantic import BaseModel, Field, field_validator, model_validator
+from ..validation.rule_system import execute_validation_rules
+from ..validation.core import ValidationContext
 from .cases import Cases
 
 # Define Literals for the TAB and UR types to ensure valid options
@@ -16,8 +17,7 @@ UrType = Literal[
     'CZ', 'CT', 'MS', 'NS'
 ]
 
-@dataclass
-class TABLE:
+class TABLE(BaseModel):
     """
     Represents the TABLE statement to order print of tables.
 
@@ -74,53 +74,90 @@ class TABLE:
     ... and other specific parameters.
     """
     # Main mode: TAB or UR
-    tab: Optional[TabType] = None
-    ur: Optional[UrType] = None
+    tab: Optional[TabType] = Field(None, description="The type of data table to print")
+    ur: Optional[UrType] = Field(None, description="The type of utilization ratio table to print")
 
     # General filters
-    pa: Optional[str] = None
-    fs: Optional[Union[int, Tuple[int, int]]] = None
-    hs: Optional[Union[int, Tuple[int, int]]] = None
-    ls: Optional[Literal['ULS', 'ALS', 'SLS', 'CRW', 'FLS']] = None
-    nd: Optional[int] = None
-    of: Optional[str] = None
-    nf: Optional[str] = None
+    pa: Optional[str] = Field(None, description="Filter by structural part name")
+    fs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="Filter by F-section range")
+    hs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="Filter by H-section range")
+    ls: Optional[Literal['ULS', 'ALS', 'SLS', 'CRW', 'FLS']] = Field(None, description="Filter by limit state")
+    nd: Optional[int] = Field(None, description="Number of digits after decimal point")
+    of: Optional[str] = Field(None, description="Redirect output to old file (append)")
+    nf: Optional[str] = Field(None, description="Redirect output to new file (overwrite)")
 
     # Load case filters
-    ilc: Optional[Cases|str] = None
-    olc: Optional[Cases|str] = None
-    elc: Optional[Cases|str] = None
-    bas: Optional[Cases|str] = None
-    pha: Optional[Cases|str] = None
+    ilc: Optional[Union[Cases, str]] = Field(None, description="Filter by ILC load cases")
+    olc: Optional[Union[Cases, str]] = Field(None, description="Filter by OLC load cases")
+    elc: Optional[Union[Cases, str]] = Field(None, description="Filter by ELC load cases")
+    bas: Optional[Union[Cases, str]] = Field(None, description="Filter by BAS load cases")
+    pha: Optional[Union[Cases, str]] = Field(None, description="Filter by PHA load cases")
 
     # TAB specific parameters
-    el: Optional[int] = None
-    se: Optional[int] = None
-    rn: Optional[int] = None
-    x1: Optional[Tuple[float, float, float]] = None
-    x2: Optional[Tuple[float, float, float]] = None
-    x3: Optional[Tuple[float, float, float]] = None
-    enr: Optional[Tuple[int, int]] = None
-    cc: Optional[Tuple[float, float]] = None
+    el: Optional[int] = Field(None, description="Element number filter")
+    se: Optional[int] = Field(None, description="Section number filter")
+    rn: Optional[int] = Field(None, description="Result number filter")
+    x1: Optional[Tuple[float, float, float]] = Field(None, description="X1 coordinate filter")
+    x2: Optional[Tuple[float, float, float]] = Field(None, description="X2 coordinate filter")
+    x3: Optional[Tuple[float, float, float]] = Field(None, description="X3 coordinate filter")
+    enr: Optional[Tuple[int, int]] = Field(None, description="Element number range")
+    cc: Optional[Tuple[float, float]] = Field(None, description="Coordinate center")
 
     # UR specific parameters
-    tv: Optional[float] = None
-    fm: bool = False  # For UR=MAX
-    sk: Optional[Literal['E', 'F', 'H', 'A']] = None
-    rl: Optional[Union[str, Literal['ALL']]] = None
-    al: Optional[float] = None
-    fa: Optional[Union[int, Literal['ALL']]] = None
-    tl: Optional[Union[str, Literal['ALL']]] = None
+    tv: Optional[float] = Field(None, description="Threshold value for UR tables")
+    fm: bool = Field(False, description="For UR=MAX")
+    sk: Optional[Literal['E', 'F', 'H', 'A']] = Field(None, description="Peak value summary mode")
+    rl: Optional[Union[str, Literal['ALL']]] = Field(None, description="Filter by rebar location ID")
+    al: Optional[float] = Field(None, description="Angle limit")
+    fa: Optional[Union[int, Literal['ALL']]] = Field(None, description="Face filter")
+    tl: Optional[Union[str, Literal['ALL']]] = Field(None, description="Filter by tendon location ID")
 
-    input: str = field(init=False, default="TABLE")
+    # Auto-generated fields
+    id: str = Field(default="", init=False, description="Unique identifier")
+    input: str = Field(default="", init=False, description="Generated input string")
 
-    def __post_init__(self):
-        # --- Validation ---
+    def model_post_init(self, __context):
+        """Generate unique ID and input string for this TABLE statement."""
+        if self.tab:
+            self.id = f"TABLE_TAB_{self.tab}"
+        elif self.ur:
+            self.id = f"TABLE_UR_{self.ur}"
+        else:
+            self.id = "TABLE_UNKNOWN"
+            
+        # Add filters to make ID more specific if needed
+        if self.pa:
+            self.id += f"_{self.pa}"
+        
+        # Generate the input string
+        self.build_input_string()
+
+    @model_validator(mode='after')
+    def validate_modes(self) -> 'TABLE':
+        """Validate that exactly one of tab or ur is specified."""
         if (self.tab is None and self.ur is None) or \
            (self.tab is not None and self.ur is not None):
             raise ValueError("Exactly one of 'tab' or 'ur' must be specified for a TABLE statement.")
+        return self
 
-        # --- String Building ---
+    @field_validator('nd')
+    @classmethod
+    def validate_nd(cls, v):
+        """Validate number of digits is reasonable."""
+        if v is not None and (v < 0 or v > 10):
+            raise ValueError("Number of digits (nd) must be between 0 and 10")
+        return v
+
+    @field_validator('tv')
+    @classmethod
+    def validate_tv(cls, v):
+        """Validate threshold value is positive."""
+        if v is not None and v < 0:
+            raise ValueError("Threshold value (tv) must be non-negative")
+        return v
+
+    def build_input_string(self) -> str:
+        """Build the TABLE input string."""
         parts = ["TABLE"]
 
         if self.tab:
@@ -153,12 +190,29 @@ class TABLE:
             parts.append(f"OLC={str(self.olc)}")
         if self.pha:
             parts.append(f"PHA={str(self.pha)}")
-
-        # Add ELC and BAS load case filters (as objects, not dicts)
         if self.elc:
             parts.append(f"ELC={str(self.elc)}")
         if self.bas:
-            parts.append(f"BAS={str(self.bas)}")                                                                                                                                                                                                                                                                                               
+            parts.append(f"BAS={str(self.bas)}")
+
+        # Add TAB specific parameters
+        if self.tab is not None:
+            if self.el is not None:
+                parts.append(f"EL={self.el}")
+            if self.se is not None:
+                parts.append(f"SE={self.se}")
+            if self.rn is not None:
+                parts.append(f"RN={self.rn}")
+            if self.x1 is not None:
+                parts.append(f"X1={self.x1[0]},{self.x1[1]},{self.x1[2]}")
+            if self.x2 is not None:
+                parts.append(f"X2={self.x2[0]},{self.x2[1]},{self.x2[2]}")
+            if self.x3 is not None:
+                parts.append(f"X3={self.x3[0]},{self.x3[1]},{self.x3[2]}")
+            if self.enr is not None:
+                parts.append(f"ENR={self.enr[0]}-{self.enr[1]}")
+            if self.cc is not None:
+                parts.append(f"CC={self.cc[0]},{self.cc[1]}")
 
         # Add UR specific parameters
         if self.ur is not None:
@@ -184,6 +238,13 @@ class TABLE:
             parts.append(f"NF={self.nf}")
 
         self.input = " ".join(parts)
+        return self.input
+
+    def validate_cross_references(self, context: ValidationContext) -> None:
+        """Validate cross-references with other containers."""
+        if context.full_model is None:
+            return
+        execute_validation_rules(self, context)
 
     def __str__(self) -> str:
-        return self.input
+        return self.build_input_string() if not self.input else self.input

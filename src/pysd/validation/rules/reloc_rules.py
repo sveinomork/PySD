@@ -187,10 +187,27 @@ def validate_reloc_model(statement: 'RELOC', context: 'ValidationContext') -> Li
                 suggestion="Define the referenced rebar type in RETYP or update the RT reference"
             ))
     
-    # Check part references
+    # Check part references against SHSEC
     if statement.pa is not None:
-        # Could validate against actual parts in the model if available
-        # For now, just check naming conventions
+        # Check if the part exists in SHSEC statements
+        valid_parts = []
+        if hasattr(model, 'all_items'):
+            # Collect all part names from SHSEC statements
+            for item in model.all_items:
+                if hasattr(item, '__class__') and item.__class__.__name__ == 'SHSEC':
+                    if hasattr(item, 'pa') and item.pa:
+                        valid_parts.append(item.pa)
+        
+        if valid_parts and statement.pa not in valid_parts:
+            issues.append(ValidationIssue(
+                severity="error",
+                code="RELOC_PART_NOT_FOUND",
+                message=f"RELOC {statement.id} references part '{statement.pa}' not found in SHSEC",
+                location=f"RELOC.{statement.id}",
+                suggestion=f"Use one of the defined parts: {', '.join(sorted(set(valid_parts)))}"
+            ))
+        
+        # Check naming conventions
         if len(statement.pa) > 8:  # Arbitrary limit
             issues.append(ValidationIssue(
                 severity="warning",

@@ -13,5 +13,10 @@ from . import cmpec_rules
 from . import rmpec_rules
 from . import retyp_rules
 from . import reloc_rules
+from . import lores_rules
+from . import xtfil_rules
+from . import desec_rules
+from . import table_rules
+from . import decas_rules
 
 __all__ = []

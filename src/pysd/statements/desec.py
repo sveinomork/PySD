@@ -1,9 +1,11 @@
-from dataclasses import dataclass, field
+from __future__ import annotations
 from typing import Optional, Tuple, Union
+from pydantic import BaseModel, Field, field_validator
+from ..validation.rule_system import execute_validation_rules
+from ..validation.core import ValidationContext
 
 
-@dataclass
-class DESEC:
+class DESEC(BaseModel):
     """
     Represents the DESEC statement used for defining design sections and their geometry.
     
@@ -53,20 +55,55 @@ class DESEC:
     z : Optional[float]
         Z-coordinate. Default is 0.
     """
-    pa: str
-    fs: Optional[Union[int, Tuple[int, int]]] = None
-    hs: Optional[Union[int, Tuple[int, int]]] = None
-    th: Optional[float] = 0.0
-    t11: Optional[float] = 0.0
-    t12: Optional[float] = 0.0
-    t21: Optional[float] = 0.0
-    t22: Optional[float] = 0.0
-    x: Optional[float] = 0.0
-    y: Optional[float] = 0.0
-    z: Optional[float] = 0.0
-    input: str = field(init=False, default="DESEC")
+    pa: str = Field(..., description="Structural part identity (max 8 characters)")
+    
+    fs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="F-section range or single section")
+    hs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="H-section range or single section")
+    th: Optional[float] = Field(0.0, description="Shell thickness in meters")
+    t11: Optional[float] = Field(0.0, description="Shell thickness gradient ∂t1/∂x1")
+    t12: Optional[float] = Field(0.0, description="Shell thickness gradient ∂t1/∂x2")
+    t21: Optional[float] = Field(0.0, description="Shell thickness gradient ∂t2/∂x1")
+    t22: Optional[float] = Field(0.0, description="Shell thickness gradient ∂t2/∂x2")
+    x: Optional[float] = Field(0.0, description="X-coordinate")
+    y: Optional[float] = Field(0.0, description="Y-coordinate")
+    z: Optional[float] = Field(0.0, description="Z-coordinate")
+    
+    # Auto-generated fields
+    id: str = Field(default="", init=False, description="Unique identifier")
+    input: str = Field(default="", init=False, description="Generated input string")
 
-    def __post_init__(self):
+    def model_post_init(self, __context):
+        """Generate unique ID and input string for this DESEC statement."""
+        # Use pa as base since it's required
+        fs_str = ""
+        if self.fs is not None:
+            if isinstance(self.fs, int):
+                fs_str = f"_FS{self.fs}"
+            else:
+                fs_str = f"_FS{self.fs[0]}-{self.fs[1]}"
+        
+        hs_str = ""
+        if self.hs is not None:
+            if isinstance(self.hs, int):
+                hs_str = f"_HS{self.hs}"
+            else:
+                hs_str = f"_HS{self.hs[0]}-{self.hs[1]}"
+        
+        self.id = f"DESEC_{self.pa}{fs_str}{hs_str}"
+        
+        # Generate the input string
+        self.build_input_string()
+
+    @field_validator('pa')
+    @classmethod
+    def validate_part_name_length(cls, v):
+        """Validate part name length."""
+        if len(v) > 8:
+            raise ValueError("Structural part identity (PA) cannot exceed 8 characters")
+        return v
+
+    def build_input_string(self) -> str:
+        """Build the DESEC input string."""
         parts = ["DESEC", f"PA={self.pa}"]
         
         # Handle fs parameter - can be int or tuple
@@ -99,7 +136,15 @@ class DESEC:
             parts.append(f"Y={self.y}")
         if self.z != 0.0:
             parts.append(f"Z={self.z}")
+            
         self.input = " ".join(parts)
+        return self.input
+    
+    def validate_cross_references(self, context: ValidationContext) -> None:
+        """Validate cross-references with other containers."""
+        if context.full_model is None:
+            return
+        execute_validation_rules(self, context)
 
     def __str__(self) -> str:
-        return self.input
+        return self.input if self.input else self.build_input_string()

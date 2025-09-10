@@ -12,6 +12,10 @@ from .cmpec_container import CmpecContainer
 from .rmpec_container import RmpecContainer
 from .retyp_container import RetypContainer
 from .reloc_container import RelocContainer
+from .lores_container import LoresContainer
+from .xtfil_container import XtfilContainer
+from .desec_container import DesecContainer
+from .table_container import TableContainer
 
 __all__ = [
     "BaseContainer",
@@ -24,5 +28,9 @@ __all__ = [
     "CmpecContainer",
     "RmpecContainer",
     "RetypContainer",
-    "RelocContainer"
+    "RelocContainer",
+    "LoresContainer",
+    "XtfilContainer",
+    "DesecContainer",
+    "TableContainer"
 ]

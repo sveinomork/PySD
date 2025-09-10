@@ -1,8 +1,11 @@
-from dataclasses import dataclass, field
+from __future__ import annotations
 from typing import Optional, List, Literal
+from pydantic import BaseModel, Field, field_validator, model_validator
+from ..validation.rule_system import execute_validation_rules
+from ..validation.core import ValidationContext
 
-@dataclass
-class LORES:
+
+class LORES(BaseModel):
     """
     Represents the LORES statement for defining load resultants.
 
@@ -57,21 +60,42 @@ class LORES:
         If True, list ALL reaction forces on SIN file.
     """
     # Mode 1: Manual definition
-    lc: Optional[int] = None
-    part: Optional[Literal['REAL', 'IMAG']] = None
-    resultants: List[float] = field(default_factory=lambda: [])
+    lc: Optional[int] = Field(None, description="OLC-number for manual definition")
+    part: Optional[Literal['REAL', 'IMAG']] = Field(None, description="The part of the load resultant (real or imaginary)")
+    resultants: List[float] = Field(default_factory=list, description="A list of 1 to 6 load resultant values")
 
     # Mode 2: Automatic generation from SIN file
-    sin: bool = False
+    sin: bool = Field(False, description="If True, generate LORES data automatically from a SIN file")
 
     # Mode 3: Print options
-    pri_olc: bool = False
-    pri_alc: bool = False
+    pri_olc: bool = Field(False, description="If True, list OLC reaction forces")
+    pri_alc: bool = Field(False, description="If True, list ALL reaction forces on SIN file")
 
-    input: str = field(init=False, default="LORES")
+    # Auto-generated fields
+    id: str = Field(default="", init=False, description="Unique identifier")
+    input: str = Field(default="", init=False, description="Generated input string")
 
-    def __post_init__(self):
-        # Validation for mutually exclusive modes
+    def model_post_init(self, __context):
+        """Generate unique ID and input string for this LORES statement."""
+        manual_mode = self.lc is not None and self.part is not None
+        
+        if manual_mode:
+            self.id = f"LORES_{self.lc}_{self.part}"
+        elif self.sin:
+            self.id = "LORES_SIN"
+        elif self.pri_olc:
+            self.id = "LORES_PRI_OLC"
+        elif self.pri_alc:
+            self.id = "LORES_PRI_ALC"
+        else:
+            self.id = "LORES_UNKNOWN"
+        
+        # Generate the input string
+        self.build_input_string()
+
+    @model_validator(mode='after')
+    def validate_modes(self) -> 'LORES':
+        """Validate that exactly one mode is used."""
         manual_mode = self.lc is not None and self.part is not None
         sin_mode = self.sin
         pri_olc_mode = self.pri_olc
@@ -80,23 +104,38 @@ class LORES:
         modes = [manual_mode, sin_mode, pri_olc_mode, pri_alc_mode]
         if sum(modes) != 1:
             raise ValueError("Exactly one mode must be used: (lc, part), sin, pri_olc, or pri_alc.")
-
-        parts:list[str] = ["LORES"]
+        
+        # Validate resultants for manual mode
+        if manual_mode and not (1 <= len(self.resultants) <= 6):
+            raise ValueError("Number of load resultants must be between 1 and 6.")
+        
+        return self
+    
+    def build_input_string(self) -> str:
+        """Build the LORES input string."""
+        manual_mode = self.lc is not None and self.part is not None
+        
+        parts: List[str] = ["LORES"]
         if manual_mode:
-            if not 1 <= len(self.resultants) <= 6:
-                raise ValueError("Number of load resultants must be between 1 and 6.")
             parts.append(str(self.lc))
-            if self.part is not None:  # Type check to ensure part is not None
+            if self.part is not None:
                 parts.append(self.part)
             parts.extend(f"{r:.4E}" for r in self.resultants)
-        elif sin_mode:
+        elif self.sin:
             parts.append("SIN=")
-        elif pri_olc_mode:
+        elif self.pri_olc:
             parts.append("PRI=OLC")
-        elif pri_alc_mode:
+        elif self.pri_alc:
             parts.append("PRI=ALC")
 
         self.input = " ".join(parts)
+        return self.input
+    
+    def validate_cross_references(self, context: ValidationContext) -> None:
+        """Validate cross-references with other containers."""
+        if context.full_model is None:
+            return
+        execute_validation_rules(self, context)
 
     def __str__(self) -> str:
-        return self.input
+        return self.input if self.input else self.build_input_string()

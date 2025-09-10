@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Optional, Tuple, Union, Literal
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field
 from ..validation.rule_system import execute_validation_rules
 from ..validation.core import ValidationContext
 
@@ -65,43 +65,12 @@ class RELOC(BaseModel):
     # Auto-generated fields
     input: str = Field(default="", init=False, description="Generated input string")
     
-    @field_validator('id')
-    @classmethod
-    def validate_id_length(cls, v):
-        """Validate ID length."""
-        if len(v) > 4:
-            raise ValueError("ID must be max 4 characters")
-        return v
+    def model_post_init(self, __context):
+        """Generate input string after model creation."""
+        self.build_input_string()
     
-    @field_validator('al')
-    @classmethod
-    def validate_angle_range(cls, v):
-        """Validate angle is within acceptable range."""
-        if not -90 <= v <= 90:
-            raise ValueError("AL (angle) must be between -90 and +90 degrees")
-        return v
-    
-    @field_validator('cov', 'os')
-    @classmethod
-    def validate_positive_values(cls, v):
-        """Validate that numeric values are positive when specified."""
-        if v is not None and v <= 0:
-            raise ValueError("Value must be positive")
-        return v
-    
-    @model_validator(mode='after')
-    def validate_location_exclusivity(self) -> 'RELOC':
-        """Validate that location area alternatives are mutually exclusive."""
-        location_alt1 = any([self.pa, self.fs, self.hs])
-        location_alt2 = self.la is not None
-        
-        if location_alt1 and location_alt2:
-            raise ValueError("Location area alternatives are mutually exclusive. Use either 'la' or a combination of 'pa', 'fs', 'hs'")
-        return self
-    
-    @model_validator(mode='after')
-    def build_input_string(self) -> 'RELOC':
-        """Build the input string after validation."""
+    def build_input_string(self) -> str:
+        """Build the RELOC input string."""
         parts = ["RELOC", f"ID={self.id}"]
         
         # RT (Rebar Type)
@@ -114,33 +83,42 @@ class RELOC(BaseModel):
             parts.append(f"RT={self.rt}")
             
         # Optional parameters
-        if self.cov is not None: parts.append(f"COV={self.cov}")
-        if self.fa != 0: parts.append(f"FA={self.fa}")
-        if self.al != 0.0: parts.append(f"AL={self.al}")
-        if self.os is not None: parts.append(f"OS={self.os}")
-        if self.rp != "12": parts.append(f"RP={self.rp}")
+        if self.cov is not None:
+            parts.append(f"COV={self.cov}")
+        if self.fa != 0:
+            parts.append(f"FA={self.fa}")
+        if self.al != 0.0:
+            parts.append(f"AL={self.al}")
+        if self.os is not None:
+            parts.append(f"OS={self.os}")
+        if self.rp != "12":
+            parts.append(f"RP={self.rp}")
             
         # Location area parameters
         if self.la is not None:
             parts.append(f"LA={self.la}")
         else:
-            if self.pa is not None: parts.append(f"PA={self.pa}")
+            if self.pa is not None:
+                parts.append(f"PA={self.pa}")
             if self.fs is not None:
-                if isinstance(self.fs, tuple): parts.append(f"FS={self.fs[0]}-{self.fs[1]}")
-                else: parts.append(f"FS={self.fs}")
+                if isinstance(self.fs, tuple):
+                    parts.append(f"FS={self.fs[0]}-{self.fs[1]}")
+                else:
+                    parts.append(f"FS={self.fs}")
             if self.hs is not None:
-                if isinstance(self.hs, tuple): parts.append(f"HS={self.hs[0]}-{self.hs[1]}")
-                else: parts.append(f"HS={self.hs}")
+                if isinstance(self.hs, tuple):
+                    parts.append(f"HS={self.hs[0]}-{self.hs[1]}")
+                else:
+                    parts.append(f"HS={self.hs}")
 
         self.input = " ".join(parts)
-        return self
+        return self.input
     
-    def validate_cross_container_references(self, context: ValidationContext) -> None:
-        """Validate cross-container references."""
-        issues = execute_validation_rules(self, context, level='model')
-        if any(issue.severity == 'error' for issue in issues):
-            error_messages = [issue.message for issue in issues if issue.severity == 'error']
-            raise ValueError(f"Cross-container validation failed: {'; '.join(error_messages)}")
+    def validate_cross_references(self, context: ValidationContext) -> None:
+        """Validate cross-references with other containers."""
+        if context.full_model is None:
+            return
+        execute_validation_rules(self, context)
     
     def __str__(self) -> str:
-        return self.input
+        return self.input if self.input else self.build_input_string()

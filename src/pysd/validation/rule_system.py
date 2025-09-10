@@ -96,11 +96,13 @@ def execute_validation_rules(
             issues = rule(obj, context)
             all_issues.extend(issues)
         except Exception as e:
-            # Handle rule execution errors gracefully
+            # Enhanced error handling with more context
+            import traceback
+            error_details = traceback.format_exc()
             all_issues.append(ValidationIssue(
                 severity="error",
                 code="RULE-EXEC-001",
-                message=f"Validation rule execution failed: {e}",
+                message=f"Validation rule execution failed: {e}\nRule: {rule.__name__ if hasattr(rule, '__name__') else str(rule)}\nDetails: {error_details}",
                 location=f"{model_type}.{getattr(obj, 'id', 'unknown')}"
             ))
     

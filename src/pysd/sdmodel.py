@@ -29,7 +29,8 @@ from .statements.depar import DEPAR
 # Import container system
 from .containers import (
     GrecoContainer, BascoContainer, LoadcContainer, ShsecContainer, ShaxeContainer,
-    CmpecContainer, RmpecContainer, RetypContainer, RelocContainer
+    CmpecContainer, RmpecContainer, RetypContainer, RelocContainer, LoresContainer,
+    XtfilContainer, DesecContainer, TableContainer
 )
 from .validation.core import ValidationContext, ValidationIssue
 from .validation.rule_system import execute_validation_rules
@@ -70,10 +71,7 @@ class SD_BASE(BaseModel):
     headl: List[HEADL] = Field(default_factory=list, description="HEADL statements")
     shaxe: ShaxeContainer = Field(default_factory=ShaxeContainer, description="SHAXE statements with validation")
     shsec: ShsecContainer = Field(default_factory=ShsecContainer, description="SHSEC statements with validation")
-    xtfil: Dict[str, XTFIL] = Field(default_factory=dict, description="XTFIL statements (key: FN_PA_FS_HS)")
-  
     filst: List[FILST] = Field(default_factory=list, description="FILST statements")
-    desec: Dict[str, DESEC] = Field(default_factory=dict, description="DESEC statements")
     
     # Enhanced containers with validation
     greco: GrecoContainer = Field(default_factory=GrecoContainer, description="GRECO statements with validation")
@@ -83,12 +81,12 @@ class SD_BASE(BaseModel):
     rmpec: RmpecContainer = Field(default_factory=RmpecContainer, description="RMPEC statements with validation")
     retyp: RetypContainer = Field(default_factory=RetypContainer, description="RETYP statements with validation")
     reloc: RelocContainer = Field(default_factory=RelocContainer, description="RELOC statements with validation")
-    lores: List[LORES] = Field(default_factory=list, description="LORES statements")
-    table: List[TABLE] = Field(default_factory=list, description="TABLE statements")
+    lores: LoresContainer = Field(default_factory=LoresContainer, description="LORES statements with validation")
+    xtfil: XtfilContainer = Field(default_factory=XtfilContainer, description="XTFIL statements with validation")
+    desec: DesecContainer = Field(default_factory=DesecContainer, description="DESEC statements with validation")
+    table: TableContainer = Field(default_factory=TableContainer, description="TABLE statements with validation")
     execd: List[EXECD] = Field(default_factory=list, description="EXECD statements")
     decas: List[DECAS] = Field(default_factory=list, description="DECAS statements")
-   
-    reloc: RelocContainer = Field(default_factory=RelocContainer, description="RELOC statements with validation")
     depar: Optional[DEPAR] = Field(None, description="DEPAR statement (singleton)")
     
     # Validation settings
@@ -150,12 +148,30 @@ class SD_BASE(BaseModel):
             self.retyp.add(item)
         elif isinstance(item, RELOC):
             self.reloc.add(item)
+        elif isinstance(item, LORES):
+            self.lores.add(item)
+        elif isinstance(item, XTFIL):
+            self.xtfil.add(item)
+        elif isinstance(item, DESEC):
+            self.desec.add(item)
+        elif isinstance(item, TABLE):
+            self.table.add(item)
         
         # List-based routing for singleton/simple statements
         elif isinstance(item, RFILE):
             self.rfile.append(item)
         elif isinstance(item, FILST):
             self.filst.append(item)
+        elif isinstance(item, INCDF):
+            self.incdf.append(item)
+        elif isinstance(item, HEADL):
+            self.headl.append(item)
+        elif isinstance(item, EXECD):
+            self.execd.append(item)
+        elif isinstance(item, DECAS):
+            self.decas.append(item)
+        elif isinstance(item, DEPAR):
+            self.depar = item  # DEPAR is a singleton
         
         # Dictionary-based routing for other statements
         # TODO: Add new statement types here or migrate to containers
@@ -194,6 +210,14 @@ class SD_BASE(BaseModel):
                 self.retyp.add_batch(type_items)
             elif item_type == RELOC:
                 self.reloc.add_batch(type_items)
+            elif item_type == LORES:
+                self.lores.add_batch(type_items)
+            elif item_type == XTFIL:
+                self.xtfil.add_batch(type_items)
+            elif item_type == DESEC:
+                self.desec.add_batch(type_items)
+            elif item_type == TABLE:
+                self.table.add_batch(type_items)
             else:
                 # Fall back to individual processing for non-container types
                 for item in type_items:
@@ -231,6 +255,7 @@ class SD_BASE(BaseModel):
         all_statements.extend(self.rmpec.items)
         all_statements.extend(self.retyp.items)
         all_statements.extend(self.reloc.items)
+        all_statements.extend(self.decas)  # DECAS is a plain list, not a container
         all_statements.extend(self.rfile)
         all_statements.extend(self.filst)
         
@@ -327,6 +352,10 @@ class SD_BASE(BaseModel):
                 'rmpec': len(self.rmpec),
                 'retyp': len(self.retyp),
                 'reloc': len(self.reloc),
+                'lores': len(self.lores),
+                'xtfil': len(self.xtfil),
+                'desec': len(self.desec),
+                'table': len(self.table),
             },
             'integrity_issues': integrity,
             'has_errors': len(integrity['errors']) > 0,
