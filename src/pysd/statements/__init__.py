@@ -3,8 +3,9 @@ ShellDesign statements module
 """
 
 # Import all statement classes
-from .basco import BASCO, LoadCase, convert_to_only_olcs
+
 from .cases import Cases, CaseBuilder,normalize_cases
+from .basco import BASCO, LoadCase
 from .greco import GRECO
 from .headl import HEADL
 from .desec import DESEC
@@ -33,7 +34,6 @@ __all__ = [
     # BASCO related
     "BASCO", 
     "LoadCase",
-    "convert_to_only_olcs",
     
     # Cases related
     "Cases",
@@ -59,6 +59,4 @@ __all__ = [
     "LORES",
     "RETYP",
     "RFILE"
-
-    # ... alle andre
 ]

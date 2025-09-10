@@ -13,7 +13,7 @@ class LoadcContainer(BaseContainer):
     """
     Container for LOADC statements.
     
-    Note: LOADC uses 'key' instead of 'id' for identification.
+    Note: LOADC uses 'identifier' property for identification.
     All validation is now handled by the rule system.
     This container provides specialized accessor methods for LOADC statements.
     """
@@ -23,20 +23,20 @@ class LoadcContainer(BaseContainer):
         for item in items:
             self.add(item)
     
-    def get_by_key(self, key: str) -> Optional['LOADC']:
-        """Get LOADC by key (LOADC uses string keys, not IDs)."""
+    def get_by_identifier(self, identifier: str) -> Optional['LOADC']:
+        """Get LOADC by identifier (LOADC uses identifier property)."""
         for item in self.items:
-            if item.key == key:
+            if item.identifier == identifier:
                 return item
         return None
     
-    def has_key(self, key: str) -> bool:
-        """Check if LOADC with given key exists."""
-        return self.get_by_key(key) is not None
+    def has_identifier(self, identifier: str) -> bool:
+        """Check if LOADC with given identifier exists."""
+        return self.get_by_identifier(identifier) is not None
     
-    def get_keys(self) -> List[str]:
-        """Get all LOADC keys."""
-        return [item.key for item in self.items]
+    def get_identifiers(self) -> List[str]:
+        """Get all LOADC identifiers."""
+        return [item.identifier for item in self.items]
     
     def get_by_run_number(self, run_number: int) -> List['LOADC']:
         """Get all LOADC statements with a specific run number."""

@@ -1,11 +1,9 @@
 from typing import Optional, Union, Any
-from typing_extensions import Annotated, Doc
 from pydantic import BaseModel, Field, field_validator, model_validator
 from .cases import Cases, normalize_cases
-from ..validation.rule_system import execute_validation_rules
-from ..validation.core import ValidationContext
+from .statement_base import StatementBase
 
-class LOADC(BaseModel):
+class LOADC(StatementBase):
     """
 ### Usage
 Controls load case processing, output formatting, and analysis execution parameters.
@@ -76,32 +74,24 @@ LOADC(pri=True)
 - Tuple syntax: LOADC(alc=(1,6), olc=(101,106)) automatically generates LOADC RN=1 LC=1-6 OLC=101-106
 """
 
-    run_number: Annotated[
-        Optional[int],
-        Doc("Result file run number to reference (RN=n). Required when using alc or olc.")
-    ] = None
-    alc: Annotated[
-        Optional[Union[str, int, tuple[int, int], list[int], Cases]],
-        Doc("Analysis Load Cases. Supports multiple formats including tuples for ranges. Must be used with olc.")
-    ] = None
-    olc: Annotated[
-        Optional[Union[str, int, tuple[int, int], list[int], Cases]],
-        Doc("Output Load Cases. Supports multiple formats including tuples for ranges. Must be used with alc.")
-    ] = None
-    table: Annotated[
-        bool,
-        Doc("If True, indicates table-based input mode. Default is False.")
-    ] = False
-    pri: Annotated[
-        bool,
-        Doc("If True, indicates priority-based mode. Default is False.")
-    ] = False
-    comment: Annotated[
-        Optional[str],
-        Doc("Optional comment to add at end of line (for RN and LC modes).")
-    ] = None
-    input: str = Field(default="LOADC", init=False)
-    key: str = Field(default="", init=False)
+    run_number: Optional[int] = None
+    alc: Optional[Union[str, int, tuple[int, int], list[int], Cases]] = None
+    olc: Optional[Union[str, int, tuple[int, int], list[int], Cases]] = None
+    table: bool = False
+    pri: bool = False
+    comment: Optional[str] = None
+
+    @property
+    def identifier(self) -> str:
+        """Get unique identifier for this LOADC statement."""
+        if self.run_number is not None:
+            return f"RN{self.run_number}"
+        elif self.table:
+            return "TAB"
+        elif self.pri:
+            return "PRI"
+        else:
+            return str(id(self))
 
     @field_validator('alc', 'olc', mode='before')
     @classmethod
@@ -124,9 +114,8 @@ LOADC(pri=True)
         # If we get here, it's an unsupported tuple format
         raise ValueError(f"Unsupported tuple format: {v}. Expected (start, end) with integers.")
 
-    @model_validator(mode='after')
-    def validate_loadc_requirements(self) -> 'LOADC':
-        """Validate LOADC requirements and build input string."""
+    def _build_input_string(self) -> None:
+        """Build the input string (pure formatting logic)."""
         
         # Auto-set run_number from alc if not provided and alc is a single integer or range
         if self.run_number is None and self.alc is not None:
@@ -138,37 +127,6 @@ LOADC(pri=True)
                 elif isinstance(first_range, tuple) and len(first_range) == 2:
                     # Use the start of the range as run_number
                     self.run_number = first_range[0]
-                    
-        # Execute instance-level validation rules AFTER auto-setting
-        context = ValidationContext(current_object=self)
-        issues = execute_validation_rules(self, context, level='instance')
-        
-        # Handle issues according to global config
-        for issue in issues:
-            context.add_issue(issue)  # Auto-raises if configured
-                    
-        # Generate the key
-        key_parts: list[str] = []
-        if self.run_number is not None:
-            key_parts.append(f"RN{self.run_number}")
-            if self.alc is not None and isinstance(self.alc, Cases):
-                # Get first and last values for key
-                first_range = self.alc.ranges[0]
-                last_range = self.alc.ranges[-1]
-                
-                if isinstance(first_range, int):
-                    start = first_range
-                else:
-                    start = first_range[0]
-                    
-                if isinstance(last_range, int):
-                    end = last_range
-                else:
-                    end = last_range[1]
-                    
-                key_parts.append(f"ALC{start}-{end}")
-                
-        self.key = "_".join(key_parts) if key_parts else str(id(self))
 
         # Build input string
         parts: list[str] = ["LOADC"]
@@ -205,25 +163,9 @@ LOADC(pri=True)
 
         # Join all parts with spaces
         self.input = " ".join(parts)
-        return self
 
     def __str__(self) -> str:
         return self.input
-    
-    def execute_cross_container_validation(self, sd_model) -> list:
-        """
-        Execute cross-container validation rules for this LOADC instance.
-        
-        This method is called when the LOADC is added to the SD_BASE model,
-        allowing validation against other containers.
-        """
-        context = ValidationContext(
-            current_object=self,
-            full_model=sd_model  # This enables access to all containers
-        )
-        
-        # Execute model-level (cross-container) validation rules
-        return execute_validation_rules(self, context, level='model')
     
     def is_olc(self, olc: int) -> bool:
         """

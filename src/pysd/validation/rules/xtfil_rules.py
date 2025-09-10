@@ -84,12 +84,16 @@ def validate_xtfil_model(statement: 'XTFIL', context: 'ValidationContext') -> Li
                 desec_parts.append(desec_item.pa)
         
         if desec_parts and statement.pa not in desec_parts:
+            available_parts = ", ".join(desec_parts[:5])  # Show first 5 parts
+            if len(desec_parts) > 5:
+                available_parts += ", ..."
+            
             issues.append(ValidationIssue(
-                severity="warning",
+                severity="error",
                 code="XTFIL_PART_NOT_IN_DESEC",
                 message=f"XTFIL part '{statement.pa}' not found in DESEC definitions",
                 location=f"XTFIL.{statement.fn}",
-                suggestion="Verify part name exists in DESEC or add corresponding DESEC statement"
+                suggestion=f"Define part in DESEC first or use existing parts: {available_parts}"
             ))
     
     return issues

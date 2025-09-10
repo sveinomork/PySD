@@ -255,6 +255,10 @@ class SD_BASE(BaseModel):
         all_statements.extend(self.rmpec.items)
         all_statements.extend(self.retyp.items)
         all_statements.extend(self.reloc.items)
+        all_statements.extend(self.lores.items)  # Add LORES container
+        all_statements.extend(self.xtfil.items)  # Add XTFIL container
+        all_statements.extend(self.desec.items)  # Add DESEC container
+        all_statements.extend(self.table.items)  # Add TABLE container
         all_statements.extend(self.decas)  # DECAS is a plain list, not a container
         all_statements.extend(self.rfile)
         all_statements.extend(self.filst)

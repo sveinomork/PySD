@@ -9,7 +9,6 @@ from ..core import ValidationIssue, ValidationContext
 if TYPE_CHECKING:
     from ...statements.table import TABLE
     from ...containers.table_container import TableContainer
-    from ...sdmodel import SD_BASE
 
 # Instance-level validation rules
 @instance_rule('TABLE')
@@ -223,54 +222,59 @@ def validate_table_output_conflicts(container: 'TableContainer', context: Valida
 
 # Model-level validation rules  
 @model_rule('TABLE')
-def validate_table_cross_references(model: 'SD_BASE', context: ValidationContext) -> List[ValidationIssue]:
+def validate_table_cross_references(statement: 'TABLE', context: 'ValidationContext') -> List[ValidationIssue]:
     """Validate cross-references between TABLE statements and other containers."""
     issues = []
     
-    # Check if referenced parts exist in DESEC or other containers
-    table_parts = set()
-    for table in model.table.items:
-        if table.pa:
-            table_parts.add(table.pa)
+    if context.full_model is None:
+        return issues
     
-    # Check against DESEC parts
-    if hasattr(model, 'desec') and table_parts:
-        desec_parts = set()
-        for desec in model.desec.items:
-            if hasattr(desec, 'pa') and desec.pa:
-                desec_parts.add(desec.pa)
-        
-        missing_parts = table_parts - desec_parts
-        for part in missing_parts:
-            # Find tables referencing this missing part
-            referencing_tables = [t.id for t in model.table.items if t.pa == part]
+    model = context.full_model
+    
+    # Check if the TABLE statement references a part that exists in DESEC
+    if statement.pa:
+        # Check against DESEC parts
+        if hasattr(model, 'desec'):
+            desec_parts = set()
+            for desec in model.desec.items:
+                if hasattr(desec, 'pa') and desec.pa:
+                    desec_parts.add(desec.pa)
+            
+            if statement.pa not in desec_parts:
+                available_parts = ", ".join(sorted(desec_parts)) if desec_parts else "None"
+                issues.append(ValidationIssue(
+                    severity='error',
+                    code='TABLE_PART_NOT_IN_DESEC',
+                    message=f'TABLE references structural part "{statement.pa}" not defined in DESEC',
+                    location=f'TABLE.{statement.pa}',
+                    suggestion=f'Define part in DESEC first or use existing parts: {available_parts}'
+                ))
+        else:
+            # No DESEC container exists at all
             issues.append(ValidationIssue(
-                severity='warning',
-                code='TABLE_016',
-                message='TABLE references structural part not defined in DESEC',
-                context={
-                    'part': part,
-                    'referencing_tables': referencing_tables
-                }
+                severity='error',
+                code='TABLE_NO_DESEC_CONTAINER',
+                message=f'TABLE part "{statement.pa}" requires DESEC definitions but no DESEC container exists',
+                location=f'TABLE.{statement.pa}',
+                suggestion='Add DESEC statements to define design sections before using TABLE'
             ))
     
     return issues
 
 @model_rule('TABLE')
-def validate_table_load_case_references(model: 'SD_BASE', context: ValidationContext) -> List[ValidationIssue]:
+def validate_table_load_case_references(statement: 'TABLE', context: 'ValidationContext') -> List[ValidationIssue]:
     """Validate load case references in TABLE statements."""
     issues = []
     
     # This is a placeholder for load case validation
     # In a complete implementation, you would check against actual load case containers
-    for table in model.table.items:
-        load_cases = [table.ilc, table.olc, table.elc, table.bas, table.pha]
-        load_case_names = ['ILC', 'OLC', 'ELC', 'BAS', 'PHA']
-        
-        for lc, name in zip(load_cases, load_case_names):
-            if lc is not None:
-                # Add validation logic for load case existence
-                # This would check against actual load case containers when available
-                pass
+    load_cases = [statement.ilc, statement.olc, statement.elc, statement.bas, statement.pha]
+    load_case_names = ['ILC', 'OLC', 'ELC', 'BAS', 'PHA']
+    
+    for lc, name in zip(load_cases, load_case_names):
+        if lc is not None:
+            # Add validation logic for load case existence
+            # This would check against actual load case containers when available
+            pass
     
     return issues

@@ -1,15 +1,16 @@
 from __future__ import annotations
 from typing import Optional, Any
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import  Field, field_validator
 from .cases import Cases, normalize_cases
-from ..validation.rule_system import execute_validation_rules
-from ..validation.core import ValidationContext
+
+
+from .statement_base import StatementBase
 
 # Define the type for valid GRECO IDs (single uppercase letters A-Z)
 # Note: Using str instead of Literal to allow custom validation control
 # GrecoID = Literal['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
 
-class GRECO(BaseModel):
+class GRECO(StatementBase):
     """
     Active loads (ELC) are balanced by GRECO boundary reactions containing 6 BAS (one per load resultant: Fx, Fy, Fz, Mx, My, Mz). 
     ShellDesign calculates scale factors ensuring equilibrium between ELC and scaled GRECO reactions.
@@ -69,8 +70,12 @@ class GRECO(BaseModel):
     bas: Optional[Cases] = Field(None, description="BAS load cases (must be exactly 6)")
     elc: Optional[Cases] = Field(None, description="ELC load cases (must reference OLC in LOADC)")
     
-    # Auto-generated field for compatibility
-    input: str = Field(default="", init=False, description="Generated input string")
+    
+
+    @property
+    def identifier(self) -> str:
+        """Get unique identifier for this GRECO statement."""
+        return self.id
 
     @field_validator('bas', 'elc', mode='before')
     @classmethod
@@ -80,19 +85,9 @@ class GRECO(BaseModel):
             return v
         return normalize_cases(v)
     
-    @model_validator(mode='after')
-    def build_input_string(self) -> 'GRECO':
-        """Build input string and run instance-level validation."""
-        
-        # Execute instance-level validation rules
-        context = ValidationContext(current_object=self)
-        issues = execute_validation_rules(self, context, level='instance')
-        
-        # Handle issues according to global config
-        for issue in issues:
-            context.add_issue(issue)  # Auto-raises if configured
-        
-        # Build input string
+  
+    def _build_input_string(self) -> None:
+        """Build the input string (pure formatting logic)."""
         parts = []
         if self.id or self.bas or self.elc:
             normal = ["GRECO"]
@@ -105,22 +100,6 @@ class GRECO(BaseModel):
             parts.append(" ".join(normal))
         
         self.input = "\n".join(parts)
-        return self
-    
-    def execute_cross_container_validation(self, sd_model) -> list:
-        """
-        Execute cross-container validation rules for this GRECO instance.
-        
-        This method is called when the GRECO is added to the SD_BASE model,
-        allowing validation against other containers (especially BASCO for BAS references).
-        """
-        context = ValidationContext(
-            current_object=self,
-            full_model=sd_model  # This enables access to all containers
-        )
-        
-        # Execute model-level (cross-container) validation rules
-        return execute_validation_rules(self, context, level='model')
     
 
     def __iter__(self):
@@ -145,9 +124,4 @@ class GRECO(BaseModel):
         else:
             return []
 
-    def __str__(self) -> str:
-        return self.input
-    
-    def formatted(self) -> str:
-        """Legacy method for backward compatibility."""
-        return self.input
+   

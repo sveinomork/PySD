@@ -138,31 +138,33 @@ def validate_desec_model(statement: 'DESEC', context: 'ValidationContext') -> Li
     
     model = context.full_model
     
-    # Check if part is referenced by XTFIL
-    if hasattr(model, 'xtfil'):
-        xtfil_parts = []
-        for xtfil_item in model.xtfil.items if hasattr(model.xtfil, 'items') else []:
-            if hasattr(xtfil_item, 'pa'):
-                xtfil_parts.append(xtfil_item.pa)
+    # Check if part exists in SHSEC
+    if hasattr(model, 'shsec'):
+        shsec_parts = []
+        for shsec_item in model.shsec.items if hasattr(model.shsec, 'items') else []:
+            if hasattr(shsec_item, 'pa'):
+                shsec_parts.append(shsec_item.pa)
         
-        if statement.pa not in xtfil_parts:
+        if statement.pa not in shsec_parts:
+            available_parts = ", ".join(shsec_parts[:5])  # Show first 5 parts
+            if len(shsec_parts) > 5:
+                available_parts += ", ..."
+            
             issues.append(ValidationIssue(
-                severity="info",
-                code="DESEC_PART_NO_XTFIL",
-                message=f"DESEC part '{statement.pa}' not referenced by any XTFIL statement",
+                severity="error",
+                code="DESEC_PART_NOT_IN_SHSEC",
+                message=f"DESEC part '{statement.pa}' not found in SHSEC definitions",
                 location=f"DESEC.{statement.pa}",
-                suggestion="Consider adding XTFIL statement for plotting or remove unused DESEC"
+                suggestion=f"Define part in SHSEC first or use existing parts: {available_parts}"
             ))
-    
-    # Check consistency with LOADC for design cases
-    if hasattr(model, 'loadc') and len(model.loadc.items) > 0:
-        if statement.th == 0.0:
-            issues.append(ValidationIssue(
-                severity="warning",
-                code="DESEC_NO_THICKNESS_WITH_LOADC",
-                message=f"DESEC part '{statement.pa}' has no thickness but LOADC defined",
-                location=f"DESEC.{statement.pa}",
-                suggestion="Consider defining thickness for design calculations"
-            ))
+    else:
+        # No SHSEC container exists at all
+        issues.append(ValidationIssue(
+            severity="error",
+            code="DESEC_NO_SHSEC_CONTAINER",
+            message=f"DESEC part '{statement.pa}' requires SHSEC definitions but no SHSEC container exists",
+            location=f"DESEC.{statement.pa}",
+            suggestion="Add SHSEC statements to define shell sections before using DESEC"
+        ))
     
     return issues

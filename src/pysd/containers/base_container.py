@@ -1,4 +1,4 @@
-from typing import List, Protocol, runtime_checkable, Self, Any, Union
+from typing import List, Protocol, runtime_checkable, Self, Union, Any
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -29,8 +29,8 @@ class BaseContainer(BaseModel):
         """Ensure all item IDs are unique."""
         seen_ids: set[Union[int, str]] = set()
         for item in self.items:
-            # Support both 'id' and 'key' fields for identification
-            item_id = getattr(item, 'id', None) or getattr(item, 'key', None)
+            # Support 'id', 'key', and 'identifier' fields for identification
+            item_id = getattr(item, 'id', None) or getattr(item, 'key', None) or getattr(item, 'identifier', None)
             if item_id and item_id in seen_ids:
                 raise ValueError(f"Duplicate ID found: {item_id}")
             if item_id:
@@ -39,9 +39,9 @@ class BaseContainer(BaseModel):
     
     def add(self, item: Any) -> None:
         """Add an item to the container, checking for duplicate IDs."""
-        item_id = getattr(item, 'id', None) or getattr(item, 'key', None)
+        item_id = getattr(item, 'id', None) or getattr(item, 'key', None) or getattr(item, 'identifier', None)
         for existing in self.items:
-            existing_id = getattr(existing, 'id', None) or getattr(existing, 'key', None)
+            existing_id = getattr(existing, 'id', None) or getattr(existing, 'key', None) or getattr(existing, 'identifier', None)
             if existing_id == item_id:
                 raise ValueError(f"Item with ID {item_id} already exists")
         self.items.append(item)
@@ -49,7 +49,7 @@ class BaseContainer(BaseModel):
     def get_by_id(self, id_value: Union[int, str]) -> Any:
         """Get an item by ID."""
         for item in self.items:
-            item_id = getattr(item, 'id', None) or getattr(item, 'key', None)
+            item_id = getattr(item, 'id', None) or getattr(item, 'key', None) or getattr(item, 'identifier', None)
             if item_id == id_value:
                 return item
         return None
@@ -58,8 +58,8 @@ class BaseContainer(BaseModel):
         """Get a list of all IDs in the container."""
         ids = []
         for item in self.items:
-            item_id = getattr(item, 'id', None) or getattr(item, 'key', None)
-            if item_id:
+            item_id = getattr(item, 'id', None) or getattr(item, 'key', None) or getattr(item, 'identifier', None)
+            if item_id is not None:
                 ids.append(item_id)
         return ids
     

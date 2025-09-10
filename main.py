@@ -205,6 +205,7 @@ def create_analysis_components(sd_model: SD_BASE) -> None:
     #sd_model.add(DECAS(ls='ULS', bas="400-409"))
     
     # xtract ploting data
+  
     for part in parts:
         sd_model.add(XTFIL(fn="AquaPod_09", pa=part, fs=(1,9999),hs=(1,99)))
 
@@ -212,8 +213,8 @@ def create_analysis_components(sd_model: SD_BASE) -> None:
     sd_model.add(TABLE(tab="GE"))
     sd_model.add(TABLE(tab="AX"))
     sd_model.add(TABLE(tab="DR",pa="PLATE", fs=1, hs=1))
-    sd_model.add(TABLE(tab="DR",pa="VEGG", fs=1, hs=1))
-    sd_model.add(TABLE(tab="EC",pa="VEGG", fs=1, hs=1))
+    sd_model.add(TABLE(tab="DR",pa="VEGG_2", fs=1, hs=1))
+    sd_model.add(TABLE(tab="EC",pa="VEGG_2", fs=1, hs=1))
 
     # Add final execution directive
     sd_model.add(EXECD(dm='V'))
