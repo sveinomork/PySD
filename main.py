@@ -112,9 +112,9 @@ def create_load_components(sd_model: SD_BASE) -> None:
     sd_model.add(loadc)
 
     # This generates: LORES PRI=ALC
-    #sd_model.add(LORES(pri_alc=True))
+    sd_model.add(LORES(pri_alc=True))
     # This generates: LORES SIN=
-    #sd_model.add(LORES(sin=True))
+    sd_model.add(LORES(sin=True))
 
     # add basco's for greco
     for i in range(6):
