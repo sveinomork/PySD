@@ -415,7 +415,3 @@ class SD_BASE(BaseModel):
     def from_dict(cls, data: Dict[str, Any]) -> 'SD_BASE':
         """Import model from dictionary."""
         return cls.model_validate(data)
-              
-
-
-    

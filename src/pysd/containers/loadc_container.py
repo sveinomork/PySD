@@ -9,7 +9,7 @@ from .base_container import StandardContainer
 if TYPE_CHECKING:
     from ..statements.loadc import LOADC
 
-class LoadcContainer(StandardContainer['LOADC']):
+class LoadcContainer(StandardContainer):
     """
     Container for LOADC statements using StandardContainer for O(1) operations.
     

@@ -9,7 +9,7 @@ from .base_container import StandardContainer
 if TYPE_CHECKING:
     from ..statements.basco import BASCO
 
-class BascoContainer(StandardContainer['BASCO']):
+class BascoContainer(StandardContainer):
     """
     Container for BASCO statements using StandardContainer for O(1) operations.
     

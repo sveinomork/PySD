@@ -21,7 +21,7 @@ class HasID(Protocol):
     id: Union[int, str]  # Support both int and string IDs
 
 
-class StandardContainer(BaseModel, Generic[T]):
+class StandardContainer(BaseModel):
     """
     Standardized container with consistent interface and O(1) lookups.
     
@@ -40,7 +40,7 @@ class StandardContainer(BaseModel, Generic[T]):
     items_dict: dict[IdType, T] = Field(default_factory=dict, exclude=True, description="Internal dictionary for O(1) lookups")
     insertion_order: List[IdType] = Field(default_factory=list, exclude=True, description="Order of item insertion")
     
-    def add(self, item: T) -> None:
+    def add(self, item: Any) -> None:
         """Add an item to the container with duplicate checking."""
         if not isinstance(item, Identifiable):
             raise TypeError(f"Item must implement Identifiable protocol, got {type(item)}")
@@ -52,7 +52,7 @@ class StandardContainer(BaseModel, Generic[T]):
         self.items_dict[identifier] = item
         self.insertion_order.append(identifier)
     
-    def add_batch(self, items: List[T]) -> None:
+    def add_batch(self, items: List[Any]) -> None:
         """Add multiple items efficiently with batch validation."""
         # Pre-validate all items to avoid partial additions
         identifiers = []
@@ -76,7 +76,7 @@ class StandardContainer(BaseModel, Generic[T]):
             self.items_dict[identifier] = item
             self.insertion_order.append(identifier)
     
-    def get_by_id(self, identifier: IdType) -> Optional[T]:
+    def get_by_id(self, identifier: IdType) -> Optional[Any]:
         """Get an item by identifier - O(1) lookup."""
         return self.items_dict.get(identifier)
     
@@ -88,14 +88,14 @@ class StandardContainer(BaseModel, Generic[T]):
         """Get all identifiers in insertion order."""
         return self.insertion_order.copy()
     
-    def remove(self, identifier: IdType) -> Optional[T]:
+    def remove(self, identifier: IdType) -> Optional[Any]:
         """Remove and return item by identifier."""
         item = self.items_dict.pop(identifier, None)
         if item is not None:
             self.insertion_order.remove(identifier)
         return item
     
-    def update(self, item: T) -> None:
+    def update(self, item: Any) -> None:
         """Update an existing item (must have same identifier)."""
         if not isinstance(item, Identifiable):
             raise TypeError(f"Item must implement Identifiable protocol")
@@ -120,7 +120,7 @@ class StandardContainer(BaseModel, Generic[T]):
         for identifier in self.insertion_order:
             yield self.items_dict[identifier]
     
-    def __getitem__(self, index: int) -> T:
+    def __getitem__(self, index: int) -> Any:
         """Get item by insertion index."""
         identifier = self.insertion_order[index]
         return self.items_dict[identifier]
@@ -128,6 +128,11 @@ class StandardContainer(BaseModel, Generic[T]):
     def __contains__(self, identifier: IdType) -> bool:
         """Support 'in' operator."""
         return identifier in self.items_dict
+    
+    @property
+    def items(self) -> List[Any]:
+        """Compatibility property for accessing items as a list."""
+        return [self.items_dict[identifier] for identifier in self.insertion_order]
 
 class BaseContainer(BaseModel):
     """
