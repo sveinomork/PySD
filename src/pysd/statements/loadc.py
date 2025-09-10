@@ -102,6 +102,11 @@ LOADC(pri=True)
     ] = None
     input: str = Field(default="LOADC", init=False)
     key: str = Field(default="", init=False)
+    
+    @property
+    def identifier(self) -> str:
+        """Get the unique identifier for this LOADC statement."""
+        return self.key
 
     @field_validator('alc', 'olc', mode='before')
     @classmethod

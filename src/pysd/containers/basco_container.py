@@ -3,36 +3,42 @@ Specialized container for BASCO statements.
 """
 
 from __future__ import annotations
-from typing import List, Optional, TYPE_CHECKING
-from .base_container import BaseContainer
+from typing import List, Optional, TYPE_CHECKING, Any
+from .base_container import StandardContainer
 
 if TYPE_CHECKING:
     from ..statements.basco import BASCO
 
-class BascoContainer(BaseContainer):
+class BascoContainer(StandardContainer['BASCO']):
     """
-    Container for BASCO statements.
+    Container for BASCO statements using StandardContainer for O(1) operations.
     
-    Note: All validation is now handled by the rule system.
-    This container provides specialized accessor methods for BASCO statements.
+    Features:
+    - O(1) lookups by ID
+    - Consistent interface with other containers
+    - Batch operations with validation
+    - Container-level validation hooks
     """
-    
-    def add_batch(self, items: List['BASCO']) -> None:
-        """Add multiple BASCO items with batch validation."""
-        for item in items:
-            self.add(item)
-    
-    def get_by_id(self, id_value: int) -> Optional['BASCO']:
-        """Get BASCO by ID (override to handle int IDs)."""
-        for item in self.items:
-            if int(item.id) == id_value:
-                return item
-        return None
     
     def has_id(self, id_value: int) -> bool:
-        """Check if BASCO with given ID exists."""
-        return self.get_by_id(id_value) is not None
+        """Check if BASCO with given ID exists - alias for contains()."""
+        return self.contains(id_value)
     
     def get_ids(self) -> List[int]:
-        """Get all BASCO IDs as integers."""
-        return [int(item.id) for item in self.items]
+        """Get all BASCO IDs as integers - legacy alias for get_all_ids()."""
+        return [int(identifier) for identifier in self.get_all_ids()]
+    
+    def validate_container(self, context=None) -> List[Any]:
+        """Container-level validation for BASCO-specific rules."""
+        issues = []
+        
+        # Example: Check for reasonable number of BASCOs
+        if len(self) > 1000:
+            issues.append({
+                'severity': 'warning',
+                'code': 'BASCO_CONTAINER_SIZE',
+                'message': f'Container has {len(self)} BASCO items, consider optimization',
+                'location': 'BascoContainer'
+            })
+        
+        return issues

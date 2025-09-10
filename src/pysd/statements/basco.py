@@ -116,6 +116,11 @@ class BASCO(BaseModel):
     ldf: Optional[int] = None
     txt: Optional[str] = None
     input: str = Field(default="BASCO", init=False)
+    
+    @property
+    def identifier(self) -> int:
+        """Get the unique identifier for this BASCO statement."""
+        return self.id
 
     @model_validator(mode='after')
     def build_input_string(self) -> 'BASCO':
