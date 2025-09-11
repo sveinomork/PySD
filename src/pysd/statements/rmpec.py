@@ -1,12 +1,12 @@
 
 from __future__ import annotations
 from typing import Optional, Literal
-from pydantic import BaseModel, Field, field_validator, model_validator
-from ..validation.rule_system import execute_validation_rules
-from ..validation.core import ValidationContext
+from pydantic import  Field
+
+from .statement_base import StatementBase
 
 
-class RMPEC(BaseModel):
+class RMPEC(StatementBase):
     """
     Define rebar material property sets according to Eurocode 2.
     The ID is related to the MP statement in the RETYP statement.
@@ -44,36 +44,16 @@ class RMPEC(BaseModel):
     # Print option
     pri: Optional[Literal['']] = Field(None, description="Print option")
     
-    # Auto-generated fields
-    input: str = Field(default="", init=False, description="Generated input string")
+    @property
+    def identifier(self) -> str:
+        """Get unique identifier for this RMPEC statement."""
+        return str(self.id)
 
-    @field_validator('id')
-    @classmethod
-    def validate_id_range(cls, v):
-        """Validate ID is within acceptable range."""
-        if not (1 <= v <= 99999999):
-            raise ValueError("ID must be between 1 and 99999999")
-        return v
+   
 
-    @field_validator('den', 'mfu', 'mfa', 'mfs')
-    @classmethod
-    def validate_positive_values(cls, v):
-        """Validate that material factors and density are positive."""
-        if v <= 0:
-            raise ValueError("Material factors and density must be positive values")
-        return v
+ 
+    def _build_input_string(self) -> 'RMPEC':
 
-    @model_validator(mode='after')
-    def build_input_string(self) -> 'RMPEC':
-        """Build input string and run instance-level validation."""
-        
-        # Execute instance-level validation rules
-        context = ValidationContext(current_object=self)
-        issues = execute_validation_rules(self, context, level='instance')
-        
-        # Handle issues according to global config
-        for issue in issues:
-            context.add_issue(issue)  # Auto-raises if configured
 
         def format_float(value: float) -> str:
             """Format float value according to the requirements"""
@@ -138,26 +118,6 @@ class RMPEC(BaseModel):
         # Join all parts with spaces
         self.input = " ".join(parts)
         
-        return self
-    
-    def execute_cross_container_validation(self, sd_model) -> list:
-        """
-        Execute cross-container validation rules for this RMPEC instance.
-        
-        This method is called when the RMPEC is added to the SD_BASE model,
-        allowing validation against other containers.
-        """
-        context = ValidationContext(
-            current_object=self,
-            full_model=sd_model  # This enables access to all containers
-        )
-        
-        # Execute model-level (cross-container) validation rules
-        return execute_validation_rules(self, context, level='model')
-
-    def __str__(self) -> str:
         return self.input
     
-    def formatted(self) -> str:
-        """Legacy method for backward compatibility."""
-        return self.input
+    

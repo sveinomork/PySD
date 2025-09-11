@@ -3,9 +3,10 @@ from typing import Optional
 from pydantic import BaseModel, Field, model_validator
 from ..validation.rule_system import execute_validation_rules
 from ..validation.core import ValidationContext
+from .statement_base import StatementBase
 
 
-class FILST(BaseModel):
+class FILST(StatementBase):
     """
     Represents the FILST statement for providing file status information.
 
@@ -57,11 +58,14 @@ class FILST(BaseModel):
     resp: Optional[str] = Field(None, description="Responsible person/group (max 4 characters)")
     pri: bool = Field(False, description="Print all current FILST lines")
     
-    # Auto-generated field
-    input: str = Field(default="", init=False, description="Generated input string")
+    @property
+    def identifier(self) -> str:
+        """Get unique identifier for this FILST statement."""
+        return self.name 
+    
 
-    @model_validator(mode='after')
-    def build_input_string(self) -> 'FILST':
+    
+    def _build_input_string(self) -> None:
         """Build input string and run instance-level validation."""
         
         # Execute instance-level validation rules
@@ -88,25 +92,6 @@ class FILST(BaseModel):
                 parts.append(f"RESP={self.resp}")
 
         self.input = " ".join(parts)
-        return self
-    
-    def execute_cross_container_validation(self, sd_model) -> list:
-        """
-        Execute cross-container validation rules for this FILST instance.
-        
-        This method is called when the FILST is added to the SD_BASE model.
-        """
-        context = ValidationContext(
-            current_object=self,
-            full_model=sd_model  # This enables access to all containers
-        )
-        
-        # Execute model-level validation rules
-        return execute_validation_rules(self, context, level='model')
-
-    def __str__(self) -> str:
         return self.input
     
-    def formatted(self) -> str:
-        """Legacy method for backward compatibility."""
-        return self.input
+    

@@ -94,17 +94,15 @@ DECAS(ls="ULS", bas=[(101,102)], greco="A")
             return v
         return normalize_cases(v)
     
-    def model_post_init(self, __context):
-        """Post-initialization to handle greco parameter integration."""
-        # If we have both bas and greco, integrate greco into the Cases object
+
+
+    def _build_input_string(self) -> None:
+
+         # If we have both bas and greco, integrate greco into the Cases object
         if self.bas is not None and self.greco is not None and isinstance(self.bas, Cases):
             if not self.bas.greco:  # Only set if not already set
                 self.bas.greco = self.greco
-        
-        # Build the input string after all initialization
-        self._build_input_string()
 
-    def _build_input_string(self) -> None:
         """Build the input string (pure formatting logic)."""
         parts = ["DECAS", f"LS={self.ls}"]
 

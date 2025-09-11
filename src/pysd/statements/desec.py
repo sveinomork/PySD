@@ -1,11 +1,11 @@
 from __future__ import annotations
 from typing import Optional, Tuple, Union
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
 from ..validation.rule_system import execute_validation_rules
 from ..validation.core import ValidationContext
+from .statement_base import StatementBase
 
-
-class DESEC(BaseModel):
+class DESEC(StatementBase):
     """
     Represents the DESEC statement used for defining design sections and their geometry.
     
@@ -68,11 +68,10 @@ class DESEC(BaseModel):
     y: Optional[float] = Field(0.0, description="Y-coordinate")
     z: Optional[float] = Field(0.0, description="Z-coordinate")
     
-    # Auto-generated fields
-    id: str = Field(default="", init=False, description="Unique identifier")
-    input: str = Field(default="", init=False, description="Generated input string")
-
-    def model_post_init(self, __context):
+  
+  
+    @property
+    def identifier(self) -> str:
         """Generate unique ID and input string for this DESEC statement."""
         # Use pa as base since it's required
         fs_str = ""
@@ -89,20 +88,11 @@ class DESEC(BaseModel):
             else:
                 hs_str = f"_HS{self.hs[0]}-{self.hs[1]}"
         
-        self.id = f"DESEC_{self.pa}{fs_str}{hs_str}"
+        return f"{self.pa}{fs_str}{hs_str}"
         
-        # Generate the input string
-        self.build_input_string()
+     
 
-    @field_validator('pa')
-    @classmethod
-    def validate_part_name_length(cls, v):
-        """Validate part name length."""
-        if len(v) > 8:
-            raise ValueError("Structural part identity (PA) cannot exceed 8 characters")
-        return v
-
-    def build_input_string(self) -> str:
+    def _build_input_string(self) -> str:
         """Build the DESEC input string."""
         parts = ["DESEC", f"PA={self.pa}"]
         
@@ -140,11 +130,4 @@ class DESEC(BaseModel):
         self.input = " ".join(parts)
         return self.input
     
-    def validate_cross_references(self, context: ValidationContext) -> None:
-        """Validate cross-references with other containers."""
-        if context.full_model is None:
-            return
-        execute_validation_rules(self, context)
-
-    def __str__(self) -> str:
-        return self.input if self.input else self.build_input_string()
+    

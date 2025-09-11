@@ -1,9 +1,9 @@
 from __future__ import annotations
 from typing import Optional, Tuple, Union, Literal
-from pydantic import BaseModel, Field, field_validator, model_validator
-from ..validation.rule_system import execute_validation_rules
-from ..validation.core import ValidationContext
+from pydantic import  Field
+
 from .cases import Cases
+from .statement_base import StatementBase
 
 # Define Literals for the TAB and UR types to ensure valid options
 TabType = Literal[
@@ -17,7 +17,7 @@ UrType = Literal[
     'CZ', 'CT', 'MS', 'NS'
 ]
 
-class TABLE(BaseModel):
+class TABLE(StatementBase):
     """
     Represents the TABLE statement to order print of tables.
 
@@ -114,49 +114,51 @@ class TABLE(BaseModel):
 
     # Auto-generated fields
     id: str = Field(default="", init=False, description="Unique identifier")
-    input: str = Field(default="", init=False, description="Generated input string")
-
-    def model_post_init(self, __context):
-        """Generate unique ID and input string for this TABLE statement."""
+ 
+    @property
+    def identifier(self) -> str:
+        """Get descriptive identifier based on TABLE purpose."""
+        # Start with the table type
         if self.tab:
-            self.id = f"TABLE_TAB_{self.tab}"
+            base = f"TAB_{self.tab}"
         elif self.ur:
-            self.id = f"TABLE_UR_{self.ur}"
+            base = f"UR_{self.ur}"
         else:
-            self.id = "TABLE_UNKNOWN"
-            
-        # Add filters to make ID more specific if needed
-        if self.pa:
-            self.id += f"_{self.pa}"
+            base = "TABLE"
         
-        # Generate the input string
-        self.build_input_string()
+        # Add key distinguishing features
+        parts = [base]
+        
+        if self.pa:
+            parts.append(f"PA_{self.pa}")
+        
+        if self.fs:
+            if isinstance(self.fs, tuple):
+                parts.append(f"FS_{self.fs[0]}_{self.fs[1]}")
+            else:
+                parts.append(f"FS_{self.fs}")
+        
+        if self.hs:
+            if isinstance(self.hs, tuple):
+                parts.append(f"HS_{self.hs[0]}_{self.hs[1]}")
+            else:
+                parts.append(f"HS_{self.hs}")
+        
+        if self.ls:
+            parts.append(f"LS_{self.ls}")
+        
+        # Create final identifier
+        identifier = "_".join(parts)
+        
+        # If too long, use hash of the full identifier
+        if len(identifier) > 50:
+            return f"TABLE_{abs(hash(identifier)):x}"
+        
+        return identifier
+        
 
-    @model_validator(mode='after')
-    def validate_modes(self) -> 'TABLE':
-        """Validate that exactly one of tab or ur is specified."""
-        if (self.tab is None and self.ur is None) or \
-           (self.tab is not None and self.ur is not None):
-            raise ValueError("Exactly one of 'tab' or 'ur' must be specified for a TABLE statement.")
-        return self
 
-    @field_validator('nd')
-    @classmethod
-    def validate_nd(cls, v):
-        """Validate number of digits is reasonable."""
-        if v is not None and (v < 0 or v > 10):
-            raise ValueError("Number of digits (nd) must be between 0 and 10")
-        return v
-
-    @field_validator('tv')
-    @classmethod
-    def validate_tv(cls, v):
-        """Validate threshold value is positive."""
-        if v is not None and v < 0:
-            raise ValueError("Threshold value (tv) must be non-negative")
-        return v
-
-    def build_input_string(self) -> str:
+    def _build_input_string(self) -> str:
         """Build the TABLE input string."""
         parts = ["TABLE"]
 
@@ -240,11 +242,3 @@ class TABLE(BaseModel):
         self.input = " ".join(parts)
         return self.input
 
-    def validate_cross_references(self, context: ValidationContext) -> None:
-        """Validate cross-references with other containers."""
-        if context.full_model is None:
-            return
-        execute_validation_rules(self, context)
-
-    def __str__(self) -> str:
-        return self.build_input_string() if not self.input else self.input

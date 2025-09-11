@@ -1,11 +1,11 @@
 from __future__ import annotations
 from typing import Optional, List, Literal
-from pydantic import BaseModel, Field, field_validator, model_validator
-from ..validation.rule_system import execute_validation_rules
-from ..validation.core import ValidationContext
+from pydantic import  Field 
 
 
-class LORES(BaseModel):
+from .statement_base import StatementBase
+
+class LORES(StatementBase):
     """
     Represents the LORES statement for defining load resultants.
 
@@ -73,45 +73,16 @@ class LORES(BaseModel):
 
     # Auto-generated fields
     id: str = Field(default="", init=False, description="Unique identifier")
-    input: str = Field(default="", init=False, description="Generated input string")
+  
 
-    def model_post_init(self, __context):
-        """Generate unique ID and input string for this LORES statement."""
-        manual_mode = self.lc is not None and self.part is not None
-        
-        if manual_mode:
-            self.id = f"LORES_{self.lc}_{self.part}"
-        elif self.sin:
-            self.id = "LORES_SIN"
-        elif self.pri_olc:
-            self.id = "LORES_PRI_OLC"
-        elif self.pri_alc:
-            self.id = "LORES_PRI_ALC"
-        else:
-            self.id = "LORES_UNKNOWN"
-        
-        # Generate the input string
-        self.build_input_string()
-
-    @model_validator(mode='after')
-    def validate_modes(self) -> 'LORES':
-        """Validate that exactly one mode is used."""
-        manual_mode = self.lc is not None and self.part is not None
-        sin_mode = self.sin
-        pri_olc_mode = self.pri_olc
-        pri_alc_mode = self.pri_alc
-
-        modes = [manual_mode, sin_mode, pri_olc_mode, pri_alc_mode]
-        if sum(modes) != 1:
-            raise ValueError("Exactly one mode must be used: (lc, part), sin, pri_olc, or pri_alc.")
-        
-        # Validate resultants for manual mode
-        if manual_mode and not (1 <= len(self.resultants) <= 6):
-            raise ValueError("Number of load resultants must be between 1 and 6.")
-        
-        return self
+   
+    @property
+    def identifier(self) -> str:
+        """Get unique identifier for this LOADC statement."""
+        return str(1)
+   
     
-    def build_input_string(self) -> str:
+    def _build_input_string(self) -> str:
         """Build the LORES input string."""
         manual_mode = self.lc is not None and self.part is not None
         
@@ -131,11 +102,3 @@ class LORES(BaseModel):
         self.input = " ".join(parts)
         return self.input
     
-    def validate_cross_references(self, context: ValidationContext) -> None:
-        """Validate cross-references with other containers."""
-        if context.full_model is None:
-            return
-        execute_validation_rules(self, context)
-
-    def __str__(self) -> str:
-        return self.input if self.input else self.build_input_string()

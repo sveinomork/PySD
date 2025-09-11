@@ -1,11 +1,11 @@
 from __future__ import annotations
 from typing import Optional, Tuple, List, Union
-from pydantic import BaseModel, Field, field_validator, model_validator
-from ..validation.rule_system import execute_validation_rules
-from ..validation.core import ValidationContext
+from pydantic import  Field
 
 
-class XTFIL(BaseModel):
+from .statement_base import StatementBase
+
+class XTFIL(StatementBase):
     """Define XTRACT plot files.
     
     Data is fetched from an OLC-file and optionally from a DEC-file.
@@ -89,47 +89,15 @@ class XTFIL(BaseModel):
     
     # Auto-generated fields
     key: str = Field(default="", init=False, description="Key for dictionary storage")
-    input: str = Field(default="", init=False, description="Generated input string")
-
-    def model_post_init(self, __context):
-        """Generate unique key and input string for this XTFIL statement."""
-        self.key = f"XTFIL_{self.fn}_{self.pa}"
-        # Generate the input string
-        self.build_input_string()
-
-    @field_validator('fn')
-    @classmethod
-    def validate_filename_length(cls, v):
-        """Validate filename length."""
-        if len(v) > 32:
-            raise ValueError("Plot file name (FN) cannot exceed 32 characters")
-        return v
+ 
+    @property
+    def identifier(self) -> str:
+        """Get unique identifier for this XTFIL statement."""
+        return self.key
     
-    @field_validator('pa')
-    @classmethod
-    def validate_part_name_length(cls, v):
-        """Validate part name length."""
-        if len(v) > 8:
-            raise ValueError("Structural part name (PA) cannot exceed 8 characters")
-        return v
     
-    @field_validator('reb_tol', 'ten_tol', 'thi_tol')
-    @classmethod
-    def validate_positive_tolerances(cls, v):
-        """Validate that tolerances are positive."""
-        if v <= 0:
-            raise ValueError("Tolerance values must be positive")
-        return v
-    
-    @field_validator('num_levels')
-    @classmethod
-    def validate_num_levels(cls, v):
-        """Validate number of levels."""
-        if v < 1:
-            raise ValueError("Number of legend levels must be positive")
-        return v
 
-    def build_input_string(self) -> str:
+    def _build_input_string(self) -> str:
         """Build the XTFIL input string."""
         # Generate the key
         key_parts = [f"FN={self.fn}"]
@@ -199,11 +167,4 @@ class XTFIL(BaseModel):
         self.input = " ".join(parts)
         return self.input
     
-    def validate_cross_references(self, context: ValidationContext) -> None:
-        """Validate cross-references with other containers."""
-        if context.full_model is None:
-            return
-        execute_validation_rules(self, context)
-
-    def __str__(self) -> str:
-        return self.input if self.input else self.build_input_string()
+    

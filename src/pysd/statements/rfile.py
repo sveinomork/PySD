@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Optional, Literal, TypeAlias, Final
-from pydantic import BaseModel, Field, model_validator
-from ..validation.rule_system import execute_validation_rules
-from ..validation.core import ValidationContext
+from pydantic import  Field
+
+from .statement_base import StatementBase
 
 # Type aliases to make the types more meaningful and colorful in IDE
 FilePath: TypeAlias = str
@@ -12,7 +12,7 @@ ElementType: TypeAlias = Literal["SHE", "SOL"]
 # Constants for default values
 DEFAULT_UNIT_FACTOR: Final[int] = 1000  # Default for both length and force units
 
-class RFILE(BaseModel):
+class RFILE(StatementBase):
     """Defines input and result file references for a Sestra finite element (FE) analysis.
     
     The RFILE statement specifies the location and properties of input/result files for analysis.
@@ -111,17 +111,14 @@ class RFILE(BaseModel):
     # Auto-generated field
     input: str = Field(default="", init=False, description="Generated input string")
 
-    @model_validator(mode='after')
-    def build_input_string(self) -> 'RFILE':
-        """Build input string and run instance-level validation."""
-        
-        # Execute instance-level validation rules
-        context = ValidationContext(current_object=self)
-        issues = execute_validation_rules(self, context, level='instance')
-        
-        # Handle issues according to global config
-        for issue in issues:
-            context.add_issue(issue)  # Auto-raises if configured
+    @property
+    def identifier(self) -> str:
+        """Get unique identifier for this RFILE statement."""
+        return str(1)
+
+
+   
+    def _build_input_string(self) -> None:
         
         # Build input string
         parts: list[str] = ["RFILE"]
@@ -147,25 +144,6 @@ class RFILE(BaseModel):
             parts.append(f"TYP={self.typ}")
         
         self.input = " ".join(parts)
-        return self
-    
-    def execute_cross_container_validation(self, sd_model) -> list:
-        """
-        Execute cross-container validation rules for this RFILE instance.
-        
-        This method is called when the RFILE is added to the SD_BASE model.
-        """
-        context = ValidationContext(
-            current_object=self,
-            full_model=sd_model  # This enables access to all containers
-        )
-        
-        # Execute model-level validation rules
-        return execute_validation_rules(self, context, level='model')
-
-    def __str__(self) -> str:
         return self.input
     
-    def formatted(self) -> str:
-        """Legacy method for backward compatibility."""
-        return self.input
+    

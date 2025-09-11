@@ -9,12 +9,12 @@ analysis-specific settings.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
+from pydantic import  Field 
 from typing import Optional, Tuple, Literal, Union
+from .statement_base import StatementBase
 
 
-@dataclass
-class DEPAR:
+class DEPAR(StatementBase):
     """
     Design Parameters statement for global structural analysis settings.
     
@@ -56,58 +56,39 @@ class DEPAR:
         >>> print(depar3.input)
         DEPAR PRI=
     """
+
+    n_lay: Optional[int] = Field(None,description="Number of integration layers through shell thickness")
+    n_ite: Optional[int] = Field(None,description="Maximum number of design iterations")
+    d_sig: Optional[Union[float, Tuple[float, float]]] = Field(None,description="Maximum stress deviation before iteration stops")
+    t_tol: Optional[float] = Field(None,description="Shell thickness tolerance in meters")
+    p_tol: Optional[float] = Field(None,description="Shell thickness tolerance in %")
+    z_tol: Optional[float] = Field(None,description="Rebar layer z-coordinate tolerance in meters")
+    z_che: Optional[bool] = Field(None,description="If True, rebar layer x3-coordinate check will not be carried out")
+    w_che: Optional[bool] = Field(None,description="If True, crack check will not be carried out for CRW limit state")
+    u_fai: Optional[int] = Field(None,description="UR to report when design iteration failure occurs")
+    u_she: Optional[int] = Field(None,description="UR to report when no shear tensile capacity in concrete")
+    u_fat: Optional[int] = Field(None,description="UR to report when rebar yields for fatigue")
+    e_mod: Optional[float] = Field(None,description="Linear analysis modulus of elasticity in kPa (for BASCO TYP=F)")
+    p_rat: Optional[float] = Field(None,description="Linear analysis Poisson's ratio (for BASCO TYP=F, default: 0)")
+    i_wav: Optional[Literal[1, -1]] = Field(None,description="Imaginary wave sign (+1 or -1, required if waves present)")
+    d_cod: Optional[Literal["NS", "EC", "OS", "GM"]] = Field(None,description="Design code ('NS', 'EC', 'OS', 'GM', default: 'NS')")
+    pri: Optional[bool] = Field(None,description="If True, DEPAR data will be printed in output file")
     
-    n_lay: Optional[int] = None
-    n_ite: Optional[int] = None
-    d_sig: Optional[Union[float, Tuple[float, float]]] = None
-    t_tol: Optional[float] = None
-    p_tol: Optional[float] = None
-    z_tol: Optional[float] = None
-    z_che: Optional[bool] = None
-    w_che: Optional[bool] = None
-    u_fai: Optional[int] = None
-    u_she: Optional[int] = None
-    u_fat: Optional[int] = None
-    e_mod: Optional[float] = None
-    p_rat: Optional[float] = None
-    i_wav: Optional[Literal[1, -1]] = None
-    d_cod: Optional[Literal["NS", "EC", "OS", "GM"]] = None
-    pri: Optional[bool] = None
-    
-    def __post_init__(self) -> None:
-        """Validate input parameters."""
-        if self.n_lay is not None and self.n_lay <= 0:
-            raise ValueError("N_LAY must be a positive integer")
-        
-        if self.n_ite is not None and self.n_ite <= 0:
-            raise ValueError("N_ITE must be a positive integer")
-        
-        if self.d_sig is not None:
-            if isinstance(self.d_sig, tuple):
-                if len(self.d_sig) != 2:
-                    raise ValueError("D_SIG tuple must contain exactly 2 values (stress, factor)")
-                if self.d_sig[0] < 1.0:
-                    raise ValueError("D_SIG stress value must be >= 1.0 kPa")
-            elif self.d_sig < 1.0:
-                raise ValueError("D_SIG must be >= 1.0 kPa")
-        
-        if self.t_tol is not None and self.t_tol < 0:
-            raise ValueError("T_TOL must be non-negative")
-        
-        if self.p_tol is not None and self.p_tol < 0:
-            raise ValueError("P_TOL must be non-negative")
-        
-        if self.z_tol is not None and self.z_tol < 0:
-            raise ValueError("Z_TOL must be non-negative")
-        
-        if self.i_wav is not None and self.i_wav not in [1, -1]:
-            raise ValueError("I_WAV must be either 1 or -1")
-        
-        if self.d_cod is not None and self.d_cod not in ["NS", "EC", "OS", "GM"]:
-            raise ValueError("D_COD must be one of: NS, EC, OS, GM")
     
     @property
-    def input(self) -> str:
+    def identifier(self) -> str:
+        """Get unique identifier for this DEPAR statement."""
+        return str(1)
+  
+    def _build_input_string(self) -> str:
+
+        def _format_number(self, value: float) -> str:
+            """Format a number for output, handling integers and floats appropriately."""
+            if value == int(value):
+                return str(int(value))
+            else:
+                return str(value)
+
         """Generate the DEPAR input string."""
         parts = ["DEPAR"]
         
@@ -120,18 +101,18 @@ class DEPAR:
         
         if self.d_sig is not None:
             if isinstance(self.d_sig, tuple):
-                parts.append(f"D_SIG={self._format_number(self.d_sig[0])},{self._format_number(self.d_sig[1])}")
+                parts.append(f"D_SIG={_format_number(self.d_sig[0])},{_format_number(self.d_sig[1])}")
             else:
-                parts.append(f"D_SIG={self._format_number(self.d_sig)}")
+                parts.append(f"D_SIG={_format_number(self.d_sig)}")
         
         if self.t_tol is not None:
-            parts.append(f"T_TOL={self._format_number(self.t_tol)}")
+            parts.append(f"T_TOL={_format_number(self.t_tol)}")
         
         if self.p_tol is not None:
-            parts.append(f"P_TOL={self._format_number(self.p_tol)}")
+            parts.append(f"P_TOL={_format_number(self.p_tol)}")
         
         if self.z_tol is not None:
-            parts.append(f"Z_TOL={self._format_number(self.z_tol)}")
+            parts.append(f"Z_TOL={_format_number(self.z_tol)}")
         
         if self.z_che is not None:
             parts.append("Z_CHE=")
@@ -149,10 +130,10 @@ class DEPAR:
             parts.append(f"U_FAT={self.u_fat}")
         
         if self.e_mod is not None:
-            parts.append(f"E_MOD={self._format_number(self.e_mod)}")
+            parts.append(f"E_MOD={_format_number(self.e_mod)}")
         
         if self.p_rat is not None:
-            parts.append(f"P_RAT={self._format_number(self.p_rat)}")
+            parts.append(f"P_RAT={_format_number(self.p_rat)}")
         
         if self.i_wav is not None:
             parts.append(f"I_WAV={self.i_wav}")
@@ -165,9 +146,4 @@ class DEPAR:
         
         return " ".join(parts)
     
-    def _format_number(self, value: float) -> str:
-        """Format a number for output, handling integers and floats appropriately."""
-        if value == int(value):
-            return str(int(value))
-        else:
-            return str(value)
+    

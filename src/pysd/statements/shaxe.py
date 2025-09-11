@@ -1,11 +1,10 @@
 from __future__ import annotations
 from typing import Optional, Tuple, Literal
-from pydantic import BaseModel, Field, model_validator
-from ..validation.rule_system import execute_validation_rules
-from ..validation.core import ValidationContext
+from pydantic import Field
 
+from .statement_base import StatementBase
 
-class SHAXE(BaseModel):
+class SHAXE(StatementBase):
     """
     Define local 1-2-3 axes for FE sections based on one of three mutually exclusive modes:
 
@@ -78,21 +77,19 @@ class SHAXE(BaseModel):
 
     al: float = Field(0.0, description="AL: Rotation angle (degrees) for adjusting the 1-axis direction toward the 2-axis")
 
-    # Auto-generated fields
-    input: str = Field(default="", init=False, description="Generated input string")
+ 
     key: str = Field(default="", init=False, description="Unique key for container storage")
 
-    @model_validator(mode='after')
-    def build_input_string_and_key(self) -> 'SHAXE':
+    @property
+    def identifier(self) -> str:
+        """Get unique identifier for this SHAXE statement."""
+        return self.key
+
+
+   
+    def _build_input_string(self) -> None:
         """Build input string, key, and run instance-level validation."""
         
-        # Execute instance-level validation rules
-        context = ValidationContext(current_object=self)
-        issues = execute_validation_rules(self, context, level='instance')
-        
-        # Handle issues according to global config
-        for issue in issues:
-            context.add_issue(issue)  # Auto-raises if configured
         
         # Generate the key
         key_parts = [self.pa]
@@ -149,26 +146,6 @@ class SHAXE(BaseModel):
         # Join all parts with spaces
         self.input = " ".join(parts)
         
-        return self
-    
-    def execute_cross_container_validation(self, sd_model) -> list:
-        """
-        Execute cross-container validation rules for this SHAXE instance.
-        
-        This method is called when the SHAXE is added to the SD_BASE model,
-        allowing validation against other containers.
-        """
-        context = ValidationContext(
-            current_object=self,
-            full_model=sd_model  # This enables access to all containers
-        )
-        
-        # Execute model-level (cross-container) validation rules
-        return execute_validation_rules(self, context, level='model')
-
-    def __str__(self) -> str:
         return self.input
     
-    def formatted(self) -> str:
-        """Legacy method for backward compatibility."""
-        return self.input
+    

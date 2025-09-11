@@ -3,9 +3,10 @@ from typing import Optional, Tuple, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 from ..validation.rule_system import execute_validation_rules
 from ..validation.core import ValidationContext
+from .statement_base import StatementBase
 
 
-class CMPEC(BaseModel):
+class CMPEC(StatementBase):
     """
     Define concrete material property sets according to EuroCode 2.
     Most parameters are optional. Values belonging to the chosen concrete quality will be used if not specified.
@@ -59,59 +60,15 @@ class CMPEC(BaseModel):
     # Print options
     pri: Optional[Literal['', 'TAB']] = Field(None, description="Print options")
     
-    # Auto-generated fields
-    input: str = Field(default="", init=False, description="Generated input string")
 
-    @field_validator('id')
-    @classmethod
-    def validate_id_range(cls, v):
-        """Validate ID is within acceptable range."""
-        if v is not None and not (1 <= v <= 99999999):
-            raise ValueError("ID must be between 1 and 99999999")
-        return v
+    @property
+    def identifier(self) -> str:
+        """Get unique identifier for this GRECO statement."""
+        return self.id
 
-    @field_validator('gr')
-    @classmethod
-    def validate_concrete_grade(cls, v):
-        """Validate concrete grade format and range."""
-        if v is not None:
-            if not v.startswith('B'):
-                raise ValueError("Concrete grade (GR) must start with 'B'")
-            try:
-                grade = int(v[1:])
-                if not (12 <= grade <= 90):
-                    raise ValueError("Concrete grade must be between B12 and B90")
-            except ValueError:
-                raise ValueError("Invalid concrete grade format")
-        return v
-
-    @field_validator('rh')
-    @classmethod
-    def validate_density(cls, v):
-        """Validate density range for lightweight concrete."""
-        if v is not None and not (1150 <= v <= 2150):
-            raise ValueError("Density (RH) must be between 1150 and 2150 kg/m3")
-        return v
-
-    @field_validator('pa')
-    @classmethod
-    def validate_part_name(cls, v):
-        """Validate structural part name length."""
-        if v is not None and len(v) > 8:
-            raise ValueError("Structural part (PA) cannot exceed 8 characters")
-        return v
-
-    @model_validator(mode='after')
-    def build_input_string(self) -> 'CMPEC':
+    def _build_input_string(self) -> None:
         """Build input string and run instance-level validation."""
         
-        # Execute instance-level validation rules
-        context = ValidationContext(current_object=self)
-        issues = execute_validation_rules(self, context, level='instance')
-        
-        # Handle issues according to global config
-        for issue in issues:
-            context.add_issue(issue)  # Auto-raises if configured
 
         # Build the CMPEC input string
         parts = ["CMPEC"]
@@ -178,24 +135,4 @@ class CMPEC(BaseModel):
         
         return self
     
-    def execute_cross_container_validation(self, sd_model) -> list:
-        """
-        Execute cross-container validation rules for this CMPEC instance.
-        
-        This method is called when the CMPEC is added to the SD_BASE model,
-        allowing validation against other containers.
-        """
-        context = ValidationContext(
-            current_object=self,
-            full_model=sd_model  # This enables access to all containers
-        )
-        
-        # Execute model-level (cross-container) validation rules
-        return execute_validation_rules(self, context, level='model')
-
-    def __str__(self) -> str:
-        return self.input
     
-    def formatted(self) -> str:
-        """Legacy method for backward compatibility."""
-        return self.input
