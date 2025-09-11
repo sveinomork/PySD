@@ -1,11 +1,12 @@
 from __future__ import annotations
 from typing import Optional, Tuple, Union, Literal
-from pydantic import BaseModel, Field
+from pydantic import Field
 from ..validation.rule_system import execute_validation_rules
 from ..validation.core import ValidationContext
+from .statement_base import StatementBase
 
 
-class RELOC(BaseModel):
+class RELOC(StatementBase):
     """
     Defines rebar locations and properties.
     
@@ -65,11 +66,14 @@ class RELOC(BaseModel):
     # Auto-generated fields
     input: str = Field(default="", init=False, description="Generated input string")
     
-    def model_post_init(self, __context):
-        """Generate input string after model creation."""
-        self.build_input_string()
+    @property
+    def identifier(self) -> str:
+        """Get unique identifier for this RELOC statement."""
+        return f'{self.id}_{self.pa}_{self.fs}_{self.hs}'
+
+
     
-    def build_input_string(self) -> str:
+    def _build_input_string(self) -> str:
         """Build the RELOC input string."""
         parts = ["RELOC", f"ID={self.id}"]
         
@@ -114,11 +118,4 @@ class RELOC(BaseModel):
         self.input = " ".join(parts)
         return self.input
     
-    def validate_cross_references(self, context: ValidationContext) -> None:
-        """Validate cross-references with other containers."""
-        if context.full_model is None:
-            return
-        execute_validation_rules(self, context)
     
-    def __str__(self) -> str:
-        return self.input if self.input else self.build_input_string()

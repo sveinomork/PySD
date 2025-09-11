@@ -244,28 +244,33 @@ class CaseBuilder:
 
 
 # Helper function to normalize inputs
-def normalize_cases(value: Union[str, List[CaseRange], CaseBuilder, Cases, int]) -> Cases:
+def normalize_cases(value: Union[str, List[CaseRange], CaseBuilder, Cases, int, tuple]) -> Cases:
     """
     Convert various input formats to Cases object.
     
     Supports:
     - String: "0,45-90" or "300-305:A"
     - List: [0, (45, 90)] or [0, (45, 90, 5)]
+    - Tuple: (101, 102) - single range tuple
+    - Int: 101 - single case number
     - CaseBuilder: CaseBuilder().add(0).add(45, 90)
     - Cases: Already a Cases object
-    - int: Single case number
     """
     if isinstance(value, str):
         return Cases.parse(value)
     elif isinstance(value, list):
         return Cases(ranges=value)
+    elif isinstance(value, tuple):
+        # Handle single tuple as a range: (101, 102) -> [(101, 102)]
+        return Cases(ranges=[value])
+    elif isinstance(value, int):
+        # Handle single integer as a single case: 101 -> [101]
+        return Cases(ranges=[value])
     elif isinstance(value, CaseBuilder):
         # Use the public interface instead of protected method
         return Cases(ranges=value.ranges, greco=value.greco)
     elif isinstance(value, Cases):
         return value
-    elif isinstance(value, int):  # type: ignore[misc]
-        return Cases(ranges=[value])
     else:
         # Handle legacy formats for backward compatibility
         if hasattr(value, 'cases') and hasattr(value, 'version'):

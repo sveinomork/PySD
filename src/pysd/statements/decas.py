@@ -1,11 +1,13 @@
 from __future__ import annotations
 from typing import Optional, Union, Literal
-from pydantic import BaseModel, Field, field_validator, model_validator
-import warnings
+from pydantic import Field, field_validator
 from .cases import Cases, normalize_cases, CaseRange
+from .statement_base import StatementBase
+from .greco import GrecoID
 
 
-class DECAS(BaseModel):
+
+class DECAS(StatementBase):
     """
 ### Usage
 Defines design cases and their governing load combinations for structural verification.
@@ -16,13 +18,29 @@ Defines design cases and their governing load combinations for structural verifi
 DECAS(ls="ULS", ilc=[101, 102, 103])
 # -> 'DECAS LS=ULS ILC=101,102,103'
 
+# Single design case with one load case
+DECAS(ls="ULS", bas=101)
+# -> 'DECAS LS=ULS BAS=101'
+
 # Design case with phase angles using CaseBuilder
 DECAS(ls="ULS", pha=CaseBuilder().add(0).add(45, 90))
 # -> 'DECAS LS=ULS PHA=0,45-90'
 
 # Design case with BAS and GRECO letter
-DECAS(ls="FLS", bas=CaseBuilder().add(300, 305).add_greco("A"))
+DECAS(ls="FLS", bas="300-305", greco="A")
 # -> 'DECAS LS=FLS BAS=300-305:A'
+
+# Using tuple format with GRECO
+DECAS(ls="ULS", bas=(101,102), greco="A")
+# -> 'DECAS LS=ULS BAS=101-102:A'
+
+# Using tuple format with step
+DECAS(ls="ULS", bas=(101,110,2), greco="B")
+# -> 'DECAS LS=ULS BAS=101-110-2:B'
+
+# Using list format with GRECO  
+DECAS(ls="ULS", bas=[(101,102)], greco="A")
+# -> 'DECAS LS=ULS BAS=101-102:A'
 ```
 
 ### Parameters
@@ -36,33 +54,37 @@ DECAS(ls="FLS", bas=CaseBuilder().add(300, 305).add_greco("A"))
 - Phase angles (PHA) support stepped ranges for dynamic analysis.
 - BAS can include GRECO letters for specific load combination versions.
 """
-    ls: Literal['ULS', 'ALS', 'SLS', 'CRW', 'FLS']
+    ls: Literal['ULS', 'ALS', 'SLS', 'CRW', 'FLS'] = Field(..., description="Load scenario type: ULS=Ultimate Limit State, ALS=Accidental Limit State, SLS=Serviceability Limit State, CRW=Controlled Response Wave, FLS=Fatigue Limit State")
 
     # Optional IDs for various features
-    stl: Optional[int] = None
-    dwp: Optional[int] = None
-    cw: Optional[int] = None
-    dcw: Optional[int] = None
-    dtc: Optional[int] = None
+    stl: Optional[int] = Field(None, description="Steel ID reference")
+    dwp: Optional[int] = Field(None, description="Deep water point ID reference")
+    cw: Optional[int] = Field(None, description="Controlled wave ID (only for LS=CRW)")
+    dcw: Optional[int] = Field(None, description="Design controlled wave ID (only for LS=CRW)")
+    dtc: Optional[int] = Field(None, description="Design time constant ID (only for LS=CRW)")
 
     # Flags
-    por: bool = False
-    emp_ok: bool = False
+    por: bool = Field(False, description="Enable pore pressure effects")
+    emp_ok: bool = Field(False, description="Enable EMP=OK mode (not for LS=FLS)")
 
     # Phase angles for dynamic loads
-    pha: Optional[Union[Literal['ALL'], str, list[CaseRange], Cases]] = None
+    pha: Optional[Union[Literal['ALL'], str, list[CaseRange], Cases]] = Field(None, description="Phase angles for dynamic analysis. Use 'ALL' for all phases or specify ranges")
 
-    # Load case definitions - now support Cases and strings too
-    ilc: Optional[Union[str, list[CaseRange], Cases]] = None
-    olc: Optional[Union[str, list[CaseRange], Cases]] = None
-    plc: Optional[Union[str, list[CaseRange], Cases]] = None
-    elc: Optional[Union[str, list[CaseRange], Cases]] = None
-    bas: Optional[Union[str, list[CaseRange], Cases]] = None
+    # Load case definitions - now use unified formatting with cleaner types
+    ilc: Optional[Union[str, CaseRange, list[CaseRange], Cases]] = Field(None, description="Internal Load Cases")
+    olc: Optional[Union[str, CaseRange, list[CaseRange], Cases]] = Field(None, description="Output Load Cases")
+    plc: Optional[Union[str, CaseRange, list[CaseRange], Cases]] = Field(None, description="Primary Load Cases")
+    elc: Optional[Union[str, CaseRange, list[CaseRange], Cases]] = Field(None, description="Environmental Load Cases")
+    bas: Optional[Union[str, CaseRange, list[CaseRange], Cases]] = Field(None, description="BAS load combinations (required for LS=FLS). Use with greco parameter to append GRECO reference.")
 
     # Optional text description
-    txt: Optional[str] = None
+    txt: Optional[str] = Field(None, description="Optional text description (max 80 chars)")
+    greco: Optional[GrecoID] = Field(None, description="Optional GRECO letter for BAS load combinations (appended as :A, :B, etc.)")
 
-    input: str = Field(default="DECAS", init=False)
+    @property
+    def identifier(self) -> str:
+        """Get unique identifier for this DECAS statement."""
+        return self.ls
 
     @field_validator('pha', 'ilc', 'olc', 'plc', 'elc', 'bas', mode='before')
     @classmethod
@@ -71,41 +93,19 @@ DECAS(ls="FLS", bas=CaseBuilder().add(300, 305).add_greco("A"))
         if v is None or v == 'ALL':
             return v
         return normalize_cases(v)
+    
+    def model_post_init(self, __context):
+        """Post-initialization to handle greco parameter integration."""
+        # If we have both bas and greco, integrate greco into the Cases object
+        if self.bas is not None and self.greco is not None and isinstance(self.bas, Cases):
+            if not self.bas.greco:  # Only set if not already set
+                self.bas.greco = self.greco
+        
+        # Build the input string after all initialization
+        self._build_input_string()
 
-    @model_validator(mode='after')
-    def validate_decas_requirements(self) -> 'DECAS':
-        """Validate DECAS requirements and build input string."""
-        # --- Validation ---
-        if self.ls != 'CRW' and any([self.cw, self.dcw, self.dtc]):
-            raise ValueError("CW, DCW, and DTC are only applicable for LS=CRW.")
-
-        if self.ls == 'FLS' and self.emp_ok:
-            raise ValueError("EMP=OK is not implemented for LS=FLS.")
-
-        if self.ls == 'FLS':
-            if not self.bas:
-                raise ValueError("BAS must be provided for LS=FLS.")
-            
-            # Convert to string for validation
-            if isinstance(self.bas, Cases):
-                bas_str = str(self.bas)
-            else:
-                bas_str = str(self.bas)
-            
-            # Check if it's a single range format (e.g., "101-106" or "101-106:A")
-            if ':' in bas_str:
-                range_part = bas_str.split(':')[0]
-            else:
-                range_part = bas_str
-            
-            # Simple check: should contain exactly one dash and no commas
-            if ',' in range_part or range_part.count('-') != 1:
-                warnings.warn(
-                    "For LS=FLS, BAS should be a single range (e.g., '101-106' or CaseBuilder().add(101, 106)) "
-                    "for correct damage accumulation.", UserWarning
-                )
-
-        # --- String Building ---
+    def _build_input_string(self) -> None:
+        """Build the input string (pure formatting logic)."""
         parts = ["DECAS", f"LS={self.ls}"]
 
         if self.stl is not None:
@@ -140,16 +140,23 @@ DECAS(ls="FLS", bas=CaseBuilder().add(300, 305).add_greco("A"))
         if self.elc is not None:
             parts.append(f"ELC={str(self.elc)}")
         if self.bas is not None:
-            parts.append(f"BAS={str(self.bas)}")
+            bas_str = str(self.bas)
+            # Check if the Cases object already has greco, otherwise use the separate greco field
+            if isinstance(self.bas, Cases) and self.bas.greco:
+                # Greco is already included in the Cases object
+                parts.append(f"BAS={bas_str}")
+            elif self.greco is not None:
+                # Use separate greco field if Cases doesn't have it
+                bas_str += f":{self.greco}"
+                parts.append(f"BAS={bas_str}")
+            else:
+                parts.append(f"BAS={bas_str}")
 
         if self.txt:
-            if len(self.txt) > 80:
-                raise ValueError("TXT cannot exceed 80 characters.")
             txt_val = f'"{self.txt}"' if ' ' in self.txt else self.txt
             parts.append(f"TXT={txt_val}")
 
         self.input = " ".join(parts)
-        return self
 
     def __str__(self) -> str:
         return self.input

@@ -108,11 +108,11 @@ class BASCO( StatementBase):
     - The `txt` field is appended to the last line if it fits, otherwise placed on a new line.
     - The `typ` and `ldf` fields are optional modifiers.
     """
-    id: int
-    load_cases: List[LoadCase]
-    typ: Optional[Literal['R', 'I', 'F']] = None
-    ldf: Optional[int] = None
-    txt: Optional[str] = None
+    id: int = Field(..., description="Identification number (1-99999999)")
+    load_cases: List[LoadCase] = Field(..., description="List of load cases with their source types and factors. Each load case can be ILC, OLC, ELC, BAS, PLC, or BLC with an optional factor")
+    typ: Optional[Literal['R', 'I', 'F']] = Field(None, description="Load type marker: None=Ordinary load, 'R'=Real part of complex wave, 'I'=Imaginary part of complex wave, 'F'=Use factors from FSFAC statement")
+    ldf: Optional[int] = Field(None, description="Reference to Location Dependent Factor defined with LDFAC statement")
+    txt: Optional[str] = Field(None, description="Identification text (max 80 chars)")
    
     @property
     def identifier(self) -> str:

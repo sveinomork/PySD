@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Any
+from typing import Optional, Any,Literal
 from pydantic import  Field, field_validator
 from .cases import Cases, normalize_cases
 
@@ -8,7 +8,7 @@ from .statement_base import StatementBase
 
 # Define the type for valid GRECO IDs (single uppercase letters A-Z)
 # Note: Using str instead of Literal to allow custom validation control
-# GrecoID = Literal['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
+GrecoID = Literal['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
 
 class GRECO(StatementBase):
     """

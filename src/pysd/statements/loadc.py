@@ -74,12 +74,30 @@ LOADC(pri=True)
 - Tuple syntax: LOADC(alc=(1,6), olc=(101,106)) automatically generates LOADC RN=1 LC=1-6 OLC=101-106
 """
 
-    run_number: Optional[int] = None
-    alc: Optional[Union[str, int, tuple[int, int], list[int], Cases]] = None
-    olc: Optional[Union[str, int, tuple[int, int], list[int], Cases]] = None
-    table: bool = False
-    pri: bool = False
-    comment: Optional[str] = None
+    run_number: Optional[int] = Field(
+        default=None,
+        description="Result file run number to reference (RN=n). If not provided and alc is a single integer or tuple, alc value will be used."
+    )
+    alc: Optional[Union[str, int, tuple[int, int], list[int], Cases]] = Field(
+        default=None,
+        description="Analysis Load Cases. Supports multiple formats including tuples for ranges. Must be used with olc. If single integer or tuple and run_number not set, will auto-set run_number."
+    )
+    olc: Optional[Union[str, int, tuple[int, int], list[int], Cases]] = Field(
+        default=None,
+        description="Output Load Cases. Supports multiple formats including tuples for ranges. Must be used with alc."
+    )
+    table: bool = Field(
+        default=False,
+        description="If True, indicates table-based input mode. Default is False."
+    )
+    pri: bool = Field(
+        default=False,
+        description="If True, indicates priority-based mode. Default is False."
+    )
+    comment: Optional[str] = Field(
+        default=None,
+        description="Optional comment to add at end of line (for RN and LC modes)."
+    )
 
     @property
     def identifier(self) -> str:

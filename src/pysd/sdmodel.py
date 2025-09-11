@@ -24,6 +24,7 @@ from .statements.shsec import SHSEC
 from .statements.rmpec import RMPEC
 from .statements.xtfil import XTFIL
 from .statements.headl import HEADL
+from .statements.statement_heading import HEADING
 from .statements.depar import DEPAR
 
 # Import container system
@@ -46,7 +47,7 @@ class StatementProtocol(Protocol):
 StatementType = Union[
     RFILE, SHAXE, DESEC, CMPEC, LOADC, LORES, BASCO, GRECO, 
     FILST, RETYP, RELOC, DECAS, TABLE, INCDF, EXECD, SHSEC, 
-    RMPEC, XTFIL, HEADL
+    RMPEC, XTFIL, HEADL, HEADING
 ]
 
 
@@ -69,6 +70,7 @@ class SD_BASE(BaseModel):
     rfile: List[RFILE] = Field(default_factory=list, description="RFILE statements")
     incdf: List[INCDF] = Field(default_factory=list, description="INCDF statements")
     headl: List[HEADL] = Field(default_factory=list, description="HEADL statements")
+    heading: List[HEADING] = Field(default_factory=list, description="HEADING comment blocks")
     shaxe: ShaxeContainer = Field(default_factory=ShaxeContainer, description="SHAXE statements with validation")
     shsec: ShsecContainer = Field(default_factory=ShsecContainer, description="SHSEC statements with validation")
     filst: List[FILST] = Field(default_factory=list, description="FILST statements")
@@ -166,6 +168,8 @@ class SD_BASE(BaseModel):
             self.incdf.append(item)
         elif isinstance(item, HEADL):
             self.headl.append(item)
+        elif isinstance(item, HEADING):
+            self.heading.append(item)
         elif isinstance(item, EXECD):
             self.execd.append(item)
         elif isinstance(item, DECAS):

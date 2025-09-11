@@ -22,14 +22,56 @@ def validate_retyp_instance(statement: 'RETYP', context: 'ValidationContext') ->
     """Validate individual RETYP statement."""
     issues = []
     
-    # ID range validation (already handled by Pydantic, but we can add additional context)
-    if statement.id > 99999999:
+    # ID range validation (moved from Pydantic validator)
+    if not (1 <= statement.id <= 99999999):
         issues.append(ValidationIssue(
             severity="error",
             code="RETYP_ID_RANGE",
-            message=f"RETYP ID {statement.id} exceeds maximum value (99999999)",
+            message=f"RETYP ID {statement.id} must be between 1 and 99999999",
             location=f"RETYP.{statement.id}",
-            suggestion="Use a smaller ID value"
+            suggestion="Use an ID value between 1 and 99999999"
+        ))
+    
+    # Label length validation (moved from Pydantic validator)
+    if statement.lb is not None and len(statement.lb) > 16:
+        issues.append(ValidationIssue(
+            severity="error",
+            code="RETYP_LABEL_LENGTH",
+            message=f"RETYP {statement.id} label '{statement.lb}' exceeds 16 characters",
+            location=f"RETYP.{statement.id}",
+            suggestion="Use a label with 16 characters or less"
+        ))
+    
+    # Positive values validation (moved from Pydantic validator)
+    positive_fields = {
+        'ar': 'cross-sectional area',
+        'nr': 'number of rebars', 
+        'di': 'diameter',
+        'cc': 'center distance',
+        'c2': 'nominal cover',
+        'th': 'thickness',
+        'bc': 'bond coefficient'
+    }
+    
+    for field_name, field_desc in positive_fields.items():
+        field_value = getattr(statement, field_name, None)
+        if field_value is not None and field_value <= 0:
+            issues.append(ValidationIssue(
+                severity="error",
+                code="RETYP_NEGATIVE_VALUE",
+                message=f"RETYP {statement.id} {field_desc} ({field_name.upper()}={field_value}) must be positive",
+                location=f"RETYP.{statement.id}",
+                suggestion=f"Use a positive value for {field_desc}"
+            ))
+    
+    # Offset validation (moved from Pydantic validator) - can be zero or positive
+    if statement.os is not None and statement.os < 0:
+        issues.append(ValidationIssue(
+            severity="error",
+            code="RETYP_NEGATIVE_OFFSET",
+            message=f"RETYP {statement.id} offset (OS={statement.os}) cannot be negative",
+            location=f"RETYP.{statement.id}",
+            suggestion="Use zero or positive offset value"
         ))
     
     # Method consistency validation
@@ -45,14 +87,7 @@ def validate_retyp_instance(statement: 'RETYP', context: 'ValidationContext') ->
             suggestion="Provide either AR parameter or both NR and DI parameters"
         ))
     
-    if has_area_method and has_count_method:
-        issues.append(ValidationIssue(
-            severity="warning",
-            code="RETYP_METHOD_REDUNDANT",
-            message=f"RETYP {statement.id} has both area (AR) and count (NR+DI) methods defined",
-            location=f"RETYP.{statement.id}",
-            suggestion="Use only one calculation method for clarity"
-        ))
+   
     
     # Diameter unit validation
     if statement.di is not None:

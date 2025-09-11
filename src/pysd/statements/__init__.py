@@ -24,6 +24,7 @@ from .cmpec import CMPEC
 from .rmpec import RMPEC  
 from .lores import LORES
 from .rfile import RFILE
+from .statement_heading import HEADING
 
 
 
@@ -58,5 +59,6 @@ __all__ = [
     "RMPEC",
     "LORES",
     "RETYP",
-    "RFILE"
+    "RFILE",
+    "HEADING"
 ]

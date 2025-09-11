@@ -1,21 +1,14 @@
 from __future__ import annotations
 from typing import Optional
-from pydantic import BaseModel, Field, field_validator, model_validator
-from ..validation.rule_system import execute_validation_rules
-from ..validation.core import ValidationContext
+from pydantic import Field
+from .statement_base import StatementBase
 
 
-class RETYP(BaseModel):
+class RETYP(StatementBase):
     """
     Defines rebar layer types to be referenced in the RELOC statement.
     
-    ### Validation Rules
-    
-    1. **ID Range**: Must be between 1 and 99999999 (8 digits max)
-    2. **Method Validation**: Must provide either AR (Method 1) or NR+DI (Method 2)
-    3. **Label Length**: LB label must be ≤ 16 characters
-    4. **Positive Values**: AR, NR, DI, CC, C2, TH, OS, BC must be positive if specified
-    5. **Uniqueness**: ID must be unique within container
+    All validation rules are implemented in src/pysd/validation/rules/retyp_rules.py
     
     ### Examples:
     ---------------
@@ -54,54 +47,16 @@ class RETYP(BaseModel):
     bc: Optional[float] = Field(None, description="Bond coefficient (default 0.75)")
     comment: Optional[str] = Field(None, description="Comment to append at end of line")
     
-    # Auto-generated fields
-    input: str = Field(default="", init=False, description="Generated input string")
+    @property
+    def identifier(self) -> str:
+        """Get unique identifier for this RETYP statement."""
+        return str(self.id)
     
-    @field_validator('id')
-    @classmethod
-    def validate_id_range(cls, v):
-        """Validate ID is within acceptable range."""
-        if not (1 <= v <= 99999999):
-            raise ValueError("ID must be between 1 and 99999999")
-        return v
-    
-    @field_validator('lb')
-    @classmethod
-    def validate_label_length(cls, v):
-        """Validate label length."""
-        if v is not None and len(v) > 16:
-            raise ValueError("LB label must be ≤ 16 characters")
-        return v
-    
-    @field_validator('ar', 'nr', 'di', 'cc', 'c2', 'th', 'bc')
-    @classmethod
-    def validate_positive_values(cls, v):
-        """Validate that numeric values are positive when specified."""
-        if v is not None and v <= 0:
-            raise ValueError("Value must be positive")
-        return v
-    
-    @field_validator('os')
-    @classmethod
-    def validate_offset_values(cls, v):
-        """Validate offset values (can be zero or positive)."""
-        if v is not None and v < 0:
-            raise ValueError("Offset value cannot be negative")
-        return v
-    
-    @model_validator(mode='after')
-    def validate_method_requirements(self) -> 'RETYP':
-        """Validate that required method combinations are provided."""
-        if self.ar is None and (self.nr is None or self.di is None):
-            raise ValueError("Must provide either AR (Method 1) or NR+DI (Method 2)")
-        return self
-    
-    @model_validator(mode='after')
-    def build_input_string(self) -> 'RETYP':
-        """Build the input string after validation."""
-        parts = ["RETYP"]
-        parts.append(f"ID={self.id}")
+    def _build_input_string(self) -> None:
+        """Build the input string (pure formatting logic)."""
+        parts = ["RETYP", f"ID={self.id}"]
 
+        # Optional parameters (only add if not None/default)
         if self.mp is not None:
             parts.append(f"MP={self.mp}")
         if self.lb:
@@ -127,14 +82,6 @@ class RETYP(BaseModel):
             parts.append(f"% {self.comment}")
 
         self.input = " ".join(parts)
-        return self
-    
-    def validate_cross_container_references(self, context: ValidationContext) -> None:
-        """Validate cross-container references."""
-        issues = execute_validation_rules(self, context, level='model')
-        if any(issue.severity == 'error' for issue in issues):
-            error_messages = [issue.message for issue in issues if issue.severity == 'error']
-            raise ValueError(f"Cross-container validation failed: {'; '.join(error_messages)}")
-    
+
     def __str__(self) -> str:
         return self.input
