@@ -28,12 +28,8 @@ from .statements.statement_heading import HEADING
 from .statements.depar import DEPAR
 
 # Import container system
-from .containers import (
-    GrecoContainer, BascoContainer, LoadcContainer, ShsecContainer, ShaxeContainer,
-    CmpecContainer, RmpecContainer, RetypContainer, RelocContainer, LoresContainer,
-    XtfilContainer, DesecContainer, TableContainer
-)
-from .validation.core import ValidationContext, ValidationIssue
+from .containers.base_container import BaseContainer
+from .validation.core import ValidationContext, ValidationIssue, validation_config
 from .validation.rule_system import execute_validation_rules
 
 
@@ -71,22 +67,24 @@ class SD_BASE(BaseModel):
     incdf: List[INCDF] = Field(default_factory=list, description="INCDF statements")
     headl: List[HEADL] = Field(default_factory=list, description="HEADL statements")
     heading: List[HEADING] = Field(default_factory=list, description="HEADING comment blocks")
-    shaxe: ShaxeContainer = Field(default_factory=ShaxeContainer, description="SHAXE statements with validation")
-    shsec: ShsecContainer = Field(default_factory=ShsecContainer, description="SHSEC statements with validation")
+    
     filst: List[FILST] = Field(default_factory=list, description="FILST statements")
     
     # Enhanced containers with validation
-    greco: GrecoContainer = Field(default_factory=GrecoContainer, description="GRECO statements with validation")
-    basco: BascoContainer = Field(default_factory=BascoContainer, description="BASCO statements with validation")
-    loadc: LoadcContainer = Field(default_factory=LoadcContainer, description="LOADC statements with validation")
-    cmpec: CmpecContainer = Field(default_factory=CmpecContainer, description="CMPEC statements with validation")
-    rmpec: RmpecContainer = Field(default_factory=RmpecContainer, description="RMPEC statements with validation")
-    retyp: RetypContainer = Field(default_factory=RetypContainer, description="RETYP statements with validation")
-    reloc: RelocContainer = Field(default_factory=RelocContainer, description="RELOC statements with validation")
-    lores: LoresContainer = Field(default_factory=LoresContainer, description="LORES statements with validation")
-    xtfil: XtfilContainer = Field(default_factory=XtfilContainer, description="XTFIL statements with validation")
-    desec: DesecContainer = Field(default_factory=DesecContainer, description="DESEC statements with validation")
-    table: TableContainer = Field(default_factory=TableContainer, description="TABLE statements with validation")
+    greco: BaseContainer[GRECO] = Field(default_factory=lambda: BaseContainer[GRECO](), description="GRECO container with validation")
+    basco: BaseContainer[BASCO] = Field(default_factory=lambda: BaseContainer[BASCO](), description="BASCO container with validation")
+    loadc: BaseContainer[LOADC] = Field(default_factory=lambda: BaseContainer[LOADC](), description="LOADC container with validation")
+    shsec: BaseContainer[SHSEC] = Field(default_factory=lambda: BaseContainer[SHSEC](), description="SHSEC container with validation")
+    shaxe: BaseContainer[SHAXE] = Field(default_factory=lambda: BaseContainer[SHAXE](), description="SHAXE container with validation")
+    cmpec: BaseContainer[CMPEC] = Field(default_factory=lambda: BaseContainer[CMPEC](), description="CMPEC container with validation")
+    rmpec: BaseContainer[RMPEC] = Field(default_factory=lambda: BaseContainer[RMPEC](), description="RMPEC container with validation")
+    retyp: BaseContainer[RETYP] = Field(default_factory=lambda: BaseContainer[RETYP](), description="RETYP container with validation")
+    reloc: BaseContainer[RELOC] = Field(default_factory=lambda: BaseContainer[RELOC](), description="RELOC container with validation")
+    lores: BaseContainer[LORES] = Field(default_factory=lambda: BaseContainer[LORES](), description="LORES container with validation")
+    xtfil: BaseContainer[XTFIL] = Field(default_factory=lambda: BaseContainer[XTFIL](), description="XTFIL container with validation")
+    desec: BaseContainer[DESEC] = Field(default_factory=lambda: BaseContainer[DESEC](), description="DESEC container with validation")
+    table: BaseContainer[TABLE] = Field(default_factory=lambda: BaseContainer[TABLE](), description="TABLE container with validation")
+   
     execd: List[EXECD] = Field(default_factory=list, description="EXECD statements")
     decas: List[DECAS] = Field(default_factory=list, description="DECAS statements")
     depar: Optional[DEPAR] = Field(None, description="DEPAR statement (singleton)")
@@ -236,12 +234,22 @@ class SD_BASE(BaseModel):
     
     def _validate_cross_references(self) -> None:
         """Perform model-level cross-object validation."""
+        # Skip validation if disabled
+        if validation_config.mode.value == 'disabled':
+            return
+            
         issues = self._collect_validation_issues()
         
-        # Check for critical errors
-        errors = [issue for issue in issues if issue.severity == 'error']
-        if errors:
-            error_messages = [f"[{error.code}] {error.message}" for error in errors]
+        # Check for critical errors based on validation mode
+        if validation_config.mode.value == 'permissive':
+            # In permissive mode, only raise for critical errors, not reference errors
+            critical_errors = [issue for issue in issues if issue.severity == 'error' and 'CRITICAL' in issue.code]
+        else:
+            # In normal/strict mode, raise for all errors
+            critical_errors = [issue for issue in issues if issue.severity == 'error']
+            
+        if critical_errors:
+            error_messages = [f"[{error.code}] {error.message}" for error in critical_errors]
             raise ValueError("Model validation failed:\n" + "\n".join(error_messages))
     
     def _collect_validation_issues(self) -> List[ValidationIssue]:

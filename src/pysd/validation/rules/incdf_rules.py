@@ -115,27 +115,29 @@ def validate_filst_model_consistency(obj: 'FILST', context: ValidationContext) -
     if not context.full_model:
         return issues
     
-    # Check for multiple PRI=True statements
+    # Check for multiple PRI=True statements (excluding current one)
     existing_filsts = getattr(context.full_model, 'filst', [])
+    other_filsts = [f for f in existing_filsts if f is not obj]
+    
     if obj.pri:
-        pri_count = sum(1 for f in existing_filsts if getattr(f, 'pri', False))
+        pri_count = sum(1 for f in other_filsts if getattr(f, 'pri', False))
         if pri_count > 0:
             issues.append(ValidationIssue(
                 severity=ValidationSeverity.WARNING.value,
                 code="FILST-PRI-002",
-                message=f"Model already has {pri_count} FILST statement(s) with PRI=True",
+                message=f"Model already has {pri_count} other FILST statement(s) with PRI=True",
                 location='FILST.pri',
                 suggestion='Consider if multiple PRI statements are necessary'
             ))
     
-    # Check for duplicate names
+    # Check for duplicate names (excluding current one)
     if obj.name is not None:
-        existing_names = [getattr(f, 'name', None) for f in existing_filsts if not getattr(f, 'pri', False)]
-        if obj.name in existing_names:
+        other_names = [getattr(f, 'name', None) for f in other_filsts if not getattr(f, 'pri', False)]
+        if obj.name in other_names:
             issues.append(ValidationIssue(
                 severity=ValidationSeverity.WARNING.value,
                 code="FILST-NAME-004",
-                message=f"FILST NAME '{obj.name}' already exists in model",
+                message=f"FILST NAME '{obj.name}' already exists in other FILST statements",
                 location='FILST.name',
                 suggestion='Use a unique name for each FILST entry'
             ))

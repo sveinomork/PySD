@@ -13,7 +13,7 @@ from ..rule_system import instance_rule, container_rule, model_rule
 
 if TYPE_CHECKING:
     from ...statements.retyp import RETYP
-    from ...containers.retyp_container import RetypContainer
+    from ...containers.base_container import BaseContainer
     from ..core import ValidationContext
 
 
@@ -127,7 +127,7 @@ def validate_retyp_instance(statement: 'RETYP', context: 'ValidationContext') ->
 
 
 @container_rule('RETYP')
-def validate_retyp_container(container: 'RetypContainer', context: 'ValidationContext') -> List[ValidationIssue]:
+def validate_retyp_container(container: 'BaseContainer[RETYP]', context: 'ValidationContext') -> List[ValidationIssue]:
     """Validate RETYP container for consistency and uniqueness."""
     issues = []
     
@@ -145,8 +145,12 @@ def validate_retyp_container(container: 'RetypContainer', context: 'ValidationCo
             ))
         seen_ids.add(stmt_id)
     
-    # Check for consistent material references
-    materials = container.get_materials()
+    # Check for consistent material references using generic container methods
+    materials = set()
+    for stmt in container.items:
+        if stmt.mp is not None:
+            materials.add(stmt.mp)
+    
     if len(materials) > 10:  # Arbitrary threshold
         issues.append(ValidationIssue(
             severity="info",
@@ -156,15 +160,15 @@ def validate_retyp_container(container: 'RetypContainer', context: 'ValidationCo
             suggestion="Consider consolidating material properties for consistency"
         ))
     
-    # Check for orphaned material references (materials without any usage)
-    area_method_count = len(container.get_by_method('area'))
-    count_method_count = len(container.get_by_method('count'))
+    # Check for mixed methods using generic filtering
+    area_method_statements = [stmt for stmt in container.items if stmt.ar is not None]
+    count_method_statements = [stmt for stmt in container.items if stmt.nr is not None and stmt.di is not None]
     
-    if area_method_count > 0 and count_method_count > 0:
+    if len(area_method_statements) > 0 and len(count_method_statements) > 0:
         issues.append(ValidationIssue(
             severity="info",
             code="RETYP_MIXED_METHODS",
-            message=f"Container uses mixed calculation methods: {area_method_count} area, {count_method_count} count",
+            message=f"Container uses mixed calculation methods: {len(area_method_statements)} area, {len(count_method_statements)} count",
             location="RETYP container",
             suggestion="Consider standardizing on one calculation method"
         ))
@@ -196,7 +200,11 @@ def validate_retyp_model(statement: 'RETYP', context: 'ValidationContext') -> Li
     
     # Check if this RETYP is referenced by any RELOC statements
     if hasattr(model, 'reloc'):
-        referencing_relocs = model.reloc.get_by_rebar_type(statement.id) if hasattr(model.reloc, 'get_by_rebar_type') else []
+        # Use generic filtering to find RELOC statements that reference this RETYP
+        referencing_relocs = []
+        if hasattr(model.reloc, 'items'):
+            referencing_relocs = [reloc for reloc in model.reloc.items if hasattr(reloc, 'rt') and reloc.rt == statement.id]
+        
         if not referencing_relocs:
             issues.append(ValidationIssue(
                 severity="warning",

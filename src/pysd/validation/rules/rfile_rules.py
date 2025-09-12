@@ -152,13 +152,15 @@ def validate_rfile_uniqueness(obj: 'RFILE', context: ValidationContext) -> List[
     if not context.full_model:
         return issues
     
-    # Check if model already has RFILE statements
+    # Check if model already has other RFILE statements (excluding the current one)
     existing_rfiles = getattr(context.full_model, 'rfile', [])
-    if len(existing_rfiles) > 0:
+    other_rfiles = [rf for rf in existing_rfiles if rf is not obj]
+    
+    if len(other_rfiles) > 0:
         issues.append(ValidationIssue(
             severity=ValidationSeverity.WARNING.value,
             code="RFILE-DUP-001",
-            message=f"Model already has {len(existing_rfiles)} RFILE statement(s), typically only one is needed",
+            message=f"Model already has {len(other_rfiles)} other RFILE statement(s), typically only one is needed",
             location=f'RFILE.{obj.fnm}',
             suggestion='Consider if multiple RFILE statements are necessary'
         ))

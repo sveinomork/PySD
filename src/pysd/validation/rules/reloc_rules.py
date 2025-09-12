@@ -13,7 +13,7 @@ from ..rule_system import instance_rule, container_rule, model_rule
 
 if TYPE_CHECKING:
     from ...statements.reloc import RELOC
-    from ...containers.reloc_container import RelocContainer
+    from ...containers.base_container import BaseContainer
     from ..core import ValidationContext
 
 
@@ -97,7 +97,7 @@ def validate_reloc_instance(statement: 'RELOC', context: 'ValidationContext') ->
 
 
 @container_rule('RELOC')
-def validate_reloc_container(container: 'RelocContainer', context: 'ValidationContext') -> List[ValidationIssue]:
+def validate_reloc_container(container: 'BaseContainer[RELOC]', context: 'ValidationContext') -> List[ValidationIssue]:
     """Validate RELOC container for consistency and uniqueness."""
     issues = []
     
@@ -115,8 +115,12 @@ def validate_reloc_container(container: 'RelocContainer', context: 'ValidationCo
             ))
         seen_ids.add(stmt_id)
     
-    # Check for consistent rebar type usage
-    referenced_types = container.get_referenced_rebar_types() if hasattr(container, 'get_referenced_rebar_types') else []
+    # Check for consistent rebar type usage using generic filtering
+    referenced_types = set()
+    for stmt in container.items:
+        if hasattr(stmt, 'rt') and stmt.rt is not None:
+            referenced_types.add(stmt.rt)
+            
     if len(referenced_types) > 20:  # Arbitrary threshold
         issues.append(ValidationIssue(
             severity="info",

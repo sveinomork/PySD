@@ -4,13 +4,14 @@ from src.pysd.statements import (
     TABLE, RMPEC, CaseBuilder, Cases, HEADING
 )
 from src.pysd.sdmodel import SD_BASE
-from src.pysd.validation import set_validation_mode, ValidationMode, permissive_validation, no_validation
+from src.pysd.validation import set_validation_mode, ValidationMode
 from src.pysd.helpers import create_axes_based_on_3_points_in_plane
 from shapely.geometry import Point
 
 # Configure global validation mode for the entire script
 # Options: ValidationMode.STRICT, NORMAL, PERMISSIVE, DISABLED
-set_validation_mode(ValidationMode.STRICT)
+# Set to PERMISSIVE during model building, will validate strictly at the end
+set_validation_mode(ValidationMode.PERMISSIVE)
 
 
 
@@ -103,7 +104,7 @@ def create_load_components(sd_model: SD_BASE) -> None:
     Create and add load-related components like LOADC and BASCO.
     """
     
-    # Create and add LOADC entries
+    # Create and add LOADC entries first
     loadc = [
         LOADC(run_number=1, alc=(1,7), olc=(101,107)),
         LOADC(table=True),
@@ -116,20 +117,14 @@ def create_load_components(sd_model: SD_BASE) -> None:
     # This generates: LORES SIN=
     #sd_model.add(LORES(sin=True))
 
-    # add basco's for greco
+    # Add BASCO entries BEFORE GRECO (to satisfy references)
+    # First add basco's for greco (211-216)
     for i in range(6):
         load_cases = [LoadCase(lc_type='OLC', lc_numb=201+i, lc_fact=1) ]
         basco = BASCO(id=211+i, load_cases=load_cases)
         sd_model.add(basco)
     
-    # Add a GRECO statement
-    greco_support = GRECO(
-        id='A',
-        bas=Cases(ranges=[(211, 216)])
-    )
-    sd_model.add(greco_support)
-    
-    # Create and add BASCO entries
+    # Create and add more BASCO entries (101-102)  
     load_cases = [
         LoadCase(lc_type='ELC', lc_numb=i, lc_fact=1.5)
         for i in range(101, 107)
@@ -140,12 +135,18 @@ def create_load_components(sd_model: SD_BASE) -> None:
         for i in range(101, 107)
     ]
 
-
     sd_model.add( HEADING(bas_id="101", description="Form Coupled"))
     basco = BASCO(id=101, load_cases=load_cases)
     sd_model.add(basco)
     basco = BASCO(id=102, load_cases=load_cases2)
     sd_model.add(basco)
+    
+    # Now add GRECO statement (after BASCO statements it references)
+    greco_support = GRECO(
+        id='A',
+        bas=Cases(ranges=[(211, 216)])
+    )
+    sd_model.add(greco_support)
 
 def create_material_components(sd_model: SD_BASE) -> None:
     """
@@ -230,7 +231,11 @@ def main(output_file: str = r"turtorial.inp") -> None:
     # from src.pysd.validation import permissive_validation, no_validation
    
     print(f"Building model to be written to {output_file}...")
-    print(f"Current validation mode: {ValidationMode.NORMAL}")  # Shows current setting
+    
+    # Import here to get the current validation mode
+    from src.pysd.validation.core import get_validation_mode
+    current_mode = get_validation_mode()
+    print(f"Current validation mode: {current_mode}")  # Shows actual current setting
     
     with SD_BASE.create_writer(output_file) as sd_model:
         # Create all model components in a structured way
@@ -238,26 +243,58 @@ def main(output_file: str = r"turtorial.inp") -> None:
         # Use strict validation for critical components (default behavior)
         create_basic_model_components(sd_model)
         
+        # Create materials first (needed by RETYP)
+        create_material_components(sd_model)
+        
+        # Create reinforcement types (needed by RELOC)  
+        create_reinforment_components(sd_model)
+        
         # For experimental or optional sections, you can use:
         # with permissive_validation():
         create_design_sections(sd_model)
         
+        # Create load components (BASCO needed by GRECO)
         create_load_components(sd_model)
         
-        # For bulk operations that might have known validation issues:
-        # with no_validation():
-        create_material_components(sd_model)
-        create_reinforment_components(sd_model)
+        # Create analysis components last
         create_analysis_components(sd_model)
+        
+        # Now perform final strict validation on the complete model
+        print("🔍 Performing final strict validation on complete model...")
+        set_validation_mode(ValidationMode.STRICT)
+        
+        # Trigger final validation by calling validate_complete_model
+        try:
+            sd_model.validate_complete_model()
+            print("✅ Final strict validation passed!")
+        except ValueError as e:
+            print(f"❌ Final strict validation failed:\n{e}")
+            # Reset to permissive to allow model output
+            set_validation_mode(ValidationMode.PERMISSIVE)
         
         # Get validation summary after model creation
         summary = sd_model.get_validation_summary()
         print(f"Model created with {summary['total_items']} total items")
-        if summary['has_warnings']:
-            print("⚠️  Model has validation warnings (check output)")
+        
+        # Display validation results
+        integrity = summary['integrity_issues']
+        
         if summary['has_errors']:
-            print("❌ Model has validation errors")
-        else:
+            print("❌ Model has validation errors:")
+            for error in integrity['errors']:
+                print(f"  ERROR: {error}")
+        
+        if summary['has_warnings']:
+            print("⚠️  Model has validation warnings:")
+            for warning in integrity['warnings']:
+                print(f"  WARNING: {warning}")
+        
+        if integrity.get('info'):
+            print("ℹ️  Model has validation info:")
+            for info in integrity['info']:
+                print(f"  INFO: {info}")
+        
+        if not summary['has_warnings'] and not summary['has_errors']:
             print("✅ Model validation passed")
              
     

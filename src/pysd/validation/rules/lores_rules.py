@@ -13,7 +13,7 @@ from ..rule_system import instance_rule, container_rule, model_rule
 
 if TYPE_CHECKING:
     from ...statements.lores import LORES
-    from ...containers.lores_container import LoresContainer
+    from ...containers.base_container import BaseContainer
     from ..core import ValidationContext
 
 
@@ -34,7 +34,7 @@ def validate_lores_instance(statement: 'LORES', context: 'ValidationContext') ->
             severity="error",
             code="LORES_MODE_INVALID",
             message="Exactly one mode must be used: (lc, part), sin, pri_olc, or pri_alc",
-            location=f"LORES statement",
+            location="LORES statement",
             suggestion="Specify only one operational mode"
         ))
     
@@ -73,36 +73,42 @@ def validate_lores_instance(statement: 'LORES', context: 'ValidationContext') ->
 
 
 @container_rule('LORES')
-def validate_lores_container(container: 'LoresContainer', context: 'ValidationContext') -> List[ValidationIssue]:
+def validate_lores_container(container: 'BaseContainer[LORES]', context: 'ValidationContext') -> List[ValidationIssue]:
     """Validate LORES container for consistency."""
     issues = []
     
-    # Check for conflicting modes
-    manual_count = len(container.get_manual_definitions())
-    sin_count = len(container.get_sin_statements())
-    print_count = len(container.get_print_statements())
+    # Check for conflicting modes using generic filtering
+    # Manual definitions: LORES statements with explicit load case definitions
+    manual_statements = [stmt for stmt in container.items if hasattr(stmt, 'lc') and stmt.lc is not None]
+    # SIN statements: LORES statements that generate SIN files
+    sin_statements = [stmt for stmt in container.items if hasattr(stmt, 'sin') and stmt.sin is not None]
     
-    if sin_count > 1:
+    if len(sin_statements) > 1:
         issues.append(ValidationIssue(
             severity="warning",
             code="LORES_MULTIPLE_SIN",
-            message=f"Multiple SIN file generation statements ({sin_count})",
+            message=f"Multiple SIN file generation statements ({len(sin_statements)})",
             location="LORES container",
             suggestion="Typically only one SIN generation statement is needed"
         ))
     
-    if manual_count > 0 and sin_count > 0:
+    if len(manual_statements) > 0 and len(sin_statements) > 0:
         issues.append(ValidationIssue(
             severity="info",
             code="LORES_MIXED_MODES",
-            message=f"Container has both manual definitions ({manual_count}) and SIN generation ({sin_count})",
+            message=f"Container has both manual definitions ({len(manual_statements)}) and SIN generation ({len(sin_statements)})",
             location="LORES container",
             suggestion="Verify if both modes are intended"
         ))
     
-    # Check for duplicate load case definitions
-    load_cases = container.get_load_cases()
-    manual_statements = container.get_manual_definitions()
+    # Check for duplicate load case definitions using generic grouping
+    load_case_groups = {}
+    for stmt in manual_statements:
+        if hasattr(stmt, 'lc') and stmt.lc is not None:
+            lc_id = stmt.lc
+            if lc_id not in load_case_groups:
+                load_case_groups[lc_id] = []
+            load_case_groups[lc_id].append(stmt)
     
     lc_part_combinations = set()
     for stmt in manual_statements:

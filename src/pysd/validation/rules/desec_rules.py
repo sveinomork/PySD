@@ -13,7 +13,7 @@ from ..rule_system import instance_rule, container_rule, model_rule
 
 if TYPE_CHECKING:
     from ...statements.desec import DESEC
-    from ...containers.desec_container import DesecContainer
+    from ...containers.base_container import BaseContainer
     from ..core import ValidationContext
 
 
@@ -94,7 +94,7 @@ def validate_desec_instance(statement: 'DESEC', context: 'ValidationContext') ->
 
 
 @container_rule('DESEC')
-def validate_desec_container(container: 'DesecContainer', context: 'ValidationContext') -> List[ValidationIssue]:
+def validate_desec_container(container: 'BaseContainer[DESEC]', context: 'ValidationContext') -> List[ValidationIssue]:
     """Validate DESEC container for consistency."""
     issues = []
     

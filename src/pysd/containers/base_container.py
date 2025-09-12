@@ -1,80 +1,214 @@
-from typing import List, Protocol, runtime_checkable, Self, Union, Any
+from typing import List, Protocol, runtime_checkable, Self, Union, Any, TypeVar, Generic, Optional, Iterator
 from pydantic import BaseModel, Field, model_validator
 
 
 @runtime_checkable
-class HasID(Protocol):
-    """Protocol for objects that have an ID field."""
-    id: Union[int, str]  # Support both int and string IDs
+class HasIdentifier(Protocol):
+    """Protocol for objects that have an identifier property."""
+    @property
+    def identifier(self) -> Union[int, str]:
+        """Get unique identifier for this object."""
+        ...
 
 
-class BaseContainer(BaseModel):
+T = TypeVar('T', bound=HasIdentifier)
+
+
+class BaseContainer(BaseModel, Generic[T]):
     """
-    Base container for statement types with unique ID validation.
+    Universal container for all statement types with rule-based validation.
     
-    This container ensures that all items have unique IDs and provides
-    essential functionality for statement collections.
+    This container works with any statement that has an `identifier` property,
+    provides unique ID validation, and integrates with the rule-based validation system.
+    
+    The container automatically runs container-level validation rules when items are added
+    or when explicitly validated.
     
     Examples:
         # For BASCO statements
-        basco_container = BascoContainer(items=[basco1, basco2])
-
+        basco_container = BaseContainer[BASCO](items=[basco1, basco2])
+        
         # For GRECO statements  
-        greco_container = GrecoContainer(items=[greco1, greco2])
+        greco_container = BaseContainer[GRECO](items=[greco1, greco2])
+        
+        # Add items with automatic validation
+        greco_container.add(GRECO(id='A', bas=...))  # Runs container rules
+        
+        # Manual validation (useful for batch operations)
+        greco_container.validate()
     """
-    items: List[Any] = Field(default_factory=list, description="List of items with unique IDs")
+    model_config = {'arbitrary_types_allowed': True}
+    
+    items: List[T] = Field(default_factory=list, description="List of items with unique identifiers")
     
     @model_validator(mode='after')
-    def validate_unique_ids(self) -> Self:
-        """Ensure all item IDs are unique."""
+    def validate_unique_identifiers(self) -> Self:
+        """Ensure all item identifiers are unique."""
         seen_ids: set[Union[int, str]] = set()
         for item in self.items:
-            # Support 'id', 'key', and 'identifier' fields for identification
-            item_id = getattr(item, 'id', None) or getattr(item, 'key', None) or getattr(item, 'identifier', None)
-            if item_id and item_id in seen_ids:
-                raise ValueError(f"Duplicate ID found: {item_id}")
-            if item_id:
-                seen_ids.add(item_id)
+            item_id = item.identifier
+            if item_id in seen_ids:
+                raise ValueError(f"Duplicate identifier found: {item_id}")
+            seen_ids.add(item_id)
         return self
     
-    def add(self, item: Any) -> None:
-        """Add an item to the container, checking for duplicate IDs."""
-        item_id = getattr(item, 'id', None) or getattr(item, 'key', None) or getattr(item, 'identifier', None)
-        for existing in self.items:
-            existing_id = getattr(existing, 'id', None) or getattr(existing, 'key', None) or getattr(existing, 'identifier', None)
-            if existing_id == item_id:
-                raise ValueError(f"Item with ID {item_id} already exists")
+    def add(self, item: T) -> None:
+        """Add an item to the container with validation."""
+        # Import validation config inside method to avoid circular imports
+        from ..validation.core import validation_config
+        
+        # Check for duplicate identifiers (unless validation is disabled)
+        if validation_config.mode.value != 'disabled':
+            item_id = item.identifier
+            for existing in self.items:
+                if existing.identifier == item_id:
+                    raise ValueError(f"Item with identifier {item_id} already exists")
+        
+        # Add the item
         self.items.append(item)
+        
+        # Run container-level validation rules
+        self.validate_container()
     
-    def get_by_id(self, id_value: Union[int, str]) -> Any:
-        """Get an item by ID."""
+    def add_batch(self, items: List[T]) -> None:
+        """Add multiple items with batch validation."""
+        # Add all items first (with individual duplicate checks)
+        for item in items:
+            item_id = item.identifier
+            for existing in self.items:
+                if existing.identifier == item_id:
+                    raise ValueError(f"Item with identifier {item_id} already exists")
+            self.items.append(item)
+        
+        # Run container validation once at the end
+        self.validate_container()
+    
+    def validate_container(self) -> None:
+        """Run container-level validation rules."""
+        if not self.items:
+            return
+        
+        # Run container-level validation rules using the validation system
+        from ..validation.rule_system import execute_validation_rules
+        from ..validation.core import ValidationContext, validation_config
+        
+        # Skip validation if disabled globally
+        if validation_config.mode.value == 'disabled':
+            return
+        
+        # Determine statement type from first item
+        if self.items:
+            # Create validation context
+            context = ValidationContext()
+            context.parent_container = self
+            
+            # Execute container-level validation rules
+            issues = execute_validation_rules(self, context, level='container')
+            
+            # Handle validation issues based on global mode
+            errors = [issue for issue in issues if issue.severity == 'error']
+            if errors:
+                if validation_config.mode.value in ['strict', 'normal']:
+                    error_messages = [f"[{error.code}] {error.message}" for error in errors]
+                    raise ValueError("Container validation failed:\n" + "\n".join(error_messages))
+                # In permissive mode, just log warnings (for now, we'll raise them)
+        
+        # Also do basic unique identifier validation
+        seen_ids: set[Union[int, str]] = set()
         for item in self.items:
-            item_id = getattr(item, 'id', None) or getattr(item, 'key', None) or getattr(item, 'identifier', None)
-            if item_id == id_value:
+            item_id = item.identifier
+            if item_id in seen_ids:
+                raise ValueError(f"Duplicate identifier found: {item_id}")
+            seen_ids.add(item_id)
+    
+    def validate(self) -> None:
+        """Explicitly run all validation (useful for batch operations)."""
+        self.validate_container()
+    
+    def get_by_id(self, id_value: Union[int, str]) -> Optional[T]:
+        """Get an item by identifier with flexible type matching."""
+        for item in self.items:
+            # Try exact match first
+            if item.identifier == id_value:
+                return item
+            # Try string conversion match (for int/str type compatibility)
+            if str(item.identifier) == str(id_value):
                 return item
         return None
     
     def get_ids(self) -> List[Union[int, str]]:
-        """Get a list of all IDs in the container."""
-        ids = []
-        for item in self.items:
-            item_id = getattr(item, 'id', None) or getattr(item, 'key', None) or getattr(item, 'identifier', None)
-            if item_id is not None:
-                ids.append(item_id)
-        return ids
+        """Get a list of all identifiers in the container."""
+        return [item.identifier for item in self.items]
     
     def contains(self, id_value: Union[int, str]) -> bool:
-        """Check if container contains an item with the given ID."""
+        """Check if container contains an item with the given identifier."""
         return self.get_by_id(id_value) is not None
+    
+    def has_id(self, id_value: Union[int, str]) -> bool:
+        """Check if container contains an item with the given identifier (alias for contains)."""
+        return self.contains(id_value)
+    
+    def remove_by_id(self, id_value: Union[int, str]) -> bool:
+        """Remove an item by identifier. Returns True if item was found and removed."""
+        for i, item in enumerate(self.items):
+            if item.identifier == id_value:
+                del self.items[i]
+                # Re-validate after removal
+                self.validate_container()
+                return True
+        return False
+    
+    def clear(self) -> None:
+        """Remove all items from the container."""
+        self.items.clear()
+    
+    def filter(self, predicate) -> List[T]:
+        """Filter items based on a predicate function."""
+        return [item for item in self.items if predicate(item)]
+    
+    def find_first(self, predicate) -> Optional[T]:
+        """Find the first item that matches the predicate."""
+        for item in self.items:
+            if predicate(item):
+                return item
+        return None
+    
+    # Specialized query methods that work with identifiers
+    def get_by_attribute(self, attr_name: str, value: Any) -> List[T]:
+        """Get all items where an attribute equals the given value."""
+        return [item for item in self.items if getattr(item, attr_name, None) == value]
+    
+    def get_by_range(self, attr_name: str, min_val: Union[int, float], max_val: Union[int, float]) -> List[T]:
+        """Get all items where a numeric attribute is within the given range."""
+        result = []
+        for item in self.items:
+            val = getattr(item, attr_name, None)
+            if val is not None and min_val <= val <= max_val:
+                result.append(item)
+        return result
+    
+    def group_by(self, attr_name: str) -> dict[Any, List[T]]:
+        """Group items by the value of a given attribute."""
+        groups = {}
+        for item in self.items:
+            key = getattr(item, attr_name, None)
+            if key not in groups:
+                groups[key] = []
+            groups[key].append(item)
+        return groups
     
     def __len__(self) -> int:
         """Return the number of items in the container."""
         return len(self.items)
     
-    def __iter__(self):
+    def __iter__(self) -> Iterator[T]:
         """Allow iteration over items in the container."""
         return iter(self.items)
     
-    def __getitem__(self, index: int) -> Any:
+    def __getitem__(self, index: int) -> T:
         """Get item by index."""
         return self.items[index]
+    
+    def __bool__(self) -> bool:
+        """Return True if container has items."""
+        return len(self.items) > 0

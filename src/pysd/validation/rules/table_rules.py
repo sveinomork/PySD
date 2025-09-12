@@ -8,7 +8,7 @@ from ..core import ValidationIssue, ValidationContext
 
 if TYPE_CHECKING:
     from ...statements.table import TABLE
-    from ...containers.table_container import TableContainer
+    from ...containers.base_container import BaseContainer
 
 # Instance-level validation rules
 @instance_rule('TABLE')
@@ -155,7 +155,7 @@ def validate_table_file_output(table: 'TABLE', context: ValidationContext) -> Li
 
 # Container-level validation rules
 @container_rule('TABLE')
-def validate_table_uniqueness(container: 'TableContainer', context: ValidationContext) -> List[ValidationIssue]:
+def validate_table_uniqueness(container: 'BaseContainer[TABLE]', context: ValidationContext) -> List[ValidationIssue]:
     """Validate uniqueness constraints for TABLE statements."""
     issues = []
     
@@ -187,7 +187,7 @@ def validate_table_uniqueness(container: 'TableContainer', context: ValidationCo
     return issues
 
 @container_rule('TABLE')
-def validate_table_output_conflicts(container: 'TableContainer', context: ValidationContext) -> List[ValidationIssue]:
+def validate_table_output_conflicts(container: 'BaseContainer[TABLE]', context: ValidationContext) -> List[ValidationIssue]:
     """Validate file output conflicts."""
     issues = []
     

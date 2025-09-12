@@ -13,7 +13,7 @@ from ..rule_system import instance_rule, container_rule, model_rule
 
 if TYPE_CHECKING:
     from ...statements.xtfil import XTFIL
-    from ...containers.xtfil_container import XtfilContainer
+    from ...containers.base_container import BaseContainer
     from ..core import ValidationContext
 
 
@@ -45,7 +45,7 @@ def validate_xtfil_instance(statement: 'XTFIL', context: 'ValidationContext') ->
 
 
 @container_rule('XTFIL')
-def validate_xtfil_container(container: 'XtfilContainer', context: 'ValidationContext') -> List[ValidationIssue]:
+def validate_xtfil_container(container: 'BaseContainer[XTFIL]', context: 'ValidationContext') -> List[ValidationIssue]:
     """Validate XTFIL container for consistency and uniqueness."""
     issues = []
     
