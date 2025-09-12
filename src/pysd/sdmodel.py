@@ -1,36 +1,37 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import List, Union, Protocol, runtime_checkable, Sequence, Optional, Dict, Any
+from typing import List, Union, Protocol, runtime_checkable, Sequence, Dict, Any
 from pydantic import BaseModel, Field, model_validator
 
 # Import all statement types for runtime use
-from .statements.rfile import RFILE
-from .statements.shaxe import SHAXE
-from .statements.desec import DESEC
-from .statements.cmpec import CMPEC
-from .statements.loadc import LOADC
-from .statements.lores import LORES
-from .statements.basco import BASCO
-from .statements.greco import GRECO
-from .statements.filst import FILST
-from .statements.retyp import RETYP
-from .statements.reloc import RELOC
-from .statements.decas import DECAS
-from .statements.table import TABLE
-from .statements.incdf import INCDF
-from .statements.execd import EXECD
-from .statements.shsec import SHSEC
-from .statements.rmpec import RMPEC
-from .statements.xtfil import XTFIL
-from .statements.headl import HEADL
-from .statements.statement_heading import HEADING
-from .statements.depar import DEPAR
+from src.pysd.statements.rfile import RFILE
+from src.pysd.statements.shaxe import SHAXE
+from src.pysd.statements.desec import DESEC
+from src.pysd.statements.cmpec import CMPEC
+from src.pysd.statements.loadc import LOADC
+from src.pysd.statements.lores import LORES
+from src.pysd.statements.basco import BASCO
+from src.pysd.statements.greco import GRECO
+from src.pysd.statements.filst import FILST
+from src.pysd.statements.retyp import RETYP
+from src.pysd.statements.reloc import RELOC
+from src.pysd.statements.decas import DECAS
+from src.pysd.statements.table import TABLE
+from src.pysd.statements.incdf import INCDF
+from src.pysd.statements.depar import DEPAR
+from src.pysd.statements.headl import HEADL
+from src.pysd.statements.cases import Cases
+from src.pysd.statements.execd import EXECD
+from src.pysd.statements.shsec import SHSEC
+from src.pysd.statements.rmpec import RMPEC
+from src.pysd.statements.xtfil import XTFIL
+from src.pysd.statements.statement_heading import HEADING
 
 # Import container system
-from .containers.base_container import BaseContainer
-from .validation.core import ValidationContext, ValidationIssue, validation_config
-from .validation.rule_system import execute_validation_rules
+from src.pysd.containers.base_container import BaseContainer
+from src.pysd.validation.core import ValidationContext, ValidationIssue, validation_config
+from src.pysd.validation.rule_system import execute_validation_rules
 
 
 # Define a protocol that all statement classes implement
@@ -63,12 +64,15 @@ class SD_BASE(BaseModel):
     all_items: List[StatementType] = Field(default_factory=list, exclude=True, description="Ordered list of all items")
    
     # Collections for type-specific access  
-    rfile: List[RFILE] = Field(default_factory=list, description="RFILE statements")
-    incdf: List[INCDF] = Field(default_factory=list, description="INCDF statements")
-    headl: List[HEADL] = Field(default_factory=list, description="HEADL statements")
+    headl: BaseContainer[HEADL] = Field(default_factory=lambda: BaseContainer[HEADL](), description="HEADL container with validation")
     heading: List[HEADING] = Field(default_factory=list, description="HEADING comment blocks")
     
-    filst: List[FILST] = Field(default_factory=list, description="FILST statements")
+    filst: BaseContainer[FILST] = Field(default_factory=lambda: BaseContainer[FILST](), description="FILST container with validation")
+    cases: BaseContainer[Cases] = Field(default_factory=lambda: BaseContainer[Cases](), description="CASES container with validation")
+    
+    # Enhanced containers with validation
+    rfile: BaseContainer[RFILE] = Field(default_factory=lambda: BaseContainer[RFILE](), description="RFILE container with validation")
+    incdf: BaseContainer[INCDF] = Field(default_factory=lambda: BaseContainer[INCDF](), description="INCDF container with validation")
     
     # Enhanced containers with validation
     greco: BaseContainer[GRECO] = Field(default_factory=lambda: BaseContainer[GRECO](), description="GRECO container with validation")
@@ -86,11 +90,26 @@ class SD_BASE(BaseModel):
     table: BaseContainer[TABLE] = Field(default_factory=lambda: BaseContainer[TABLE](), description="TABLE container with validation")
    
     execd: List[EXECD] = Field(default_factory=list, description="EXECD statements")
-    decas: List[DECAS] = Field(default_factory=list, description="DECAS statements")
-    depar: Optional[DEPAR] = Field(None, description="DEPAR statement (singleton)")
+    decas: BaseContainer[DECAS] = Field(default_factory=lambda: BaseContainer[DECAS](), description="DECAS container with validation")
+    depar: BaseContainer[DEPAR] = Field(default_factory=lambda: BaseContainer[DEPAR](), description="DEPAR container with validation")
     
-    # Validation settings
+    # Enhanced validation control with automatic deferral
     validation_enabled: bool = Field(default=True, exclude=True, description="Enable validation during operations")
+    container_validation_enabled: bool = Field(default=True, exclude=True, description="Enable container-level validation")
+    cross_container_validation_enabled: bool = Field(default=True, exclude=True, description="Enable cross-container validation")
+    building_mode: bool = Field(default=True, exclude=True, description="Internal flag: True during model building, False when complete")
+    deferred_cross_validation: bool = Field(default=True, exclude=True, description="Automatically defer cross-container validation during building")
+    
+    @model_validator(mode='after')
+    def setup_container_parent_references(self) -> 'SD_BASE':
+        """Set parent model references for all containers."""
+        # Set parent model reference for all BaseContainer instances
+        for field_name in ['rfile', 'incdf', 'greco', 'basco', 'loadc', 'shsec', 'shaxe', 
+                          'cmpec', 'rmpec', 'retyp', 'reloc', 'lores', 'xtfil', 'desec', 'table', 'decas', 'depar']:
+            container = getattr(self, field_name, None)
+            if container and hasattr(container, 'set_parent_model'):
+                container.set_parent_model(self)
+        return self
     
 
 
@@ -156,24 +175,26 @@ class SD_BASE(BaseModel):
             self.desec.add(item)
         elif isinstance(item, TABLE):
             self.table.add(item)
-        
-        # List-based routing for singleton/simple statements
         elif isinstance(item, RFILE):
-            self.rfile.append(item)
-        elif isinstance(item, FILST):
-            self.filst.append(item)
+            self.rfile.add(item)
         elif isinstance(item, INCDF):
-            self.incdf.append(item)
+            self.incdf.add(item)
+        elif isinstance(item, DECAS):
+            self.decas.add(item)
+        elif isinstance(item, DEPAR):
+            self.depar.add(item)
+        
+        # Container-based routing for simple statements
+        elif isinstance(item, FILST):
+            self.filst.add(item)
         elif isinstance(item, HEADL):
-            self.headl.append(item)
+            self.headl.add(item)
+        elif isinstance(item, Cases):
+            self.cases.add(item)
         elif isinstance(item, HEADING):
             self.heading.append(item)
         elif isinstance(item, EXECD):
             self.execd.append(item)
-        elif isinstance(item, DECAS):
-            self.decas.append(item)
-        elif isinstance(item, DEPAR):
-            self.depar = item  # DEPAR is a singleton
         
         # Dictionary-based routing for other statements
         # TODO: Add new statement types here or migrate to containers
@@ -232,10 +253,86 @@ class SD_BASE(BaseModel):
         if self.validation_enabled:
             self._validate_cross_references()
     
+    # Validation control methods
+    def disable_container_validation(self) -> None:
+        """Disable container-level validation only."""
+        self.container_validation_enabled = False
+    
+    def enable_container_validation(self) -> None:
+        """Enable container-level validation."""
+        self.container_validation_enabled = True
+    
+    def disable_cross_container_validation(self) -> None:
+        """Disable cross-container validation only."""
+        self.cross_container_validation_enabled = False
+    
+    def enable_cross_container_validation(self) -> None:
+        """Enable cross-container validation."""
+        self.cross_container_validation_enabled = True
+    
+    @contextmanager
+    def container_validation_disabled(self):
+        """Context manager to temporarily disable container validation."""
+        original_state = self.container_validation_enabled
+        self.container_validation_enabled = False
+        try:
+            yield
+        finally:
+            self.container_validation_enabled = original_state
+    
+    @contextmanager
+    def cross_validation_disabled(self):
+        """Context manager to temporarily disable cross-container validation."""
+        original_state = self.cross_container_validation_enabled
+        self.cross_container_validation_enabled = False
+        try:
+            yield
+        finally:
+            self.cross_container_validation_enabled = original_state
+    
+    def _finalize_model(self) -> None:
+        """Mark model as complete and trigger final validation."""
+        self.building_mode = False  # Exit building mode
+        
+        # If we deferred cross-container validation, run it now
+        if (self.deferred_cross_validation and 
+            self.cross_container_validation_enabled and 
+            self.validation_enabled):
+            self._validate_cross_references()
+    
+    def disable_deferred_validation(self) -> None:
+        """Disable automatic deferral - validate immediately during building."""
+        self.deferred_cross_validation = False
+    
+    def enable_deferred_validation(self) -> None:
+        """Enable automatic deferral (default behavior)."""
+        self.deferred_cross_validation = True
+    
+    @contextmanager
+    def immediate_validation(self):
+        """Context manager to temporarily disable deferred validation."""
+        original_state = self.deferred_cross_validation
+        self.deferred_cross_validation = False
+        try:
+            yield
+        finally:
+            self.deferred_cross_validation = original_state
+    
     def _validate_cross_references(self) -> None:
-        """Perform model-level cross-object validation."""
-        # Skip validation if disabled
-        if validation_config.mode.value == 'disabled':
+        """Perform model-level cross-object validation with automatic deferral."""
+        # Skip validation if disabled globally
+        if validation_config.mode.value == 'disabled' or not self.validation_enabled:
+            return
+        
+        # SMART DEFERRAL: Skip cross-container validation during building mode if deferred validation is enabled
+        if (self.building_mode and 
+            self.deferred_cross_validation and 
+            self.cross_container_validation_enabled):
+            # Silently defer cross-container validation - no error, no noise
+            return
+            
+        # Skip cross-container validation if specifically disabled
+        if not self.cross_container_validation_enabled:
             return
             
         issues = self._collect_validation_issues()
@@ -271,8 +368,10 @@ class SD_BASE(BaseModel):
         all_statements.extend(self.xtfil.items)  # Add XTFIL container
         all_statements.extend(self.desec.items)  # Add DESEC container
         all_statements.extend(self.table.items)  # Add TABLE container
-        all_statements.extend(self.decas)  # DECAS is a plain list, not a container
-        all_statements.extend(self.rfile)
+        all_statements.extend(self.rfile.items)  # RFILE is now a container
+        all_statements.extend(self.incdf.items)  # INCDF is now a container
+        all_statements.extend(self.decas.items)  # DECAS is now a container
+        all_statements.extend(self.depar.items)  # DEPAR is now a container
         all_statements.extend(self.filst)
         
         for statement in all_statements:
@@ -402,23 +501,23 @@ class SD_BASE(BaseModel):
     @classmethod
     @contextmanager
     def create_writer(cls, output_file: str, validation_enabled: bool = True):
-        """
-        Enhanced context manager with validation control.
+        """Enhanced context manager with automatic validation management.
         
         Args:
-            output_file: Output file path
+            output_file: Path to the output file
             validation_enabled: Enable/disable validation during construction
+        
+        Yields:
+            SD_BASE: Model instance for building
         """
         sd_model = cls(validation_enabled=validation_enabled)
         try:
             yield sd_model
         finally:
-            # Re-enable validation for final check if it was disabled
-            if not validation_enabled:
-                sd_model.validation_enabled = True
-                sd_model._validate_cross_references()
+            # AUTOMATIC FINALIZATION: Trigger final validation and mark as complete
+            sd_model._finalize_model()
             
-            # Write to file
+            # Write the model to file
             with open(output_file, "w", encoding="utf-8") as f:
                 for item in sd_model.all_items:
                     f.write(str(item) + "\n")

@@ -193,14 +193,13 @@ def validate_reloc_model(statement: 'RELOC', context: 'ValidationContext') -> Li
     
     # Check part references against SHSEC
     if statement.pa is not None:
-        # Check if the part exists in SHSEC statements
+        # Check if the part exists in SHSEC statements using the container
         valid_parts = []
-        if hasattr(model, 'all_items'):
-            # Collect all part names from SHSEC statements
-            for item in model.all_items:
-                if hasattr(item, '__class__') and item.__class__.__name__ == 'SHSEC':
-                    if hasattr(item, 'pa') and item.pa:
-                        valid_parts.append(item.pa)
+        if hasattr(model, 'shsec'):
+            # Collect all part names from SHSEC container
+            for shsec_stmt in model.shsec.items:
+                if hasattr(shsec_stmt, 'pa') and shsec_stmt.pa:
+                    valid_parts.append(shsec_stmt.pa)
         
         if valid_parts and statement.pa not in valid_parts:
             issues.append(ValidationIssue(

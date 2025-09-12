@@ -40,10 +40,15 @@ class BaseContainer(BaseModel, Generic[T]):
     model_config = {'arbitrary_types_allowed': True}
     
     items: List[T] = Field(default_factory=list, description="List of items with unique identifiers")
+    parent_model: Optional[Any] = Field(default=None, exclude=True, description="Reference to parent model for validation settings")
     
     @model_validator(mode='after')
     def validate_unique_identifiers(self) -> Self:
         """Ensure all item identifiers are unique."""
+        # Skip validation if container validation is disabled
+        if not self._is_container_validation_enabled():
+            return self
+            
         seen_ids: set[Union[int, str]] = set()
         for item in self.items:
             item_id = item.identifier
@@ -52,13 +57,27 @@ class BaseContainer(BaseModel, Generic[T]):
             seen_ids.add(item_id)
         return self
     
+    def set_parent_model(self, parent_model) -> None:
+        """Set the parent model for validation control."""
+        self.parent_model = parent_model
+    
+    def _is_container_validation_enabled(self) -> bool:
+        """Check if container validation is enabled."""
+        # Check global validation config
+        from ..validation.core import validation_config
+        if validation_config.mode.value == 'disabled':
+            return False
+        
+        # Check parent model settings if available
+        if self.parent_model and hasattr(self.parent_model, 'container_validation_enabled'):
+            return self.parent_model.container_validation_enabled
+        
+        return True  # Default to enabled
+    
     def add(self, item: T) -> None:
         """Add an item to the container with validation."""
-        # Import validation config inside method to avoid circular imports
-        from ..validation.core import validation_config
-        
         # Check for duplicate identifiers (unless validation is disabled)
-        if validation_config.mode.value != 'disabled':
+        if self._is_container_validation_enabled():
             item_id = item.identifier
             for existing in self.items:
                 if existing.identifier == item_id:
@@ -73,12 +92,15 @@ class BaseContainer(BaseModel, Generic[T]):
     def add_batch(self, items: List[T]) -> None:
         """Add multiple items with batch validation."""
         # Add all items first (with individual duplicate checks)
-        for item in items:
-            item_id = item.identifier
-            for existing in self.items:
-                if existing.identifier == item_id:
-                    raise ValueError(f"Item with identifier {item_id} already exists")
-            self.items.append(item)
+        if self._is_container_validation_enabled():
+            for item in items:
+                item_id = item.identifier
+                for existing in self.items:
+                    if existing.identifier == item_id:
+                        raise ValueError(f"Item with identifier {item_id} already exists")
+        
+        # Add items to the container
+        self.items.extend(items)
         
         # Run container validation once at the end
         self.validate_container()
@@ -86,6 +108,10 @@ class BaseContainer(BaseModel, Generic[T]):
     def validate_container(self) -> None:
         """Run container-level validation rules."""
         if not self.items:
+            return
+        
+        # Skip validation if container validation is disabled
+        if not self._is_container_validation_enabled():
             return
         
         # Run container-level validation rules using the validation system

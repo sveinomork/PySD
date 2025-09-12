@@ -1,7 +1,7 @@
 from src.pysd.statements import (
     DESEC, RFILE, SHAXE, LOADC, GRECO, FILST, BASCO, LoadCase,
     RETYP, DECAS, RELOC, EXECD, LORES, CMPEC, SHSEC, XTFIL,
-    TABLE, RMPEC, CaseBuilder, Cases, HEADING
+    TABLE, RMPEC, CaseBuilder, Cases, HEADING, DEPAR
 )
 from src.pysd.sdmodel import SD_BASE
 from src.pysd.validation import set_validation_mode, ValidationMode
@@ -11,13 +11,7 @@ from shapely.geometry import Point
 # Configure global validation mode for the entire script
 # Options: ValidationMode.STRICT, NORMAL, PERMISSIVE, DISABLED
 # Set to PERMISSIVE during model building, will validate strictly at the end
-set_validation_mode(ValidationMode.PERMISSIVE)
-
-
-
-
-
-
+set_validation_mode(ValidationMode.NORMAL)
 
 
 
@@ -112,10 +106,9 @@ def create_load_components(sd_model: SD_BASE) -> None:
     ]
     sd_model.add(loadc)
 
-    # This generates: LORES PRI=ALC
-    #sd_model.add(LORES(pri_alc=True))
-    # This generates: LORES SIN=
-    #sd_model.add(LORES(sin=True))
+    # Add LORES entries 
+    sd_model.add(LORES(pri_alc=True))  # This generates: LORES PRI=ALC
+    sd_model.add(LORES(sin=True))      # This generates: LORES SIN=
 
     # Add BASCO entries BEFORE GRECO (to satisfy references)
     # First add basco's for greco (211-216)
@@ -150,9 +143,17 @@ def create_load_components(sd_model: SD_BASE) -> None:
 
 def create_material_components(sd_model: SD_BASE) -> None:
     """
-    Create and add material-related components like CMPEC and RETYP.
+    Create and add material-related components like CMPEC, RMPEC, and DEPAR.
     
     """
+    # Add design parameters
+    depar = DEPAR(
+        n_lay=10,      # Number of integration layers through shell thickness
+        d_sig=10.0,    # Maximum stress deviation before iteration stops
+        d_cod="NS"     # Norwegian standard design code
+    )
+    sd_model.add(depar)
+    
     # Add material properties concrete
     cmpec = CMPEC(id=1, gr="B35")
     sd_model.add(cmpec)
@@ -177,9 +178,9 @@ def create_reinforment_components(sd_model: SD_BASE) -> None:
     
     # Add reinforcement for all VEGG parts
     for i, vegg_part in enumerate(vegg_parts):
-        sd_model.add(RELOC(id=f"X1{i+1}", pa=vegg_part, rt=1, fa=1, al=0))
-        sd_model.add(RELOC(id=f"Y0{i+1}", pa=vegg_part, rt=2, fa=0, al=90))
-        sd_model.add(RELOC(id=f"X2{i+1}", pa=vegg_part, rt=1, fa=2, al=0))
+        sd_model.add(RELOC(id="X12", pa=vegg_part, rt=1, fa=1, al=0))
+        sd_model.add(RELOC(id="Y01", pa=vegg_part, rt=2, fa=0, al=90))
+        sd_model.add(RELOC(id="X22", pa=vegg_part, rt=1, fa=2, al=0))
 
     # Add reinforcement for slabs
     for slab in slabs:
@@ -237,11 +238,19 @@ def main(output_file: str = r"turtorial.inp") -> None:
     current_mode = get_validation_mode()
     print(f"Current validation mode: {current_mode}")  # Shows actual current setting
     
+    # CLEAN AND SIMPLE: No manual validation management needed!
     with SD_BASE.create_writer(output_file) as sd_model:
-        # Create all model components in a structured way
         
-        # Use strict validation for critical components (default behavior)
+        # Create all model components in a structured way
         create_basic_model_components(sd_model)
+
+        # Create load components (BASCO needed by GRECO)
+        create_load_components(sd_model)
+
+        # For experimental or optional sections, you can use:
+        # with permissive_validation():
+        create_design_sections(sd_model)
+
         
         # Create materials first (needed by RETYP)
         create_material_components(sd_model)
@@ -249,28 +258,14 @@ def main(output_file: str = r"turtorial.inp") -> None:
         # Create reinforcement types (needed by RELOC)  
         create_reinforment_components(sd_model)
         
-        # For experimental or optional sections, you can use:
-        # with permissive_validation():
-        create_design_sections(sd_model)
         
-        # Create load components (BASCO needed by GRECO)
-        create_load_components(sd_model)
+        
+        
         
         # Create analysis components last
         create_analysis_components(sd_model)
         
-        # Now perform final strict validation on the complete model
-        print("🔍 Performing final strict validation on complete model...")
-        set_validation_mode(ValidationMode.STRICT)
-        
-        # Trigger final validation by calling validate_complete_model
-        try:
-            sd_model.validate_complete_model()
-            print("✅ Final strict validation passed!")
-        except ValueError as e:
-            print(f"❌ Final strict validation failed:\n{e}")
-            # Reset to permissive to allow model output
-            set_validation_mode(ValidationMode.PERMISSIVE)
+        # Final validation is handled automatically by the context manager!
         
         # Get validation summary after model creation
         summary = sd_model.get_validation_summary()

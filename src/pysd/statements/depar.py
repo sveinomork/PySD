@@ -78,11 +78,18 @@ class DEPAR(StatementBase):
     @property
     def identifier(self) -> str:
         """Get unique identifier for this DEPAR statement."""
-        return str(1)
+        import hashlib
+        
+        # Use the complete input string for uniqueness, but hash it for brevity
+        input_str = self.input if hasattr(self, 'input') else str(self)
+        hash_obj = hashlib.sha256(input_str.encode())
+        short_hash = hash_obj.hexdigest()[:10]  # 10 chars for good uniqueness
+        
+        return f"DEPAR_{short_hash}"
   
     def _build_input_string(self) -> str:
 
-        def _format_number(self, value: float) -> str:
+        def _format_number(value: float) -> str:
             """Format a number for output, handling integers and floats appropriately."""
             if value == int(value):
                 return str(int(value))
