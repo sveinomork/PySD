@@ -30,8 +30,7 @@ from src.pysd.statements.statement_heading import HEADING
 
 # Import container system
 from src.pysd.containers.base_container import BaseContainer
-from src.pysd.validation.core import ValidationContext, ValidationIssue, validation_config
-from src.pysd.validation.rule_system import execute_validation_rules
+from src.pysd.model.validation_manager import ValidationManager
 
 
 # Define a protocol that all statement classes implement
@@ -100,9 +99,26 @@ class SD_BASE(BaseModel):
     building_mode: bool = Field(default=True, exclude=True, description="Internal flag: True during model building, False when complete")
     deferred_cross_validation: bool = Field(default=True, exclude=True, description="Automatically defer cross-container validation during building")
     
+    # ValidationManager and StatementRouter for extracted logic - initialized in model_validator
+    router: Any = Field(default=None, exclude=True, description="Statement routing system")
+    
+    @property
+    def validator(self) -> ValidationManager:
+        """Get or create the validation manager."""
+        if not hasattr(self, '_validation_manager') or self._validation_manager is None:
+            self._validation_manager = ValidationManager(self)
+        return self._validation_manager
+    
     @model_validator(mode='after')
     def setup_container_parent_references(self) -> 'SD_BASE':
-        """Set parent model references for all containers."""
+        """Set parent model references for all containers and initialize router."""
+        # Import here to avoid circular imports
+        from src.pysd.model.statement_router import StatementRouter
+        
+        # Initialize ValidationManager and StatementRouter
+        self._validation_manager = ValidationManager(self)
+        self.router = StatementRouter(self)
+            
         # Set parent model reference for all BaseContainer instances
         for field_name in ['rfile', 'incdf', 'greco', 'basco', 'loadc', 'shsec', 'shaxe', 
                           'cmpec', 'rmpec', 'retyp', 'reloc', 'lores', 'xtfil', 'desec', 'table', 'decas', 'depar']:
@@ -128,130 +144,21 @@ class SD_BASE(BaseModel):
             item: The component to add, or a list of components.
         """
         if isinstance(item, list):
-            self._add_batch(item)
-            return
-
-        # Route to appropriate container/collection
-        self._route_item(item)
-        
-        # Add to the master list to maintain order
-        if isinstance(item, EXECD):
-            # Remove any existing EXECD items and add at end
-            self.all_items = [x for x in self.all_items if not isinstance(x, EXECD)]
-        
-        self.all_items.append(item)
+            # Use router for batch processing
+            self.router.route_batch(item)
+            self.all_items.extend(item)
+        else:
+            # Use router for single item
+            self.router.route_item(item)
+            self.all_items.append(item)
         
         # Perform model-level cross-object validation
         if self.validation_enabled:
-            self._validate_cross_references()
+            self.validator.validate_cross_references()
     
-    def _route_item(self, item: StatementType) -> None:
-        """Route item to appropriate container or collection with validation."""
-        
-        # Container-based routing with validation
-        if isinstance(item, GRECO):
-            self.greco.add(item)
-        elif isinstance(item, BASCO):
-            self.basco.add(item)
-        elif isinstance(item, LOADC):
-            self.loadc.add(item)
-        elif isinstance(item, SHSEC):
-            self.shsec.add(item)
-        elif isinstance(item, SHAXE):
-            self.shaxe.add(item)
-        elif isinstance(item, CMPEC):
-            self.cmpec.add(item)
-        elif isinstance(item, RMPEC):
-            self.rmpec.add(item)
-        elif isinstance(item, RETYP):
-            self.retyp.add(item)
-        elif isinstance(item, RELOC):
-            self.reloc.add(item)
-        elif isinstance(item, LORES):
-            self.lores.add(item)
-        elif isinstance(item, XTFIL):
-            self.xtfil.add(item)
-        elif isinstance(item, DESEC):
-            self.desec.add(item)
-        elif isinstance(item, TABLE):
-            self.table.add(item)
-        elif isinstance(item, RFILE):
-            self.rfile.add(item)
-        elif isinstance(item, INCDF):
-            self.incdf.add(item)
-        elif isinstance(item, DECAS):
-            self.decas.add(item)
-        elif isinstance(item, DEPAR):
-            self.depar.add(item)
-        
-        # Container-based routing for simple statements
-        elif isinstance(item, FILST):
-            self.filst.add(item)
-        elif isinstance(item, HEADL):
-            self.headl.add(item)
-        elif isinstance(item, Cases):
-            self.cases.add(item)
-        elif isinstance(item, HEADING):
-            self.heading.append(item)
-        elif isinstance(item, EXECD):
-            self.execd.append(item)
-        
-        # Dictionary-based routing for other statements
-        # TODO: Add new statement types here or migrate to containers
-        
-        else:  
-            raise TypeError(f"Unsupported type for add(): {type(item).__name__}")
+    # _route_item method removed - functionality moved to StatementRouter
     
-    def _add_batch(self, items: List[StatementType]) -> None:
-        """Add multiple items with optimized batch validation."""
-        
-        # Group items by type for batch processing
-        grouped_items = {}
-        for item in items:
-            item_type = type(item)
-            if item_type not in grouped_items:
-                grouped_items[item_type] = []
-            grouped_items[item_type].append(item)
-        
-        # Process each group using containers
-        for item_type, type_items in grouped_items.items():
-            if item_type == GRECO:
-                self.greco.add_batch(type_items)
-            elif item_type == BASCO:
-                self.basco.add_batch(type_items)
-            elif item_type == LOADC:
-                self.loadc.add_batch(type_items)
-            elif item_type == SHSEC:
-                self.shsec.add_batch(type_items)
-            elif item_type == SHAXE:
-                self.shaxe.add_batch(type_items)
-            elif item_type == CMPEC:
-                self.cmpec.add_batch(type_items)
-            elif item_type == RMPEC:
-                self.rmpec.add_batch(type_items)
-            elif item_type == RETYP:
-                self.retyp.add_batch(type_items)
-            elif item_type == RELOC:
-                self.reloc.add_batch(type_items)
-            elif item_type == LORES:
-                self.lores.add_batch(type_items)
-            elif item_type == XTFIL:
-                self.xtfil.add_batch(type_items)
-            elif item_type == DESEC:
-                self.desec.add_batch(type_items)
-            elif item_type == TABLE:
-                self.table.add_batch(type_items)
-            else:
-                # Fall back to individual processing for non-container types
-                for item in type_items:
-                    self._route_item(item)
-        
-        # Add all to master list
-        self.all_items.extend(items)
-        
-        # Model-level cross-object validation
-        if self.validation_enabled:
-            self._validate_cross_references()
+    # _add_batch method removed - functionality moved to StatementRouter
     
     # Validation control methods
     def disable_container_validation(self) -> None:
@@ -292,13 +199,7 @@ class SD_BASE(BaseModel):
     
     def _finalize_model(self) -> None:
         """Mark model as complete and trigger final validation."""
-        self.building_mode = False  # Exit building mode
-        
-        # If we deferred cross-container validation, run it now
-        if (self.deferred_cross_validation and 
-            self.cross_container_validation_enabled and 
-            self.validation_enabled):
-            self._validate_cross_references()
+        self.validator.finalize_model()
     
     def disable_deferred_validation(self) -> None:
         """Disable automatic deferral - validate immediately during building."""
@@ -318,88 +219,13 @@ class SD_BASE(BaseModel):
         finally:
             self.deferred_cross_validation = original_state
     
-    def _validate_cross_references(self) -> None:
-        """Perform model-level cross-object validation with automatic deferral."""
-        # Skip validation if disabled globally
-        if validation_config.mode.value == 'disabled' or not self.validation_enabled:
-            return
-        
-        # SMART DEFERRAL: Skip cross-container validation during building mode if deferred validation is enabled
-        if (self.building_mode and 
-            self.deferred_cross_validation and 
-            self.cross_container_validation_enabled):
-            # Silently defer cross-container validation - no error, no noise
-            return
-            
-        # Skip cross-container validation if specifically disabled
-        if not self.cross_container_validation_enabled:
-            return
-            
-        issues = self._collect_validation_issues()
-        
-        # Check for critical errors based on validation mode
-        if validation_config.mode.value == 'permissive':
-            # In permissive mode, only raise for critical errors, not reference errors
-            critical_errors = [issue for issue in issues if issue.severity == 'error' and 'CRITICAL' in issue.code]
-        else:
-            # In normal/strict mode, raise for all errors
-            critical_errors = [issue for issue in issues if issue.severity == 'error']
-            
-        if critical_errors:
-            error_messages = [f"[{error.code}] {error.message}" for error in critical_errors]
-            raise ValueError("Model validation failed:\n" + "\n".join(error_messages))
-    
-    def _collect_validation_issues(self) -> List[ValidationIssue]:
-        """Collect all validation issues from model-level validation using the rule system."""
-        issues = []
-        
-        # Execute model-level validation for all statement types using the rule system
-        all_statements = []
-        all_statements.extend(self.greco.items)
-        all_statements.extend(self.basco.items)
-        all_statements.extend(self.loadc.items)
-        all_statements.extend(self.shsec.items)
-        all_statements.extend(self.shaxe.items)
-        all_statements.extend(self.cmpec.items)
-        all_statements.extend(self.rmpec.items)
-        all_statements.extend(self.retyp.items)
-        all_statements.extend(self.reloc.items)
-        all_statements.extend(self.lores.items)  # Add LORES container
-        all_statements.extend(self.xtfil.items)  # Add XTFIL container
-        all_statements.extend(self.desec.items)  # Add DESEC container
-        all_statements.extend(self.table.items)  # Add TABLE container
-        all_statements.extend(self.rfile.items)  # RFILE is now a container
-        all_statements.extend(self.incdf.items)  # INCDF is now a container
-        all_statements.extend(self.decas.items)  # DECAS is now a container
-        all_statements.extend(self.depar.items)  # DEPAR is now a container
-        all_statements.extend(self.filst)
-        
-        for statement in all_statements:
-            context = ValidationContext(
-                current_object=statement,
-                full_model=self
-            )
-            try:
-                validation_issues = execute_validation_rules(statement, context, level='model')
-                issues.extend(validation_issues)
-            except Exception as e:
-                # Convert any validation errors to issues
-                statement_type = type(statement).__name__
-                statement_id = getattr(statement, 'id', getattr(statement, 'key', 'unknown'))
-                issues.append(ValidationIssue(
-                    severity="error",
-                    code=f"{statement_type.upper()}_MODEL_ERROR",
-                    message=f"{statement_type} {statement_id} model validation failed: {str(e)}",
-                    location=f"{statement_type}.{statement_id}"
-                ))
-        
-        return issues
+
     
     @model_validator(mode='after')
     def validate_complete_model(self) -> 'SD_BASE':
         """Final model validation after all fields are set."""
         if self.validation_enabled:
-            self._validate_cross_references()
+            self.validator.validate_cross_references()
         return self
     def get_all_ids(self, statement_type: type) -> List[Union[int, str]]:
         """Get all IDs for a specific statement type."""
@@ -426,29 +252,7 @@ class SD_BASE(BaseModel):
     
     def validate_integrity(self) -> Dict[str, List[str]]:
         """Comprehensive integrity validation returning all issues by severity."""
-        issues_by_severity = {
-            'errors': [],
-            'warnings': [],
-            'info': []
-        }
-        
-        try:
-            # Collect all validation issues
-            all_issues = self._collect_validation_issues()
-            
-            # Group by severity
-            for issue in all_issues:
-                severity_key = issue.severity + 's'  # 'error' -> 'errors'
-                if severity_key in issues_by_severity:
-                    issue_msg = f"[{issue.code}] {issue.message}"
-                    if issue.suggestion:
-                        issue_msg += f" Suggestion: {issue.suggestion}"
-                    issues_by_severity[severity_key].append(issue_msg)
-        
-        except Exception as e:
-            issues_by_severity['errors'].append(f"Validation system error: {str(e)}")
-        
-        return issues_by_severity
+        return self.validator.validate_integrity()
     
     def get_validation_summary(self) -> Dict[str, Any]:
         """Get a comprehensive validation summary."""
