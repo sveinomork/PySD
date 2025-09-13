@@ -1,5 +1,4 @@
 FILST NAME=aquapod VERS=1.0 DATE=14.aug-2025 RESP=som
-RFILE PRE=C:\Users\nx74\Work\ShellDesign\AquaPod_09\Analyse_file FNM=R1 SUF=SIN TYP=SHE
 LOADC RN=1 LC=1-7,101-107
 LOADC TAB=
 LOADC PRI=

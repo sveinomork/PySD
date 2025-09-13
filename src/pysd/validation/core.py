@@ -24,6 +24,21 @@ class ValidationMode(Enum):
     PERMISSIVE = "permissive"  # Only critical errors raise exceptions
     DISABLED = "disabled"  # No validation errors raise exceptions
 
+class ValidationLevel(Enum):
+    """Validation levels for SD_BASE models."""
+    DISABLED = "disabled"  # All validation disabled
+    NORMAL = "normal"      # Standard validation level
+    STRICT = "strict"      # Strictest validation level
+    
+    def to_validation_mode(self) -> ValidationMode:
+        """Convert ValidationLevel to ValidationMode."""
+        mapping = {
+            ValidationLevel.DISABLED: ValidationMode.DISABLED,
+            ValidationLevel.NORMAL: ValidationMode.NORMAL,
+            ValidationLevel.STRICT: ValidationMode.STRICT
+        }
+        return mapping[self]
+
 class PySDValidationError(ValueError):
     """
     Custom validation error with severity-aware raising.

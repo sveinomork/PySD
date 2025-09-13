@@ -24,6 +24,10 @@ class ModelWriter:
             for item in self.model.all_items:
                 f.write(str(item) + "\n")
     
+    def write(self, output_file: str) -> None:
+        """Simple write method for new API - delegates to write_to_file."""
+        self.write_to_file(output_file)
+    
     @classmethod
     @contextmanager
     def create_writer(cls, output_file: str, validation_enabled: bool = True):

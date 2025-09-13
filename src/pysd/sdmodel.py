@@ -32,6 +32,7 @@ from .statements.statement_heading import HEADING
 from .containers.base_container import BaseContainer
 from .model.validation_manager import ValidationManager
 from .model.container_factory import ContainerFactory
+from .validation.core import ValidationMode, ValidationLevel
 
 
 # Define a protocol that all statement classes implement
@@ -91,7 +92,11 @@ class SD_BASE(BaseModel):
     heading: List[HEADING] = Field(default_factory=list, description="HEADING comment blocks")
     execd: List[EXECD] = Field(default_factory=list, description="EXECD statements")
     
-    # Enhanced validation control with automatic deferral
+    # New simplified validation control
+    validation_level: ValidationLevel = Field(default=ValidationLevel.NORMAL, exclude=True, description="Validation level: ValidationLevel enum")
+    cross_object_validation: bool = Field(default=True, exclude=True, description="Enable immediate cross-object validation during add()")
+    
+    # Internal validation control (backward compatibility)
     validation_enabled: bool = Field(default=True, exclude=True, description="Enable validation during operations")
     container_validation_enabled: bool = Field(default=True, exclude=True, description="Enable container-level validation")
     cross_container_validation_enabled: bool = Field(default=True, exclude=True, description="Enable cross-container validation")
@@ -100,6 +105,36 @@ class SD_BASE(BaseModel):
     
     # ValidationManager and StatementRouter for extracted logic - initialized in model_validator
     router: Any = Field(default=None, exclude=True, description="Statement routing system")
+
+    def __init__(self, validation_level: ValidationLevel = ValidationLevel.NORMAL, cross_object_validation: bool = True, **kwargs):
+        """Initialize SD_BASE with simplified validation parameters.
+        
+        Args:
+            validation_level: ValidationLevel enum (DISABLED, NORMAL, or STRICT)
+            cross_object_validation: Enable immediate cross-object validation during add()
+            **kwargs: Additional Pydantic model parameters
+        """
+        # Set validation fields before calling super().__init__
+        kwargs.setdefault('validation_level', validation_level)
+        kwargs.setdefault('cross_object_validation', cross_object_validation)
+        
+        # Configure validation settings based on level
+        if validation_level == ValidationLevel.DISABLED:
+            kwargs.setdefault('validation_enabled', False)
+            kwargs.setdefault('container_validation_enabled', False) 
+            kwargs.setdefault('cross_container_validation_enabled', False)
+        elif validation_level in [ValidationLevel.NORMAL, ValidationLevel.STRICT]:
+            kwargs.setdefault('validation_enabled', True)
+            kwargs.setdefault('container_validation_enabled', True)
+            kwargs.setdefault('cross_container_validation_enabled', True)
+        
+        # Initialize the parent Pydantic model
+        super().__init__(**kwargs)
+        
+        # Configure global validation mode
+        from .validation.core import validation_config
+        validation_config.mode = validation_level.to_validation_mode()
+    
     
     @property
     def validator(self) -> ValidationManager:
@@ -127,20 +162,25 @@ class SD_BASE(BaseModel):
     
 
 
-    def add(self, item: Union[StatementType, Sequence[StatementType]]) -> None:
+    def add(self, item: Union[StatementType, Sequence[StatementType]], validation: bool = None) -> None:
         """
-        Enhanced add method with automatic container routing and validation.
+        Enhanced add method with immediate validation support.
         
         Features:
         - Automatic container selection based on type
         - Batch processing for lists
+        - Immediate cross-object validation when requested
         - Layered validation (object -> container -> model)
-        - Cross-object reference validation
         - Maintains backward compatibility
         
         Args:
             item: The component to add, or a list of components.
+            validation: If True, run immediate cross-validation. If None, use model's cross_object_validation setting.
         """
+        # Determine if we should run immediate validation
+        run_validation = validation if validation is not None else self.cross_object_validation
+        
+        # Add items to model first
         if isinstance(item, list):
             # Use router for batch processing
             self.router.route_batch(item)
@@ -150,10 +190,46 @@ class SD_BASE(BaseModel):
             self.router.route_item(item)
             self.all_items.append(item)
         
-        # Perform model-level cross-object validation
-        if self.validation_enabled:
-            self.validator.validate_cross_references()
+        # Perform immediate cross-object validation if requested
+        if run_validation and self.validation_enabled:
+            # Temporarily disable deferred validation to force immediate validation
+            original_deferred = self.deferred_cross_validation
+            self.deferred_cross_validation = False
+            try:
+                self.validator.validate_cross_references()
+            except Exception as e:
+                # If validation fails, remove the items that were just added
+                if isinstance(item, list):
+                    for _ in item:
+                        self.all_items.pop()
+                        # Also need to remove from containers - this is more complex
+                        # For now, we'll let the error propagate and rely on proper usage
+                else:
+                    self.all_items.pop()
+                    # Also need to remove from container - this is more complex
+                    # For now, we'll let the error propagate and rely on proper usage
+                
+                # Re-raise the validation error
+                raise e
+            finally:
+                self.deferred_cross_validation = original_deferred
     
+    
+    
+    def write(self, output_file: str) -> None:
+        """
+        Simple write method to replace context manager pattern.
+        
+        Args:
+            output_file: Path to the output file
+        """
+        # Finalize the model first
+        self._finalize_model()
+        
+        # Delegate to ModelWriter for file output
+        from .model.model_writer import ModelWriter
+        writer = ModelWriter(self)
+        writer.write(output_file)
     
     
     @model_validator(mode='after')

@@ -3,15 +3,12 @@ from src.pysd.statements import (
     RETYP, DECAS, RELOC, EXECD, LORES, CMPEC, SHSEC, XTFIL,
     TABLE, RMPEC, CaseBuilder, Cases, HEADING, DEPAR
 )
-from src.pysd.sdmodel import SD_BASE
-from src.pysd.validation import set_validation_mode, ValidationMode
+from src.pysd import SD_BASE, ValidationLevel
 from src.pysd.helpers import create_axes_based_on_3_points_in_plane
 from shapely.geometry import Point
 
-# Configure global validation mode for the entire script
-# Options: ValidationMode.STRICT, NORMAL, PERMISSIVE, DISABLED
-# Set to PERMISSIVE during model building, will validate strictly at the end
-set_validation_mode(ValidationMode.DISABLED)
+# Note: Global validation mode configuration is no longer needed
+# Validation is now controlled per-model via SD_BASE constructor parameters
 
 
 
@@ -32,13 +29,13 @@ def create_basic_model_components(sd_model: SD_BASE) -> None:
     sd_model.add(filst_entry)
 
     # Add RFILE entry
-    rfile_definition = RFILE(
-        pre=r"C:\Users\nx74\Work\ShellDesign\AquaPod_09\Analyse_file",
-        fnm="R1",
-        suf="SIN",
-        typ="SHE",
-    )
-    sd_model.add(rfile_definition)
+    # rfile_definition = RFILE(
+    #     pre=r"C:\Users\nx74\Work\ShellDesign\AquaPod_09\Analyse_file",
+    #     fnm="R1",
+    #     suf="SIN",
+    #     typ="SHE",
+    # )
+    # #sd_model.add(rfile_definition)
 
 def create_design_sections(sd_model: SD_BASE) -> None:
     """
@@ -228,71 +225,56 @@ def main(output_file: str = r"turtorial.inp") -> None:
     """
     Main function to create and write the model.
     """
-    # Import validation context managers here if you want to use them
-    # from src.pysd.validation import permissive_validation, no_validation
-   
     print(f"Building model to be written to {output_file}...")
     
-    # Import here to get the current validation mode
-    from src.pysd.validation.core import get_validation_mode
-    current_mode = get_validation_mode()
-    print(f"Current validation mode: {current_mode}")  # Shows actual current setting
+    # NEW SIMPLIFIED API: No context managers, no manual validation management
+    model = SD_BASE(validation_level=ValidationLevel.NORMAL, cross_object_validation=True)
     
-    # CLEAN AND SIMPLE: No manual validation management needed!
-    with SD_BASE.create_writer(output_file) as sd_model:
-        
-        # Create all model components in a structured way
-        create_basic_model_components(sd_model)
+    # Create all model components in a structured way
+    create_basic_model_components(model)
 
-        # Create load components (BASCO needed by GRECO)
-        create_load_components(sd_model)
+    # Create load components (BASCO needed by GRECO)
+    create_load_components(model)
 
-        # For experimental or optional sections, you can use:
-        # with permissive_validation():
-        create_design_sections(sd_model)
-
+    # Create design sections
+    create_design_sections(model)
         
-        # Create materials first (needed by RETYP)
-        create_material_components(sd_model)
-        
-        # Create reinforcement types (needed by RELOC)  
-        create_reinforment_components(sd_model)
-        
-        
-        
-        
-        
-        # Create analysis components last
-        create_analysis_components(sd_model)
-        
-        # Final validation is handled automatically by the context manager!
-        
-        # Get validation summary after model creation
-        summary = sd_model.get_validation_summary()
-        print(f"Model created with {summary['total_items']} total items")
-        
-        # Display validation results
-        integrity = summary['integrity_issues']
-        
-        if summary['has_errors']:
-            print("❌ Model has validation errors:")
-            for error in integrity['errors']:
-                print(f"  ERROR: {error}")
-        
-        if summary['has_warnings']:
-            print("⚠️  Model has validation warnings:")
-            for warning in integrity['warnings']:
-                print(f"  WARNING: {warning}")
-        
-        if integrity.get('info'):
-            print("ℹ️  Model has validation info:")
-            for info in integrity['info']:
-                print(f"  INFO: {info}")
-        
-        if not summary['has_warnings'] and not summary['has_errors']:
-            print("✅ Model validation passed")
-             
+    # Create materials first (needed by RETYP)
+    create_material_components(model)
     
+    # Create reinforcement types (needed by RELOC)  
+    create_reinforment_components(model)
+    
+    # Create analysis components last
+    create_analysis_components(model)
+    
+    # Get validation summary after model creation
+    summary = model.get_validation_summary()
+    print(f"Model created with {summary['total_items']} total items")
+    
+    # Display validation results
+    integrity = summary['integrity_issues']
+    
+    if summary['has_errors']:
+        print("❌ Model has validation errors:")
+        for error in integrity['errors']:
+            print(f"  ERROR: {error}")
+    
+    if summary['has_warnings']:
+        print("⚠️  Model has validation warnings:")
+        for warning in integrity['warnings']:
+            print(f"  WARNING: {warning}")
+    
+    if integrity.get('info'):
+        print("ℹ️  Model has validation info:")
+        for info in integrity['info']:
+            print(f"  INFO: {info}")
+    
+    if not summary['has_warnings'] and not summary['has_errors']:
+        print("✅ Model validation passed")
+    
+    # CLEAN AND SIMPLE: Just call write()
+    model.write(output_file)
     print(f"Model successfully written to {output_file}")
 
 if __name__ == "__main__":
