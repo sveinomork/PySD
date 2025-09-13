@@ -33,6 +33,7 @@ class StatementRouter:
         Adding a new statement type only requires adding one line here!
         """
         # Import statements here to avoid circular imports
+        # Use relative imports to match the test import pattern
         from ..statements.greco import GRECO
         from ..statements.basco import BASCO
         from ..statements.loadc import LOADC

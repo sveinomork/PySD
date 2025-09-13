@@ -5,33 +5,33 @@ from typing import List, Union, Protocol, runtime_checkable, Sequence, Dict, Any
 from pydantic import BaseModel, Field, model_validator
 
 # Import all statement types for runtime use
-from src.pysd.statements.rfile import RFILE
-from src.pysd.statements.shaxe import SHAXE
-from src.pysd.statements.desec import DESEC
-from src.pysd.statements.cmpec import CMPEC
-from src.pysd.statements.loadc import LOADC
-from src.pysd.statements.lores import LORES
-from src.pysd.statements.basco import BASCO
-from src.pysd.statements.greco import GRECO
-from src.pysd.statements.filst import FILST
-from src.pysd.statements.retyp import RETYP
-from src.pysd.statements.reloc import RELOC
-from src.pysd.statements.decas import DECAS
-from src.pysd.statements.table import TABLE
-from src.pysd.statements.incdf import INCDF
-from src.pysd.statements.depar import DEPAR
-from src.pysd.statements.headl import HEADL
-from src.pysd.statements.cases import Cases
-from src.pysd.statements.execd import EXECD
-from src.pysd.statements.shsec import SHSEC
-from src.pysd.statements.rmpec import RMPEC
-from src.pysd.statements.xtfil import XTFIL
-from src.pysd.statements.statement_heading import HEADING
+from .statements.rfile import RFILE
+from .statements.shaxe import SHAXE
+from .statements.desec import DESEC
+from .statements.cmpec import CMPEC
+from .statements.loadc import LOADC
+from .statements.lores import LORES
+from .statements.basco import BASCO
+from .statements.greco import GRECO
+from .statements.filst import FILST
+from .statements.retyp import RETYP
+from .statements.reloc import RELOC
+from .statements.decas import DECAS
+from .statements.table import TABLE
+from .statements.incdf import INCDF
+from .statements.depar import DEPAR
+from .statements.headl import HEADL
+from .statements.cases import Cases
+from .statements.execd import EXECD
+from .statements.shsec import SHSEC
+from .statements.rmpec import RMPEC
+from .statements.xtfil import XTFIL
+from .statements.statement_heading import HEADING
 
 # Import container system
-from src.pysd.containers.base_container import BaseContainer
-from src.pysd.model.validation_manager import ValidationManager
-from src.pysd.model.container_factory import ContainerFactory
+from .containers.base_container import BaseContainer
+from .model.validation_manager import ValidationManager
+from .model.container_factory import ContainerFactory
 
 
 # Define a protocol that all statement classes implement
@@ -112,7 +112,7 @@ class SD_BASE(BaseModel):
     def setup_container_parent_references(self) -> 'SD_BASE':
         """Set parent model references for all containers and initialize router."""
         # Import here to avoid circular imports
-        from src.pysd.model.statement_router import StatementRouter
+        from .model.statement_router import StatementRouter
         
         # Initialize ValidationManager and StatementRouter
         self._validation_manager = ValidationManager(self)
@@ -210,7 +210,7 @@ class SD_BASE(BaseModel):
             SD_BASE: Model instance for building
         """
         # Delegate to ModelWriter to keep I/O logic out of SD_BASE
-        from src.pysd.model.model_writer import ModelWriter
+        from .model.model_writer import ModelWriter
         with ModelWriter.create_writer(output_file, validation_enabled) as sd_model:
             yield sd_model
     

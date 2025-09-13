@@ -102,14 +102,9 @@ LOADC(pri=True)
     @property
     def identifier(self) -> str:
         """Get unique identifier for this LOADC statement."""
-        if self.run_number is not None:
-            return f"RN{self.run_number}"
-        elif self.table:
-            return "TAB"
-        elif self.pri:
-            return "PRI"
-        else:
-            return str(id(self))
+        # LOADC statements should allow multiple entries with the same run_number
+        # so we use the object id to ensure uniqueness per instance
+        return f"LOADC_{id(self)}"
 
     @field_validator('alc', 'olc', mode='before')
     @classmethod

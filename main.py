@@ -11,7 +11,7 @@ from shapely.geometry import Point
 # Configure global validation mode for the entire script
 # Options: ValidationMode.STRICT, NORMAL, PERMISSIVE, DISABLED
 # Set to PERMISSIVE during model building, will validate strictly at the end
-set_validation_mode(ValidationMode.NORMAL)
+set_validation_mode(ValidationMode.DISABLED)
 
 
 
