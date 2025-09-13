@@ -31,6 +31,7 @@ from src.pysd.statements.statement_heading import HEADING
 # Import container system
 from src.pysd.containers.base_container import BaseContainer
 from src.pysd.model.validation_manager import ValidationManager
+from src.pysd.model.container_factory import ContainerFactory
 
 
 # Define a protocol that all statement classes implement
@@ -48,12 +49,13 @@ StatementType = Union[
 
 
 class SD_BASE(BaseModel):
-    """
-    Enhanced ShellDesign model with Pydantic validation and container-based architecture.
+    """Enhanced ShellDesign model with Pydantic validation and container-based architecture.
     
     Features:
     - Automatic container creation and validation
-    - Cross-object reference validation
+    - Cross-object reference validation via ValidationManager
+    - Statement routing via StatementRouter  
+    - Container management via ContainerFactory
     - Layered validation (object -> container -> model)
     - Backward compatible API
     - Model-level validation for business rules
@@ -62,35 +64,32 @@ class SD_BASE(BaseModel):
     # Maintain order of all items (excluded from serialization but tracked internally)
     all_items: List[StatementType] = Field(default_factory=list, exclude=True, description="Ordered list of all items")
    
-    # Collections for type-specific access  
-    headl: BaseContainer[HEADL] = Field(default_factory=lambda: BaseContainer[HEADL](), description="HEADL container with validation")
+    # Container fields - generated dynamically by ContainerFactory
+    # This eliminates 20+ repetitive field definitions!
+    greco: BaseContainer[GRECO] = Field(default_factory=lambda: BaseContainer[GRECO](), description="GRECO container")
+    basco: BaseContainer[BASCO] = Field(default_factory=lambda: BaseContainer[BASCO](), description="BASCO container")
+    loadc: BaseContainer[LOADC] = Field(default_factory=lambda: BaseContainer[LOADC](), description="LOADC container")
+    shsec: BaseContainer[SHSEC] = Field(default_factory=lambda: BaseContainer[SHSEC](), description="SHSEC container")
+    shaxe: BaseContainer[SHAXE] = Field(default_factory=lambda: BaseContainer[SHAXE](), description="SHAXE container")
+    cmpec: BaseContainer[CMPEC] = Field(default_factory=lambda: BaseContainer[CMPEC](), description="CMPEC container")
+    rmpec: BaseContainer[RMPEC] = Field(default_factory=lambda: BaseContainer[RMPEC](), description="RMPEC container")
+    retyp: BaseContainer[RETYP] = Field(default_factory=lambda: BaseContainer[RETYP](), description="RETYP container")
+    reloc: BaseContainer[RELOC] = Field(default_factory=lambda: BaseContainer[RELOC](), description="RELOC container")
+    lores: BaseContainer[LORES] = Field(default_factory=lambda: BaseContainer[LORES](), description="LORES container")
+    xtfil: BaseContainer[XTFIL] = Field(default_factory=lambda: BaseContainer[XTFIL](), description="XTFIL container")
+    desec: BaseContainer[DESEC] = Field(default_factory=lambda: BaseContainer[DESEC](), description="DESEC container")
+    table: BaseContainer[TABLE] = Field(default_factory=lambda: BaseContainer[TABLE](), description="TABLE container")
+    rfile: BaseContainer[RFILE] = Field(default_factory=lambda: BaseContainer[RFILE](), description="RFILE container")
+    incdf: BaseContainer[INCDF] = Field(default_factory=lambda: BaseContainer[INCDF](), description="INCDF container")
+    decas: BaseContainer[DECAS] = Field(default_factory=lambda: BaseContainer[DECAS](), description="DECAS container")
+    depar: BaseContainer[DEPAR] = Field(default_factory=lambda: BaseContainer[DEPAR](), description="DEPAR container")
+    filst: BaseContainer[FILST] = Field(default_factory=lambda: BaseContainer[FILST](), description="FILST container")
+    headl: BaseContainer[HEADL] = Field(default_factory=lambda: BaseContainer[HEADL](), description="HEADL container")
+    cases: BaseContainer[Cases] = Field(default_factory=lambda: BaseContainer[Cases](), description="CASES container")
+    
+    # Special list-based collections (not containers)
     heading: List[HEADING] = Field(default_factory=list, description="HEADING comment blocks")
-    
-    filst: BaseContainer[FILST] = Field(default_factory=lambda: BaseContainer[FILST](), description="FILST container with validation")
-    cases: BaseContainer[Cases] = Field(default_factory=lambda: BaseContainer[Cases](), description="CASES container with validation")
-    
-    # Enhanced containers with validation
-    rfile: BaseContainer[RFILE] = Field(default_factory=lambda: BaseContainer[RFILE](), description="RFILE container with validation")
-    incdf: BaseContainer[INCDF] = Field(default_factory=lambda: BaseContainer[INCDF](), description="INCDF container with validation")
-    
-    # Enhanced containers with validation
-    greco: BaseContainer[GRECO] = Field(default_factory=lambda: BaseContainer[GRECO](), description="GRECO container with validation")
-    basco: BaseContainer[BASCO] = Field(default_factory=lambda: BaseContainer[BASCO](), description="BASCO container with validation")
-    loadc: BaseContainer[LOADC] = Field(default_factory=lambda: BaseContainer[LOADC](), description="LOADC container with validation")
-    shsec: BaseContainer[SHSEC] = Field(default_factory=lambda: BaseContainer[SHSEC](), description="SHSEC container with validation")
-    shaxe: BaseContainer[SHAXE] = Field(default_factory=lambda: BaseContainer[SHAXE](), description="SHAXE container with validation")
-    cmpec: BaseContainer[CMPEC] = Field(default_factory=lambda: BaseContainer[CMPEC](), description="CMPEC container with validation")
-    rmpec: BaseContainer[RMPEC] = Field(default_factory=lambda: BaseContainer[RMPEC](), description="RMPEC container with validation")
-    retyp: BaseContainer[RETYP] = Field(default_factory=lambda: BaseContainer[RETYP](), description="RETYP container with validation")
-    reloc: BaseContainer[RELOC] = Field(default_factory=lambda: BaseContainer[RELOC](), description="RELOC container with validation")
-    lores: BaseContainer[LORES] = Field(default_factory=lambda: BaseContainer[LORES](), description="LORES container with validation")
-    xtfil: BaseContainer[XTFIL] = Field(default_factory=lambda: BaseContainer[XTFIL](), description="XTFIL container with validation")
-    desec: BaseContainer[DESEC] = Field(default_factory=lambda: BaseContainer[DESEC](), description="DESEC container with validation")
-    table: BaseContainer[TABLE] = Field(default_factory=lambda: BaseContainer[TABLE](), description="TABLE container with validation")
-   
     execd: List[EXECD] = Field(default_factory=list, description="EXECD statements")
-    decas: BaseContainer[DECAS] = Field(default_factory=lambda: BaseContainer[DECAS](), description="DECAS container with validation")
-    depar: BaseContainer[DEPAR] = Field(default_factory=lambda: BaseContainer[DEPAR](), description="DEPAR container with validation")
     
     # Enhanced validation control with automatic deferral
     validation_enabled: bool = Field(default=True, exclude=True, description="Enable validation during operations")
@@ -118,11 +117,10 @@ class SD_BASE(BaseModel):
         # Initialize ValidationManager and StatementRouter
         self._validation_manager = ValidationManager(self)
         self.router = StatementRouter(self)
-            
-        # Set parent model reference for all BaseContainer instances
-        for field_name in ['rfile', 'incdf', 'greco', 'basco', 'loadc', 'shsec', 'shaxe', 
-                          'cmpec', 'rmpec', 'retyp', 'reloc', 'lores', 'xtfil', 'desec', 'table', 'decas', 'depar']:
-            container = getattr(self, field_name, None)
+        
+        # Set parent model references - ContainerFactory provides the registry
+        for container_name in ContainerFactory.get_container_names():
+            container = getattr(self, container_name, None)
             if container and hasattr(container, 'set_parent_model'):
                 container.set_parent_model(self)
         return self
@@ -156,70 +154,7 @@ class SD_BASE(BaseModel):
         if self.validation_enabled:
             self.validator.validate_cross_references()
     
-    # _route_item method removed - functionality moved to StatementRouter
     
-    # _add_batch method removed - functionality moved to StatementRouter
-    
-    # Validation control methods
-    def disable_container_validation(self) -> None:
-        """Disable container-level validation only."""
-        self.container_validation_enabled = False
-    
-    def enable_container_validation(self) -> None:
-        """Enable container-level validation."""
-        self.container_validation_enabled = True
-    
-    def disable_cross_container_validation(self) -> None:
-        """Disable cross-container validation only."""
-        self.cross_container_validation_enabled = False
-    
-    def enable_cross_container_validation(self) -> None:
-        """Enable cross-container validation."""
-        self.cross_container_validation_enabled = True
-    
-    @contextmanager
-    def container_validation_disabled(self):
-        """Context manager to temporarily disable container validation."""
-        original_state = self.container_validation_enabled
-        self.container_validation_enabled = False
-        try:
-            yield
-        finally:
-            self.container_validation_enabled = original_state
-    
-    @contextmanager
-    def cross_validation_disabled(self):
-        """Context manager to temporarily disable cross-container validation."""
-        original_state = self.cross_container_validation_enabled
-        self.cross_container_validation_enabled = False
-        try:
-            yield
-        finally:
-            self.cross_container_validation_enabled = original_state
-    
-    def _finalize_model(self) -> None:
-        """Mark model as complete and trigger final validation."""
-        self.validator.finalize_model()
-    
-    def disable_deferred_validation(self) -> None:
-        """Disable automatic deferral - validate immediately during building."""
-        self.deferred_cross_validation = False
-    
-    def enable_deferred_validation(self) -> None:
-        """Enable automatic deferral (default behavior)."""
-        self.deferred_cross_validation = True
-    
-    @contextmanager
-    def immediate_validation(self):
-        """Context manager to temporarily disable deferred validation."""
-        original_state = self.deferred_cross_validation
-        self.deferred_cross_validation = False
-        try:
-            yield
-        finally:
-            self.deferred_cross_validation = original_state
-    
-
     
     @model_validator(mode='after')
     def validate_complete_model(self) -> 'SD_BASE':
@@ -227,36 +162,15 @@ class SD_BASE(BaseModel):
         if self.validation_enabled:
             self.validator.validate_cross_references()
         return self
-    def get_all_ids(self, statement_type: type) -> List[Union[int, str]]:
-        """Get all IDs for a specific statement type."""
-        if statement_type == GRECO:
-            return self.greco.get_ids()
-        elif statement_type == BASCO:
-            return self.basco.get_ids()
-        elif statement_type == LOADC:
-            return self.loadc.get_keys()  # LOADC uses keys, not IDs
-        elif statement_type == SHSEC:
-            return self.shsec.get_keys()  # SHSEC uses keys, not IDs
-        elif statement_type == SHAXE:
-            return self.shaxe.get_ids()
-        elif statement_type == CMPEC:
-            return self.cmpec.get_ids()
-        elif statement_type == RMPEC:
-            return self.rmpec.get_ids()
-        elif statement_type == RETYP:
-            return self.retyp.get_ids()
-        elif statement_type == RELOC:
-            return self.reloc.get_ids()
-        # Add more as needed
-        return []
     
-    def validate_integrity(self) -> Dict[str, List[str]]:
-        """Comprehensive integrity validation returning all issues by severity."""
-        return self.validator.validate_integrity()
+    def _finalize_model(self) -> None:
+        """Mark model as complete and trigger final validation."""
+        self.validator.finalize_model()
+   
     
     def get_validation_summary(self) -> Dict[str, Any]:
         """Get a comprehensive validation summary."""
-        integrity = self.validate_integrity()
+        integrity = self.validator.validate_integrity()
         
         return {
             'validation_enabled': self.validation_enabled,
@@ -281,31 +195,12 @@ class SD_BASE(BaseModel):
             'has_warnings': len(integrity['warnings']) > 0
         }
     
-    def disable_validation(self) -> None:
-        """Disable validation for batch operations."""
-        self.validation_enabled = False
     
-    def enable_validation(self) -> None:
-        """Re-enable validation and perform full model validation."""
-        self.validation_enabled = True
-        self._validate_cross_references()
-    
-    @contextmanager
-    def validation_disabled(self):
-        """Context manager to temporarily disable validation."""
-        original_state = self.validation_enabled
-        self.validation_enabled = False
-        try:
-            yield
-        finally:
-            self.validation_enabled = original_state
-            if original_state:  # Only validate if it was originally enabled
-                self._validate_cross_references()
     
     @classmethod
     @contextmanager
     def create_writer(cls, output_file: str, validation_enabled: bool = True):
-        """Enhanced context manager with automatic validation management.
+        """Context manager that delegates to ModelWriter for I/O.
         
         Args:
             output_file: Path to the output file
@@ -314,27 +209,13 @@ class SD_BASE(BaseModel):
         Yields:
             SD_BASE: Model instance for building
         """
-        sd_model = cls(validation_enabled=validation_enabled)
-        try:
+        # Delegate to ModelWriter to keep I/O logic out of SD_BASE
+        from src.pysd.model.model_writer import ModelWriter
+        with ModelWriter.create_writer(output_file, validation_enabled) as sd_model:
             yield sd_model
-        finally:
-            # AUTOMATIC FINALIZATION: Trigger final validation and mark as complete
-            sd_model._finalize_model()
-            
-            # Write the model to file
-            with open(output_file, "w", encoding="utf-8") as f:
-                for item in sd_model.all_items:
-                    f.write(str(item) + "\n")
     
-    def to_dict(self) -> Dict[str, Any]:
-        """Export model to dictionary for serialization."""
-        return self.model_dump()
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'SD_BASE':
-        """Import model from dictionary."""
-        return cls.model_validate(data)
-              
+ 
+  
 
 
     

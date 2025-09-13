@@ -145,3 +145,83 @@ class ValidationManager:
             issues_by_severity['errors'].append(f"Validation system error: {str(e)}")
         
         return issues_by_severity
+    
+    # =============================================================================
+    # Validation Control Methods (moved from SD_BASE)
+    # =============================================================================
+    
+    def disable_container_validation(self) -> None:
+        """Disable container-level validation only."""
+        self.model.container_validation_enabled = False
+    
+    def enable_container_validation(self) -> None:
+        """Enable container-level validation."""
+        self.model.container_validation_enabled = True
+    
+    def disable_cross_container_validation(self) -> None:
+        """Disable cross-container validation only."""
+        self.model.cross_container_validation_enabled = False
+    
+    def enable_cross_container_validation(self) -> None:
+        """Enable cross-container validation."""
+        self.model.cross_container_validation_enabled = True
+    
+    def disable_deferred_validation(self) -> None:
+        """Disable automatic deferral - validate immediately during building."""
+        self.model.deferred_cross_validation = False
+    
+    def enable_deferred_validation(self) -> None:
+        """Enable automatic deferral (default behavior)."""
+        self.model.deferred_cross_validation = True
+    
+    def disable_validation(self) -> None:
+        """Disable validation for batch operations."""
+        self.model.validation_enabled = False
+    
+    def enable_validation(self) -> None:
+        """Re-enable validation and perform full model validation."""
+        self.model.validation_enabled = True
+        # Trigger cross-reference validation
+        self.validate_cross_references()
+    
+    @contextmanager
+    def container_validation_disabled(self):
+        """Context manager to temporarily disable container validation."""
+        original_state = self.model.container_validation_enabled
+        self.model.container_validation_enabled = False
+        try:
+            yield
+        finally:
+            self.model.container_validation_enabled = original_state
+    
+    @contextmanager
+    def cross_validation_disabled(self):
+        """Context manager to temporarily disable cross-container validation."""
+        original_state = self.model.cross_container_validation_enabled
+        self.model.cross_container_validation_enabled = False
+        try:
+            yield
+        finally:
+            self.model.cross_container_validation_enabled = original_state
+    
+    @contextmanager
+    def immediate_validation(self):
+        """Context manager to temporarily disable deferred validation."""
+        original_state = self.model.deferred_cross_validation
+        self.model.deferred_cross_validation = False
+        try:
+            yield
+        finally:
+            self.model.deferred_cross_validation = original_state
+    
+    @contextmanager
+    def validation_disabled(self):
+        """Context manager to temporarily disable validation."""
+        original_state = self.model.validation_enabled
+        self.model.validation_enabled = False
+        try:
+            yield
+        finally:
+            self.model.validation_enabled = original_state
+            if original_state:  # Only validate if it was originally enabled
+                self.validate_cross_references()
