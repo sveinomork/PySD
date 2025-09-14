@@ -1,11 +1,6 @@
 from typing import Optional, List, Literal
 from pydantic import BaseModel, Field
 from .statement_base import StatementBase
-# Forward declarations for extended ELC functionality
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from .loadc import LoadcList
-    from .greco import GRECO
 
 class LoadCase(BaseModel):
     """
@@ -20,6 +15,9 @@ class LoadCase(BaseModel):
             return NotImplemented
         return (self.lc_type, self.lc_numb) == (other.lc_type, other.lc_numb)
     
+    def __str__(self) -> str:
+        return f"LF={self.lc_fact} {self.lc_type}={self.lc_numb}"
+
     def is_in_loadcase(self, id: int,type:str) -> bool:
         return self.lc_type == type and self.lc_numb == id
     
