@@ -285,5 +285,3 @@ def normalize_cases(value: Union[str, List[CaseRange], CaseBuilder, Cases, int, 
         else:
             raise ValueError(f"Cannot convert {type(value)} to Cases")
 
-# Backward compatibility aliases
-LoadCaseDefinition = Cases

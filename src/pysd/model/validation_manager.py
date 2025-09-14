@@ -28,7 +28,7 @@ class ValidationManager:
         from ..validation.core import validation_config
         
         # Skip validation if disabled globally
-        if validation_config.mode.value == 'disabled' or not self.model.validation_enabled:
+        if validation_config.level == 'disabled' or not self.model.validation_enabled:
             return False
         
         # SMART DEFERRAL: Skip cross-container validation during building mode
@@ -102,7 +102,7 @@ class ValidationManager:
         issues = self.collect_validation_issues()
         
         # Check for critical errors based on validation mode
-        if validation_config.mode.value == 'permissive':
+        if validation_config.level == 'permissive':
             critical_errors = [issue for issue in issues if issue.severity == 'error' and 'CRITICAL' in issue.code]
         else:
             critical_errors = [issue for issue in issues if issue.severity == 'error']

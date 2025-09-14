@@ -36,7 +36,6 @@ class RETYP(StatementBase):
     
     # Optional parameters
     mp: Optional[int] = Field(None, description="Rebar material property set ID (MP=)")
-    lb: Optional[str] = Field(None, description="Label for XTRACT plot file (max 16 chars)")
     ar: Optional[float] = Field(None, description="Cross-sectional area per unit length [m²/m] (Method 1)")
     nr: Optional[int] = Field(None, description="Number of rebars in bundle (default 1, Method 2)")
     di: Optional[float] = Field(None, description="Diameter of rebar [m or mm] (> 1.0 → mm, < 1.0 → m)")
@@ -45,6 +44,7 @@ class RETYP(StatementBase):
     th: Optional[float] = Field(None, description="Thickness of rebar layer [m]")
     os: Optional[float] = Field(None, description="Offset to layer center [m]")
     bc: Optional[float] = Field(None, description="Bond coefficient (default 0.75)")
+    lb: Optional[str] = Field(None, description="Label for XTRACT plot file (max 16 chars)")
     comment: Optional[str] = Field(None, description="Comment to append at end of line")
     
     @property
@@ -59,8 +59,6 @@ class RETYP(StatementBase):
         # Optional parameters (only add if not None/default)
         if self.mp is not None:
             parts.append(f"MP={self.mp}")
-        if self.lb:
-            parts.append(f"LB={self.lb}")
         if self.ar is not None:
             parts.append(f"AR={self.ar:.6g}")
         if self.nr is not None:
@@ -77,7 +75,8 @@ class RETYP(StatementBase):
             parts.append(f"OS={self.os:.6g}")
         if self.bc is not None:
             parts.append(f"BC={self.bc:.6g}")
-
+        if self.lb:
+            parts.append(f"LB={self.lb}")
         if self.comment:
             parts.append(f"% {self.comment}")
 

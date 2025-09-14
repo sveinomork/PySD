@@ -97,7 +97,8 @@ def create_load_components(sd_model: SD_BASE) -> None:
     
     # Create and add LOADC entries first
     loadc = [
-        LOADC(run_number=1, alc=(1,7), olc=(101,107)),
+        LOADC(run_number=1, alc=(1,6), olc=(201,206)),
+        LOADC(run_number=1, alc=(11,16), olc=(101,106)),
         LOADC(table=True),
         LOADC(pri=True)
     ]
@@ -110,19 +111,26 @@ def create_load_components(sd_model: SD_BASE) -> None:
     # Add BASCO entries BEFORE GRECO (to satisfy references)
     # First add basco's for greco (211-216)
     for i in range(6):
-        load_cases = [LoadCase(lc_type='OLC', lc_numb=201+i, lc_fact=1) ]
+        load_cases = [LoadCase(lc_type='OLC', lc_numb=101+i, lc_fact=1) ]
         basco = BASCO(id=211+i, load_cases=load_cases)
         sd_model.add(basco)
+
+     # Now add GRECO statement (after BASCO statements it references)
+    greco_support = GRECO(
+        id='A',
+        bas=Cases(ranges=[(211, 216)])
+    )
+    sd_model.add(greco_support)    
     
     # Create and add more BASCO entries (101-102)  
     load_cases = [
-        LoadCase(lc_type='ELC', lc_numb=i, lc_fact=1.5)
-        for i in range(101, 107)
+        LoadCase(lc_type='ELC', lc_numb=i+101, lc_fact=1.5)
+        for i in range(6)
     ]
 
     load_cases2 = [
-        LoadCase(lc_type='ELC', lc_numb=i, lc_fact=1.8)
-        for i in range(101, 107)
+        LoadCase(lc_type='ELC', lc_numb=i+101, lc_fact=1.8)
+        for i in range(6)
     ]
 
     sd_model.add( HEADING(bas_id="101", description="Form Coupled"))
@@ -131,12 +139,7 @@ def create_load_components(sd_model: SD_BASE) -> None:
     basco = BASCO(id=102, load_cases=load_cases2)
     sd_model.add(basco)
     
-    # Now add GRECO statement (after BASCO statements it references)
-    greco_support = GRECO(
-        id='A',
-        bas=Cases(ranges=[(211, 216)])
-    )
-    sd_model.add(greco_support)
+   
 
 def create_material_components(sd_model: SD_BASE) -> None:
     """

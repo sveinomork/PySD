@@ -1,45 +1,54 @@
-from src.pysd.statements import DECAS, BASCO, LoadCase, CaseBuilder, GRECO, Cases
-from src.pysd.sdmodel import SD_BASE
-from src.pysd.validation import set_validation_mode, ValidationMode
-from src.pysd.validation.rules.decas_rules import validate_decas_model
-from src.pysd.validation.core import ValidationContext
+#!/usr/bin/env python3
+"""Simple test to check validation execution without external dependencies"""
 
-# Configure validation mode
-set_validation_mode(ValidationMode.STRICT)
+import sys
+import os
 
-# Create a minimal model
-sd_model = SD_BASE()
+# Add the src directory to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-# Add a simple BASCO
-basco = BASCO(id=101, load_cases=[LoadCase(lc_type='ELC', lc_numb=101, lc_fact=1.0)])
-sd_model.add(basco)
-
-# Add a GRECO 
-greco = GRECO(id='A', bas=Cases(ranges=[(211, 216)]))
-
-# Try to add more BASCO for GRECO without triggering error
-for i in range(211, 217):
-    basco_greco = BASCO(id=i, load_cases=[LoadCase(lc_type='ELC', lc_numb=i, lc_fact=1.0)])
-    sd_model.add(basco_greco)
-
-sd_model.add(greco)
-
-# Create the DECAS statement that should trigger validation
-decas_statement = DECAS(ls='ULS', bas=CaseBuilder.create().add_range(101,112).with_greco('A'))
-
-print("Created DECAS:", decas_statement)
-print("BAS field:", decas_statement.bas)
-print("BAS type:", type(decas_statement.bas))
-
-# Now test the model validation directly
-context = ValidationContext(current_object=decas_statement, full_model=sd_model)
+# Test the validation rule directly
+print("Testing BASCO validation rule execution...")
 
 try:
-    issues = validate_decas_model(decas_statement, context)
-    print("Validation issues:", issues)
+    from pysd.statements.basco import BASCO, LoadCase
+    from pysd.validation.core import ValidationContext, ValidationIssue
+    from pysd.validation.rules.basco_rules import validate_olc_references_exist
+    
+    # Create a mock full model
+    class MockModel:
+        def __init__(self):
+            self.loadc = []  # Empty LOADC container
+    
+    # Create test data
+    mock_model = MockModel()
+    test_basco = BASCO(
+        id=1001,
+        load_cases=[
+            LoadCase(lc_type='OLC', lc_numb=101, lc_fact=1.0),
+            LoadCase(lc_type='OLC', lc_numb=102, lc_fact=1.5)
+        ]
+    )
+    
+    context = ValidationContext(
+        current_object=test_basco,
+        full_model=mock_model
+    )
+    
+    # Call the validation rule directly
+    print("Calling validate_olc_references_exist...")
+    issues = validate_olc_references_exist(test_basco, context)
+    
+    print(f"Found {len(issues)} validation issues:")
     for issue in issues:
-        print(f"  - {issue.severity}: {issue.code} - {issue.message}")
+        print(f"  - {issue.severity}: {issue.message}")
+    
+    if not issues:
+        print("ERROR: Expected validation issues but none were found!")
+    else:
+        print("SUCCESS: Validation rule found expected issues!")
+        
 except Exception as e:
-    print("Error in validate_decas_model:", e)
+    print(f"ERROR: {e}")
     import traceback
     traceback.print_exc()

@@ -111,26 +111,68 @@ def validate_bas_references_exist(obj: 'BASCO', context: ValidationContext) -> L
 
 @model_rule('BASCO')
 def validate_elc_references_exist(obj: 'BASCO', context: ValidationContext) -> List[ValidationIssue]:
-    """Validate that ELC references exist in LOADC container."""
+    """Validate that ELC references can only be used when GRECO statements exist."""
+    issues = []
+    
+    if not context.full_model:
+        return issues
+    
+    greco_container = getattr(context.full_model, 'greco', None)
+    if greco_container is None:
+        return issues
+    
+    for i, load_case in enumerate(obj.load_cases):
+        if load_case.lc_type == 'ELC':
+            # Check if any GRECO statements exist in the model
+            has_greco = len(list(greco_container)) > 0
+            
+            if not has_greco:
+                issues.append(ValidationIssue(
+                    severity=ValidationSeverity.ERROR.value,
+                    code="BASCO-ELC-REF-001",
+                    message=f"BASCO {obj.id} ELC {load_case.lc_numb} cannot be used without GRECO statements",
+                    location=f"BASCO.{obj.id}.load_cases[{i}]",
+                    suggestion=f"Add GRECO statement or use OLC instead of ELC"
+                ))
+            else:
+                # If GRECO exists, ELC should reference the same numbers as OLC
+                loadc_container = getattr(context.full_model, 'loadc', None)
+                if loadc_container is not None:
+                    # Check if ELC number exists as OLC in any LOADC
+                    olc_found = any(loadc.is_olc(load_case.lc_numb) for loadc in loadc_container)
+                    
+                    if not olc_found:
+                        issues.append(ValidationIssue(
+                            severity=ValidationSeverity.ERROR.value,
+                            code="BASCO-ELC-REF-002",
+                            message=f"BASCO {obj.id} ELC {load_case.lc_numb} not found as OLC in LOADC",
+                            location=f"BASCO.{obj.id}.load_cases[{i}]",
+                            suggestion=f"Add LOADC with OLC {load_case.lc_numb} or use existing OLC number"
+                        ))
+    return issues
+
+@model_rule('BASCO')
+def validate_olc_references_exist(obj: 'BASCO', context: ValidationContext) -> List[ValidationIssue]:
+    """Validate that OLC references exist in LOADC container."""
     issues = []
     
     if not context.full_model:
         return issues
     
     loadc_container = getattr(context.full_model, 'loadc', None)
-    if not loadc_container:
+    if loadc_container is None:
         return issues
     
     for i, load_case in enumerate(obj.load_cases):
-        if load_case.lc_type == 'ELC':
-            # Check if ELC exists as OLC in any LOADC
-            elc_found = any(loadc.is_olc(load_case.lc_numb) for loadc in loadc_container)
+        if load_case.lc_type == 'OLC':
+            # Check if OLC exists in any LOADC
+            olc_found = any(loadc.is_olc(load_case.lc_numb) for loadc in loadc_container)
             
-            if not elc_found:
+            if not olc_found:
                 issues.append(ValidationIssue(
                     severity=ValidationSeverity.ERROR.value,
-                    code="BASCO-ELC-REF-001",
-                    message=f"BASCO {obj.id} ELC {load_case.lc_numb} not found as OLC in LOADC",
+                    code="BASCO-OLC-REF-001",
+                    message=f"BASCO {obj.id} OLC {load_case.lc_numb} not found in LOADC",
                     location=f"BASCO.{obj.id}.load_cases[{i}]",
                     suggestion=f"Add LOADC with OLC {load_case.lc_numb}"
                 ))

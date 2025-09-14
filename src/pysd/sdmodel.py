@@ -32,7 +32,7 @@ from .statements.statement_heading import HEADING
 from .containers.base_container import BaseContainer
 from .model.validation_manager import ValidationManager
 from .model.container_factory import ContainerFactory
-from .validation.core import ValidationMode, ValidationLevel
+from .validation.core import ValidationLevel
 
 
 # Define a protocol that all statement classes implement
@@ -131,9 +131,9 @@ class SD_BASE(BaseModel):
         # Initialize the parent Pydantic model
         super().__init__(**kwargs)
         
-        # Configure global validation mode
+        # Configure global validation level
         from .validation.core import validation_config
-        validation_config.mode = validation_level.to_validation_mode()
+        validation_config.level = validation_level
     
     
     @property
@@ -178,7 +178,8 @@ class SD_BASE(BaseModel):
             validation: If True, run immediate cross-validation. If None, use model's cross_object_validation setting.
         """
         # Determine if we should run immediate validation
-        run_validation = validation if validation is not None else self.cross_object_validation
+        # cross_object_validation setting controls cross-object validation independently
+        run_cross_object_validation = self.cross_object_validation and (validation if validation is not None else True)
         
         # Add items to model first
         if isinstance(item, list):
@@ -190,8 +191,8 @@ class SD_BASE(BaseModel):
             self.router.route_item(item)
             self.all_items.append(item)
         
-        # Perform immediate cross-object validation if requested
-        if run_validation and self.validation_enabled:
+        # Perform immediate cross-object validation if requested and enabled
+        if run_cross_object_validation and self.validation_enabled:
             # Temporarily disable deferred validation to force immediate validation
             original_deferred = self.deferred_cross_validation
             self.deferred_cross_validation = False

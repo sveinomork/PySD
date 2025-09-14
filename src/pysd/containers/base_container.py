@@ -65,7 +65,7 @@ class BaseContainer(BaseModel, Generic[T]):
         """Check if container validation is enabled."""
         # Check global validation config
         from ..validation.core import validation_config
-        if validation_config.mode.value == 'disabled':
+        if validation_config.level == 'disabled':
             return False
         
         # Check parent model settings if available
@@ -119,7 +119,7 @@ class BaseContainer(BaseModel, Generic[T]):
         from ..validation.core import ValidationContext, validation_config
         
         # Skip validation if disabled globally
-        if validation_config.mode.value == 'disabled':
+        if validation_config.level == 'disabled':
             return
         
         # Determine statement type from first item
@@ -134,7 +134,7 @@ class BaseContainer(BaseModel, Generic[T]):
             # Handle validation issues based on global mode
             errors = [issue for issue in issues if issue.severity == 'error']
             if errors:
-                if validation_config.mode.value in ['strict', 'normal']:
+                if validation_config.level in ['strict', 'normal']:
                     error_messages = [f"[{error.code}] {error.message}" for error in errors]
                     raise ValueError("Container validation failed:\n" + "\n".join(error_messages))
                 # In permissive mode, just log warnings (for now, we'll raise them)

@@ -2,13 +2,13 @@
 Test validation levels functionality in SD_BASE.
 
 This module tests that the new validation_level constructor parameter
-correctly maps to ValidationMode enum values and controls validation behavior.
+correctly maps to ValidationLevel enum values and controls validation behavior.
 """
 
 import pytest
 from pysd.statements import DECAS, BASCO, LoadCase, LOADC
 from pysd.sdmodel import SD_BASE
-from pysd.validation.core import ValidationMode, ValidationLevel, validation_config
+from pysd.validation.core import ValidationLevel, validation_config
 
 
 class TestValidationLevels:
@@ -18,8 +18,8 @@ class TestValidationLevels:
         """Test that 'disabled' validation level disables all validation"""
         model = SD_BASE(validation_level=ValidationLevel.DISABLED)
         
-        # Check that validation mode is set correctly
-        assert validation_config.mode == ValidationMode.DISABLED
+        # Check that validation level is set correctly
+        assert validation_config.level == ValidationLevel.DISABLED
         
         # Check that validation flags are disabled
         assert not model.validation_enabled
@@ -38,8 +38,8 @@ class TestValidationLevels:
         """Test that 'normal' validation level enables normal validation"""
         model = SD_BASE(validation_level=ValidationLevel.NORMAL)
         
-        # Check that validation mode is set correctly
-        assert validation_config.mode == ValidationMode.NORMAL
+        # Check that validation level is set correctly
+        assert validation_config.level == ValidationLevel.NORMAL
         
         # Check that validation flags are enabled
         assert model.validation_enabled
@@ -59,8 +59,8 @@ class TestValidationLevels:
         """Test that 'strict' validation level enables strict validation"""
         model = SD_BASE(validation_level=ValidationLevel.STRICT)
         
-        # Check that validation mode is set correctly
-        assert validation_config.mode == ValidationMode.STRICT
+        # Check that validation level is set correctly
+        assert validation_config.level == ValidationLevel.STRICT
         
         # Check that validation flags are enabled
         assert model.validation_enabled
@@ -137,7 +137,7 @@ class TestValidationLevels:
         
         assert model.validation_level == ValidationLevel.NORMAL
         assert model.cross_object_validation
-        assert validation_config.mode == ValidationMode.NORMAL
+        assert validation_config.level == ValidationLevel.NORMAL
     
     def test_backward_compatibility(self):
         """Test that old context manager API still works"""
