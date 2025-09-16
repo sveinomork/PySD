@@ -91,7 +91,7 @@ class SHAXE(StatementBase):
     def _build_input_string(self) -> None:
          self.input = self._build_string_generic(
                 field_order=['pa', 'fs', 'hs', 'x1', 'x2', 'x3', 'xp', 'xa', 'xc', 'sy', 'al'],               
-                float_precision=1  # Match expected output format
+                float_precision=3  # Use 3 decimal places for better readability
             )
        
     

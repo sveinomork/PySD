@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Optional
-from pydantic import BaseModel, Field, model_validator
+from pydantic import  Field
 from ..validation.rule_system import execute_validation_rules
 from ..validation.core import ValidationContext
 from .statement_base import StatementBase
@@ -67,14 +67,6 @@ class FILST(StatementBase):
     
     def _build_input_string(self) -> None:
         """Build input string and run instance-level validation."""
-        
-        # Execute instance-level validation rules
-        context = ValidationContext(current_object=self)
-        issues = execute_validation_rules(self, context, level='instance')
-        
-        # Handle issues according to global config
-        for issue in issues:
-            context.add_issue(issue)  # Auto-raises if configured
         
         # Build input string
         parts = ["FILST"]

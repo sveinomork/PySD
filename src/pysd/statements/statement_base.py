@@ -178,9 +178,17 @@ class StatementBase(BaseModel, ABC):
                 parts.append(f"{field.upper()}={value:.{float_precision}g}")
             elif isinstance(value, tuple):
                 if len(value) == 2:
+                    # Handle ranges like (1,4) -> "1-4"
                     val_str = f"{value[0]}-{value[1]}"
                 else:
-                    val_str = ",".join(str(v) for v in value)
+                    # Handle vectors like (1.0, 0.0, 0.0) with float precision
+                    formatted_values = []
+                    for v in value:
+                        if isinstance(v, float):
+                            formatted_values.append(f"{v:.{float_precision}g}")
+                        else:
+                            formatted_values.append(str(v))
+                    val_str = ",".join(formatted_values)
                 parts.append(f"{field.upper()}={val_str}")
             else:
                 parts.append(f"{field.upper()}={value}")

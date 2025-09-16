@@ -1,8 +1,9 @@
-from dataclasses import dataclass, field
-from typing import Literal, Optional
 
-@dataclass
-class EXECD:
+from typing import Literal, Optional
+from pydantic import  Field
+from .statement_base import StatementBase
+
+class EXECD(StatementBase):
     """
     Orders the execution of the data defined in the input file.
 
@@ -29,14 +30,15 @@ class EXECD:
         - 'S': Search for necessary section reinforcement.
         - 'A': Search for necessary area reinforcement.
     """
-    dm: Optional[Literal['V', 'S', 'A']] = None
-    input: str = field(init=False)
+    dm: Optional[Literal['V', 'S', 'A']] = Field(None, description="Design method: None (no design), 'V' (verify), 'S' (search), 'A' (area search)")
 
-    def __post_init__(self):
+    @property
+    def identifier(self) -> str:
+        return self._build_identifier(field_order=['dm'], add_hash=True)
+    
+    def _build_input_string(self) -> None:
+        """Build input string and run instance-level validation."""
         if self.dm:
             self.input = f"EXECD DM={self.dm}"
         else:
             self.input = "EXECD DM="
-
-    def __str__(self) -> str:
-        return self.input

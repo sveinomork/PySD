@@ -111,10 +111,7 @@ class HEADING(StatementBase):
     @property
     def identifier(self) -> str:
         """Get unique identifier for this heading."""
-        if self.statement is not None:
-            return f"HEADING_{self.statement.upper().replace(' ', '_')}"
-        else:
-            return f"HEADING_BAS_{self.bas_id}"
+        return self._build_identifier(field_order=['heading_type'], add_hash=True)
     
     def _get_emoji(self) -> str:
         """Auto-select emoji based on statement content or default for bas style."""

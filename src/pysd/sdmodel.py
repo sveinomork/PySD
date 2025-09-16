@@ -88,9 +88,9 @@ class SD_BASE(BaseModel):
     headl: BaseContainer[HEADL] = Field(default_factory=lambda: BaseContainer[HEADL](), description="HEADL container")
     cases: BaseContainer[Cases] = Field(default_factory=lambda: BaseContainer[Cases](), description="CASES container")
     
-    # Special list-based collections (not containers)
-    heading: List[HEADING] = Field(default_factory=list, description="HEADING comment blocks")
-    execd: List[EXECD] = Field(default_factory=list, description="EXECD statements")
+    # Container-only approach: ALL statements use containers for consistency!
+    heading: BaseContainer[HEADING] = Field(default_factory=lambda: BaseContainer[HEADING](), description="HEADING container")
+    execd: BaseContainer[EXECD] = Field(default_factory=lambda: BaseContainer[EXECD](), description="EXECD container")
     
     # New simplified validation control
     validation_level: ValidationLevel = Field(default=ValidationLevel.NORMAL, exclude=True, description="Validation level: ValidationLevel enum")

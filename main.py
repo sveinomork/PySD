@@ -28,14 +28,14 @@ def create_basic_model_components(sd_model: SD_BASE) -> None:
     )
     sd_model.add(filst_entry)
 
-    # Add RFILE entry
-    # rfile_definition = RFILE(
-    #     pre=r"C:\Users\nx74\Work\ShellDesign\AquaPod_09\Analyse_file",
-    #     fnm="R1",
-    #     suf="SIN",
-    #     typ="SHE",
-    # )
-    # #sd_model.add(rfile_definition)
+    #Add RFILE entry
+    rfile_definition = RFILE(
+        pre=r"C:\Users\nx74\Work\ShellDesign\AquaPod_09\Analyse_file",
+        fnm="R1",
+        suf="SIN",
+        typ="SHE",
+    )
+    sd_model.add(rfile_definition)
 
 def create_design_sections(sd_model: SD_BASE) -> None:
     """

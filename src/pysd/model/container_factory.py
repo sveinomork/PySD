@@ -47,29 +47,179 @@ class ContainerFactory:
     in SD_BASE and centralizes container management.
     """
     
-    # Registry of all container types - single source of truth
-    _container_registry = {
-        'greco': GRECO,
-        'basco': BASCO,
-        'loadc': LOADC,
-        'shsec': SHSEC,
-        'shaxe': SHAXE,
-        'cmpec': CMPEC,
-        'rmpec': RMPEC,
-        'retyp': RETYP,
-        'reloc': RELOC,
-        'lores': LORES,
-        'xtfil': XTFIL,
-        'desec': DESEC,
-        'table': TABLE,
-        'rfile': RFILE,
-        'incdf': INCDF,
-        'decas': DECAS,
-        'depar': DEPAR,
-        'filst': FILST,
-        'headl': HEADL,
-        'cases': Cases,
+    # Unified statement registry - single source of truth for ALL statements
+    # ALL statements now use container storage for consistency and simplicity
+    _statement_registry = {
+        # Container-based statements
+        'greco': {
+            'type': GRECO,
+            'description': 'GRECO statements for load case definitions'
+        },
+        'basco': {
+            'type': BASCO,
+            'description': 'BASCO statements for basic controls'
+        },
+        'loadc': {
+            'type': LOADC,
+            'description': 'LOADC statements for load case control'
+        },
+        'shsec': {
+            'type': SHSEC,
+            'description': 'SHSEC statements for shell sections'
+        },
+        'shaxe': {
+            'type': SHAXE,
+            'description': 'SHAXE statements for shell axis definitions'
+        },
+        'cmpec': {
+            'type': CMPEC,
+            'description': 'CMPEC statements for composite sections'
+        },
+        'rmpec': {
+            'type': RMPEC,
+            'description': 'RMPEC statements for removing composite sections'
+        },
+        'retyp': {
+            'type': RETYP,
+            'description': 'RETYP statements for element type changes'
+        },
+        'reloc': {
+            'type': RELOC,
+            'description': 'RELOC statements for element relocation'
+        },
+        'lores': {
+            'type': LORES,
+            'description': 'LORES statements for load result processing'
+        },
+        'xtfil': {
+            'type': XTFIL,
+            'description': 'XTFIL statements for external file operations'
+        },
+        'desec': {
+            'type': DESEC,
+            'description': 'DESEC statements for design sections'
+        },
+        'table': {
+            'type': TABLE,
+            'description': 'TABLE statements for tabular data'
+        },
+        'rfile': {
+            'type': RFILE,
+            'description': 'RFILE statements for result file operations'
+        },
+        'incdf': {
+            'type': INCDF,
+            'description': 'INCDF statements for include file operations'
+        },
+        'decas': {
+            'type': DECAS,
+            'description': 'DECAS statements for design case definitions'
+        },
+        'depar': {
+            'type': DEPAR,
+            'description': 'DEPAR statements for design parameters'
+        },
+        'filst': {
+            'type': FILST,
+            'description': 'FILST statements for file listings'
+        },
+        'headl': {
+            'type': HEADL,
+            'description': 'HEADL statements for heading lines'
+        },
+        'cases': {
+            'type': Cases,
+            'description': 'CASES for case range definitions'
+        },
+        
+        # Previously list-based, now container-based for consistency!
+        'heading': {
+            'type': None,  # Will be imported later to avoid circular imports
+            'description': 'HEADING comment blocks'
+        },
+        'execd': {
+            'type': None,  # Will be imported later to avoid circular imports
+            'description': 'EXECD execution statements'
+        }
     }
+    
+    # Backward compatibility - keep old name as alias  
+    _container_registry = {name: info['type'] 
+                          for name, info in _statement_registry.items() 
+                          if info['type'] is not None}
+
+    
+    @classmethod
+    def get_routing_registry(cls) -> Dict[Type, str]:
+        """Generate StatementRouter registry - ALL statements route to containers now!"""
+        # Import here to avoid circular imports
+        from ..statements.statement_heading import HEADING
+        from ..statements.execd import EXECD
+        
+        # Update the None types with actual imports
+        cls._statement_registry['heading']['type'] = HEADING
+        cls._statement_registry['execd']['type'] = EXECD
+        
+        # Simple container routing for ALL statements - no more list complexity!
+        routing = {}
+        for name, info in cls._statement_registry.items():
+            if info['type'] is not None:
+                routing[info['type']] = name  # Direct container name, no '_list' suffix!
+        
+        return routing
+    
+    @classmethod
+    def get_container_registry(cls) -> Dict[str, Type]:
+        """Get ALL statements (now all are container-based for consistency)."""
+        # Import here to avoid circular imports
+        from ..statements.statement_heading import HEADING
+        from ..statements.execd import EXECD
+        
+        # Update the None types
+        cls._statement_registry['heading']['type'] = HEADING
+        cls._statement_registry['execd']['type'] = EXECD
+        
+        return {name: info['type'] 
+                for name, info in cls._statement_registry.items() 
+                if info['type'] is not None}
+    
+    @classmethod
+    def get_all_statement_types(cls) -> list[Type]:
+        """Get all statement types for StatementType union generation."""
+        # Import here to avoid circular imports
+        from ..statements.statement_heading import HEADING
+        from ..statements.execd import EXECD
+        
+        # Update the None types
+        cls._statement_registry['heading']['type'] = HEADING
+        cls._statement_registry['execd']['type'] = EXECD
+        
+        types = []
+        for info in cls._statement_registry.values():
+            if info['type'] is not None:
+                types.append(info['type'])
+        
+        return types
+    
+    @classmethod
+    def get_all_imports(cls) -> Dict[str, str]:
+        """Generate import statements for all statement types."""
+        imports = {}
+        
+        # All statement imports (no more container vs list distinction)
+        for name, info in cls._statement_registry.items():
+            if info['type'] is not None:
+                statement_type = info['type']
+                module_name = statement_type.__module__.split('.')[-1]
+                imports[statement_type.__name__] = f"from .statements.{module_name} import {statement_type.__name__}"
+            elif name == 'heading':
+                imports['HEADING'] = "from .statements.statement_heading import HEADING"
+            elif name == 'execd':
+                imports['EXECD'] = "from .statements.execd import EXECD"
+        
+        return imports
+    
+
     
     @classmethod
     def create_container_fields(cls) -> Dict[str, Any]:
@@ -77,18 +227,29 @@ class ContainerFactory:
         Generate all Pydantic field declarations for containers.
         
         This replaces 20+ manual field definitions with dynamic generation.
+        ALL statements now use containers for consistency!
         
         Returns:
             Dict mapping field names to Pydantic Field objects
         """
+        # Import here to avoid circular imports
+        from ..statements.statement_heading import HEADING
+        from ..statements.execd import EXECD
+        
+        # Update the None types
+        cls._statement_registry['heading']['type'] = HEADING
+        cls._statement_registry['execd']['type'] = EXECD
+        
         fields = {}
         
-        for container_name, statement_type in cls._container_registry.items():
-            # Create the field definition
-            fields[container_name] = Field(
-                default_factory=lambda st=statement_type: BaseContainer[st](),
-                description=f"{statement_type.__name__} container"
-            )
+        # Create container fields for ALL statements
+        for name, info in cls._statement_registry.items():
+            if info['type'] is not None:
+                statement_type = info['type']
+                fields[name] = Field(
+                    default_factory=lambda st=statement_type: BaseContainer[st](),
+                    description=info['description']
+                )
         
         return fields
     
@@ -116,8 +277,8 @@ class ContainerFactory:
     
     @classmethod
     def get_container_names(cls) -> list[str]:
-        """Get list of all container names."""
-        return list(cls._container_registry.keys())
+        """Get list of all container names - ALL statements are containers now!"""
+        return list(cls._statement_registry.keys())
     
     @classmethod
     def is_valid_container(cls, container_name: str) -> bool:
@@ -146,19 +307,21 @@ class ContainerFactory:
     @classmethod
     def setup_container_parent_references(cls, model: 'SD_BASE') -> None:
         """
-        Set up parent model references for all containers.
+        Set up parent model references for all containers using unified registry.
         
-        This replaces the manual setup in SD_BASE model_validator.
+        Much simpler now - ALL statements use containers!
         
         Args:
             model: The SD_BASE model instance
         """
-        print(f"DEBUG: ContainerFactory.setup_container_parent_references called")  # DEBUG
-        # Include all container names from our registry plus any others that might exist
-        all_container_names = list(cls._container_registry.keys())
-        print(f"DEBUG: Registry has {len(all_container_names)} containers: {all_container_names}")  # DEBUG
+        print("DEBUG: ContainerFactory.setup_container_parent_references called")  # DEBUG
         
-        for container_name in all_container_names:
+        # Get ALL container names (no more filtering needed)
+        container_names = cls.get_container_names()
+        
+        print(f"DEBUG: Registry has {len(container_names)} containers: {container_names}")  # DEBUG
+        
+        for container_name in container_names:
             container = getattr(model, container_name, None)
             if container:
                 print(f"DEBUG: Found container {container_name}, has set_parent_model: {hasattr(container, 'set_parent_model')}")  # DEBUG
