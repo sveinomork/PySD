@@ -162,64 +162,65 @@ DECAS(ls="ULS", bas=[(101,102)], greco="A")
 
 
     def _build_input_string(self) -> None:
-
-         # If we have both bas and greco, integrate greco into the Cases object
+        """Build the input string using hybrid approach - builder for simple fields, custom for complex ones."""
+        
+        # If we have both bas and greco, integrate greco into the Cases object
         if self.bas is not None and self.greco is not None and isinstance(self.bas, Cases):
             if not self.bas.greco:  # Only set if not already set
                 self.bas.greco = self.greco
 
-        """Build the input string (pure formatting logic)."""
-        parts = ["DECAS", f"LS={self.ls}"]
-
-        if self.stl is not None:
-            parts.append(f"STL={self.stl}")
-        if self.dwp is not None:
-            parts.append(f"DWP={self.dwp}")
-        if self.cw is not None:
-            parts.append(f"CW={self.cw}")
+        # Start with enhanced generic builder for simple fields
+        builder = self._get_string_builder()
+        builder.input = f"{self.statement_name} LS={self.ls}"  # Initialize with LS parameter
+        
+        # Add simple fields using the builder
+        builder.add_param("stl", self.stl)
+        builder.add_param("dwp", self.dwp)  
+        builder.add_param("cw", self.cw)
+        builder.add_param("dcw", self.dcw)
+        builder.add_param("dtc", self.dtc)
+        
+        # Handle boolean flags
         if self.por:
-            parts.append("POR=")
-        if self.dcw is not None:
-            parts.append(f"DCW={self.dcw}")
-        if self.dtc is not None:
-            parts.append(f"DTC={self.dtc}")
-
+            builder.input += " POR="
+        if self.emp_ok:
+            builder.input += " EMP=OK"
+        
+        # Handle complex fields manually for better control
         if self.pha is not None:
             if self.pha == 'ALL':
-                parts.append("PHA=ALL")
+                builder.input += " PHA=ALL"
             else:
-                parts.append(f"PHA={str(self.pha)}")
+                builder.input += f" PHA={str(self.pha)}"
 
-        if self.emp_ok:
-            parts.append("EMP=OK")
+        # Load cases - use unified formatting
+        for field_name, field_value in [
+            ("ilc", self.ilc), ("olc", self.olc), ("plc", self.plc), 
+            ("elc", self.elc)
+        ]:
+            if field_value is not None:
+                builder.input += f" {field_name.upper()}={str(field_value)}"
 
-        # Load cases - now use unified formatting
-        if self.ilc is not None:
-            parts.append(f"ILC={str(self.ilc)}")
-        if self.olc is not None:
-            parts.append(f"OLC={str(self.olc)}")
-        if self.plc is not None:
-            parts.append(f"PLC={str(self.plc)}")
-        if self.elc is not None:
-            parts.append(f"ELC={str(self.elc)}")
+        # Handle BAS with special GRECO logic
         if self.bas is not None:
             bas_str = str(self.bas)
             # Check if the Cases object already has greco, otherwise use the separate greco field
             if isinstance(self.bas, Cases) and self.bas.greco:
                 # Greco is already included in the Cases object
-                parts.append(f"BAS={bas_str}")
+                builder.input += f" BAS={bas_str}"
             elif self.greco is not None:
                 # Use separate greco field if Cases doesn't have it
                 bas_str += f":{self.greco}"
-                parts.append(f"BAS={bas_str}")
+                builder.input += f" BAS={bas_str}"
             else:
-                parts.append(f"BAS={bas_str}")
+                builder.input += f" BAS={bas_str}"
 
+        # Handle text with potential quoting
         if self.txt:
             txt_val = f'"{self.txt}"' if ' ' in self.txt else self.txt
-            parts.append(f"TXT={txt_val}")
+            builder.input += f" TXT={txt_val}"
 
-        self.input = " ".join(parts)
+        self.input = builder.input
 
     def __str__(self) -> str:
         return self.input

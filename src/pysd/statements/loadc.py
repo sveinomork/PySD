@@ -108,74 +108,34 @@ LOADC(pri=True)
 
     @field_validator('alc', 'olc', mode='before')
     @classmethod
-    def normalize_case_inputs(cls, v: Any) -> Any:
-        """Convert any supported format to Cases."""
+    def convert_to_cases(cls, v: Any) -> Cases | None:
+        """Convert any input format to Cases object - Cases handles the conversion responsibility."""
         if v is None:
             return v
-        
-        # Handle tuple input like (1,6) -> convert to range (1,6)
-        if isinstance(v, tuple) and len(v) == 2:
-            start, end = v
-            if isinstance(start, int) and isinstance(end, int):
-                # Convert to range tuple for Cases - end should be inclusive in the tuple format
-                return normalize_cases([(start, end)])
-        
-        # Only pass non-tuple values to normalize_cases
-        if not isinstance(v, tuple):
-            return normalize_cases(v)
-        
-        # If we get here, it's an unsupported tuple format
-        raise ValueError(f"Unsupported tuple format: {v}. Expected (start, end) with integers.")
+        if isinstance(v, Cases):
+            return v
+        # Let Cases object handle all the conversion logic
+        return Cases(value=v)
 
     def _build_input_string(self) -> None:
-        """Build the input string (pure formatting logic)."""
+        """Build the input string using hybrid approach - Cases handle their own formatting."""
         
-        # Auto-set run_number from alc if not provided and alc is a single integer or range
-        if self.run_number is None and self.alc is not None:
-            # Check if alc is a single integer or can be converted to one
-            if isinstance(self.alc, Cases) and len(self.alc.ranges) == 1:
-                first_range = self.alc.ranges[0]
-                if isinstance(first_range, int):
-                    self.run_number = first_range
-                elif isinstance(first_range, tuple) and len(first_range) == 2:
-                    # Use the start of the range as run_number
-                    self.run_number = first_range[0]
-
-        # Build input string
-        parts: list[str] = ["LOADC"]
-
-        # Handle load cases with run number
+        
+       
+        # Start building using hybrid approach
+        self.start_string()  # Sets self.input = "LOADC"
+        
         if self.alc and self.olc:
-            # Add run number
-            parts.append(f"RN={self.run_number}")
-            
-            # Check if both are single ranges (from tuples)
-            alc_is_single_range = (isinstance(self.alc, Cases) and len(self.alc.ranges) == 1 
-                                 and isinstance(self.alc.ranges[0], tuple))
-            olc_is_single_range = (isinstance(self.olc, Cases) and len(self.olc.ranges) == 1 
-                                 and isinstance(self.olc.ranges[0], tuple))
-            
-            if alc_is_single_range and olc_is_single_range:
-                # Use LC=alc OLC=olc format for tuple inputs
-                lc_part = f"LC={str(self.alc)},{str(self.olc)}"
-            else:
-                # Use traditional LC=alc,olc format
-                lc_part = f"LC={str(self.alc)},{str(self.olc)}"
-                
-            if self.comment:
-                lc_part += f" % {self.comment}"
-            parts.append(lc_part)
-            
-        # Handle table mode
+            # Cases objects handle their own string formatting via __str__
+            self.add_param("RN", self.run_number)
+            self.add_param("ALC", str(self.alc))
+            self.add_param("OLC", str(self.olc))
+                    
         elif self.table:
-            parts.append("TAB=")
+            self.add_param("TAB", "")  # Empty value becomes "TAB="
             
-        # Handle priority mode
         elif self.pri:
-            parts.append("PRI=")
-
-        # Join all parts with spaces
-        self.input = " ".join(parts)
+            self.add_param("PRI", "")  # Empty value becomes "PRI="
 
     def __str__(self) -> str:
         return self.input
@@ -349,48 +309,48 @@ LOADC(pri=True)
         else:
             return []
         
+   
+# class LoadcList(BaseModel):
+#     """
+#     Container for multiple LOADC statements.
+#     """
+#     loadc: list[LOADC] = Field(default_factory=list)
+
+#     @staticmethod
+#     def _validate_olc_uniqueness(loadc_list: list[LOADC]):
+#         """Checks for OLC uniqueness within a given list of LOADC items."""
+#         all_olcs:set[int] = set()
+#         for loadc_item in loadc_list:
+#             for olc in loadc_item.get_olc_list():
+#                 if olc in all_olcs:
+#                     raise ValueError(f"Duplicate OLC value found: {olc}")
+#                 all_olcs.add(olc)
+
+#     @model_validator(mode='after')
+#     def validate_unique_olc(self) -> 'LoadcList':
+#         """Ensures that no two LOADC items have overlapping OLC values."""
+#         self._validate_olc_uniqueness(self.loadc)
+#         return self
+
+#     def add_loadc(self, loadc: LOADC) -> None:
+#         """Add a LOADC statement to the list."""
+#         self._validate_olc_uniqueness(self.loadc + [loadc])
+#         self.loadc.append(loadc)
+
+#     def __iter__(self):
+#         """Make the object iterable so list(obj) works"""
+#         return iter(self.loadc)
     
-class LoadcList(BaseModel):
-    """
-    Container for multiple LOADC statements.
-    """
-    loadc: list[LOADC] = Field(default_factory=list)
-
-    @staticmethod
-    def _validate_olc_uniqueness(loadc_list: list[LOADC]):
-        """Checks for OLC uniqueness within a given list of LOADC items."""
-        all_olcs:set[int] = set()
-        for loadc_item in loadc_list:
-            for olc in loadc_item.get_olc_list():
-                if olc in all_olcs:
-                    raise ValueError(f"Duplicate OLC value found: {olc}")
-                all_olcs.add(olc)
-
-    @model_validator(mode='after')
-    def validate_unique_olc(self) -> 'LoadcList':
-        """Ensures that no two LOADC items have overlapping OLC values."""
-        self._validate_olc_uniqueness(self.loadc)
-        return self
-
-    def add_loadc(self, loadc: LOADC) -> None:
-        """Add a LOADC statement to the list."""
-        self._validate_olc_uniqueness(self.loadc + [loadc])
-        self.loadc.append(loadc)
-
-    def __iter__(self):
-        """Make the object iterable so list(obj) works"""
-        return iter(self.loadc)
-    
-    def to_list(self) -> list[LOADC]:
-        """Get the list of LOADC statements."""
-        return self.loadc
+#     def to_list(self) -> list[LOADC]:
+#         """Get the list of LOADC statements."""
+#         return self.loadc
     
   
 
-    def get_corresponding_alc(self, olc: int) -> int | None:
-        for lc in self:
-            if lc.is_olc(olc):
-                return lc.get_corresponding_alc(olc)
-        return None
+#     def get_corresponding_alc(self, olc: int) -> int | None:
+#         for lc in self:
+#             if lc.is_olc(olc):
+#                 return lc.get_corresponding_alc(olc)
+#         return None
     
     

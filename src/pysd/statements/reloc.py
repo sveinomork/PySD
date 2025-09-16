@@ -50,10 +50,10 @@ class RELOC(StatementBase):
     
     # Optional parameters
     cov: Optional[float] = Field(None, description="Rebar cover in mm. Overrides C2 from RETYP")
-    fa: Literal[0, 1, 2] = Field(0, description="Shell face (0=center, 1=face1, 2=face2)")
-    al: float = Field(0.0, description="Direction angle in degrees (-90 to +90)")
+    fa: Optional[Literal[0, 1, 2]] = Field(None, description="Shell face (0=center, 1=face1, 2=face2)")
+    al: Optional[float] = Field(None, description="Direction angle in degrees (-90 to +90)")
     os: Optional[float] = Field(None, description="Offset to layer center in meters. Overrides offset from RETYP")
-    rp: Literal["12", "XY", "XZ", "YZ"] = Field("12", description="Reference plane for the direction angle AL")
+    rp: Optional[Literal["12", "XY", "XZ", "YZ"]] = Field(None, description="Reference plane for the direction angle AL")
     
     # Location area alternative 1
     pa: Optional[str] = Field(None, description="Part identity (name). Default applies to all parts")
@@ -71,9 +71,15 @@ class RELOC(StatementBase):
         """Get unique identifier for this RELOC statement."""
         return f'{self.id}_{self.pa}_{self.fs}_{self.hs}'
 
-
+    def _build_input_string(self) -> None:
+        """Build the input string using enhanced generic builder."""
+        self.input = self._build_string_generic(
+            field_order=['id', 'rt', 'fa', 'al', 'os', 'rp', 'pa', 'fs', 'hs', 'la'],
+            exclude={'comment'},  # Exclude comment from regular field processing
+            float_precision=6
+        )
     
-    def _build_input_string(self) -> str:
+    def _build_input_string1(self) -> str:
         """Build the RELOC input string."""
         parts = ["RELOC", f"ID={self.id}"]
         

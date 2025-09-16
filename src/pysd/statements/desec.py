@@ -59,40 +59,34 @@ class DESEC(StatementBase):
     
     fs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="F-section range or single section")
     hs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="H-section range or single section")
-    th: Optional[float] = Field(0.0, description="Shell thickness in meters")
-    t11: Optional[float] = Field(0.0, description="Shell thickness gradient ∂t1/∂x1")
-    t12: Optional[float] = Field(0.0, description="Shell thickness gradient ∂t1/∂x2")
-    t21: Optional[float] = Field(0.0, description="Shell thickness gradient ∂t2/∂x1")
-    t22: Optional[float] = Field(0.0, description="Shell thickness gradient ∂t2/∂x2")
-    x: Optional[float] = Field(0.0, description="X-coordinate")
-    y: Optional[float] = Field(0.0, description="Y-coordinate")
-    z: Optional[float] = Field(0.0, description="Z-coordinate")
-    
-  
-  
+    th: Optional[float] = Field(None, description="Shell thickness in meters, default=0")
+    t11: Optional[float] = Field(None, description="Shell thickness gradient ∂t1/∂x1")
+    t12: Optional[float] = Field(None, description="Shell thickness gradient ∂t1/∂x2")
+    t21: Optional[float] = Field(None, description="Shell thickness gradient ∂t2/∂x1")
+    t22: Optional[float] = Field(None, description="Shell thickness gradient ∂t2/∂x2")
+    x: Optional[float] = Field(None, description="X-coordinate")
+    y: Optional[float] = Field(None, description="Y-coordinate")
+    z: Optional[float] = Field(None, description="Z-coordinate")
+
+
+
     @property
     def identifier(self) -> str:
         """Generate unique ID and input string for this DESEC statement."""
-        # Use pa as base since it's required
-        fs_str = ""
-        if self.fs is not None:
-            if isinstance(self.fs, int):
-                fs_str = f"_FS{self.fs}"
-            else:
-                fs_str = f"_FS{self.fs[0]}-{self.fs[1]}"
-        
-        hs_str = ""
-        if self.hs is not None:
-            if isinstance(self.hs, int):
-                hs_str = f"_HS{self.hs}"
-            else:
-                hs_str = f"_HS{self.hs[0]}-{self.hs[1]}"
-        
-        return f"{self.pa}{fs_str}{hs_str}"
-        
+
+        return self._build_identifier(field_order=['pa', 'hs', 'fs'], add_hash=True)
+    
+
+    def _build_input_string(self) -> None:
+        """Build the input string using enhanced generic builder."""
+        self.input = self._build_string_generic(
+            field_order=['pa', 'hs', 'fs', 'th', 't11', 't12', 't21', 't22', 'x', 'y', 'z'],
+            exclude={'comment'},  # Exclude comment from regular field processing
+            float_precision=6,
+        )
      
 
-    def _build_input_string(self) -> str:
+    def _build_input_string1(self) -> str:
         """Build the DESEC input string."""
         parts = ["DESEC", f"PA={self.pa}"]
         

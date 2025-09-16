@@ -72,98 +72,44 @@ class SHSEC(StatementBase):
     te: Optional[Tuple[int, int]] = Field(None, description="Triangular elements range")
     
     # Optional parameters
-    et: Literal['LI', 'VS'] = Field('VS', description="Stiffness calculation type")
-    ne: Optional[int] = Field(None, description="Number of elements over thickness (max 10)")
+   
+    
     td: Optional[Tuple[float, float, float]] = Field(None, description="Thickness direction vector")
     xf: Optional[Tuple[float, float, float]] = Field(None, description="F-direction start vector")
     xh: Optional[Tuple[float, float, float]] = Field(None, description="H-direction start vector")
     fs: Optional[Tuple[int, int]] = Field(None, description="F-section range")
     hs: Optional[Tuple[int, int]] = Field(None, description="H-section range")
-    ns: int = Field(4, description="Number of sections per element")
+    ne: Optional[int] = Field(None, description="Number of elements over thickness (max 10)")
+    et: Literal['LI', 'VS'] = Field(None, description="Stiffness calculation type")
+    ns: int = Field(None, description="Number of sections per element")
     tab: bool = Field(False, description="Element table wanted or not")
     ver: Optional[int] = Field(None, description="OLC number to be verified")
     
-    # Auto-generated fields
-  
-    key: str = Field(default="", init=False, description="Unique key for container storage")
+   
 
     @property
     def identifier(self) -> str:    
         """Get unique identifier for this SHSEC statement."""
-        return self.key
-
+        return self._build_identifier(field_order=['pa', 'hs', 'fs'], add_hash=True)
+    
     def _build_input_string(self) -> None:
-        """Build input string, key, and run instance-level validation."""
-        
-        
-        # Build the SHSEC input string
-        parts = ["SHSEC"]
-        
-        # Add required parameters
-        parts.append(f"PA={self.pa}")
-        if self.se is not None:
-            parts.append(f"SE={self.se}")
-        
-        # Add element specification
-        if self.el is not None:
-            parts.append(f"EL={self.el}")
-        elif self.xp is not None:
-            parts.append(f"XP={self.xp[0]},{self.xp[1]},{self.xp[2]}")
-        elif self.elset is not None:
-            parts.append(f"ELSET={self.elset}")
-        elif self.elsetname is not None:
-            parts.append(f"ELSETNAME={self.elsetname}")
-        elif self.te is not None:
-            parts.append(f"TE={self.te[0]}-{self.te[1]}")
-            
-        # Add optional parameters
-        if self.et != 'VS':
-            parts.append(f"ET={self.et}")
-            
-        if self.ne is not None:
-            parts.append(f"NE={self.ne}")
-            
-        if self.td is not None:
-            parts.append(f"TD={self.td[0]},{self.td[1]},{self.td[2]}")
-            
-        if self.xf is not None:
-            parts.append(f"XF={self.xf[0]},{self.xf[1]},{self.xf[2]}")
+        """Build the input string using enhanced generic builder."""
+        if self.tab or self.ver is not None:
+            # Special case: table or verification mode
+            self.start_string() 
+            if self.tab:
+                self.add_param("TAB", "")  # Empty value becomes "TAB="
+            if self.ver is not None:
+                self.add_param("VER","")
+        else:
+            # Normal mode: use generic builder with proper exclusions and defaults
+            self.input = self._build_string_generic(
+                field_order=['pa', 'se', 'el', 'xp', 'elset', 'elsetname', 'te', 'td', 'xf', 'xh', 'fs', 'hs', 'ne', 'et', 'ns'],
+                # Exclude boolean fields and auto-generated fields
+                exclude={'tab', 'ver'},
+                
+                float_precision=1  # Match expected output format
+            )
 
-        if self.xh is not None:
-            parts.append(f"XH={self.xh[0]},{self.xh[1]},{self.xh[2]}")
-            
-        if self.fs is not None:
-            parts.append(f"FS={self.fs[0]}-{self.fs[1]}")
-            
-        if self.hs is not None:
-            parts.append(f"HS={self.hs[0]}-{self.hs[1]}")
-            
-        if self.ns != 4:
-            parts.append(f"NS={self.ns}")
-            
-        if self.tab:
-            parts.append("TAB=ON")
-            
-        if self.ver is not None:
-            parts.append(f"VER={self.ver}")
-            
-        # Join all parts with spaces
-        self.input = " ".join(parts)
         
-        # Generate unique key for container storage
-        # Use PA + section info to create unique identifier
-        key_parts = [self.pa]
-        if self.fs:
-            key_parts.append(f"fs{self.fs[0]}-{self.fs[1]}")
-        if self.hs:
-            key_parts.append(f"hs{self.hs[0]}-{self.hs[1]}")
-        if self.elset:
-            key_parts.append(f"elset{self.elset}")
-        if self.elsetname:
-            key_parts.append(f"elsetname{self.elsetname}")
-        
-        self.key = "_".join(key_parts)
-        
-        return self.input
-    
-    
+

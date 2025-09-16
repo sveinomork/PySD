@@ -73,79 +73,26 @@ class SHAXE(StatementBase):
 
     # ─── Optional Axes Modifiers ───────────────────────────────────────
 
-    sy: Literal["R", "L"] = Field("R", description="SY: Handedness of the axis system. 'R' = right-hand (default), 'L' = left-hand")
+    sy: Literal["R", "L"] = Field(None, description="SY: Handedness of the axis system. 'R' = right-hand (default), 'L' = left-hand")
 
-    al: float = Field(0.0, description="AL: Rotation angle (degrees) for adjusting the 1-axis direction toward the 2-axis")
+    al: float = Field(None, description="AL: Rotation angle (degrees) for adjusting the 1-axis direction toward the 2-axis")
 
  
-    key: str = Field(default="", init=False, description="Unique key for container storage")
+   
 
     @property
     def identifier(self) -> str:
         """Get unique identifier for this SHAXE statement."""
-        return self.key
+        return self._build_identifier(field_order=['pa', 'hs', 'fs'], add_hash=True)
+        
 
 
    
     def _build_input_string(self) -> None:
-        """Build input string, key, and run instance-level validation."""
-        
-        
-        # Generate the key
-        key_parts = [self.pa]
-        if self.fs is not None:
-            key_parts.append(f"fs{self.fs[0]}-{self.fs[1]}")
-        if self.hs is not None:
-            key_parts.append(f"hs{self.hs[0]}-{self.hs[1]}")
-        self.key = "_".join(key_parts)
-            
-        # Establish method of defining axes
-        mode1 = all([self.x1, self.x2, self.x3])
-        mode2 = all([self.xp, self.xa])
-        mode3 = all([self.xc, self.xa])
-
-        mode_count = sum([mode1, mode2, mode3])
-        if mode_count == 0:
-            raise ValueError("SHAXE must be initialized using one of the 3 alternatives: "
-                            "(x1/x2/x3), (xp/xa), or (xc/xa).")
-        if mode_count > 1:
-            raise ValueError("Only one SHAXE mode may be used at a time (fields are mutually exclusive).")
-
-        # Build the input string
-        parts = ["SHAXE"]
-        parts.append(f"PA={self.pa}")
-        
-        if self.fs is not None:
-            parts.append(f"FS={self.fs[0]}-{self.fs[1]}")
-            
-        if self.hs is not None:
-            parts.append(f"HS={self.hs[0]}-{self.hs[1]}")
-
-        # Add mode-specific parameters
-        if mode1:
-            assert self.x1 is not None and self.x2 is not None and self.x3 is not None
-            parts.append(f"X1={self.x1[0]:.4g},{self.x1[1]:.4g},{self.x1[2]:.4g}")
-            parts.append(f"X2={self.x2[0]:.4g},{self.x2[1]:.4g},{self.x2[2]:.4g}")
-            parts.append(f"X3={self.x3[0]:.4g},{self.x3[1]:.4g},{self.x3[2]:.4g}")
-        elif mode2:
-            assert self.xp is not None and self.xa is not None
-            parts.append(f"XP={self.xp[0]:.4g},{self.xp[1]:.4g},{self.xp[2]:.4g}")
-            parts.append(f"XA={self.xa[0]:.4g},{self.xa[1]:.4g},{self.xa[2]:.4g}")
-        elif mode3:
-            assert self.xc is not None and self.xa is not None
-            parts.append(f"XC={self.xc[0]:.4g},{self.xc[1]:.4g},{self.xc[2]:.4g}")
-            parts.append(f"XA={self.xa[0]:.4g},{self.xa[1]:.4g},{self.xa[2]:.4g}")
-
-        # Add optional modifiers if they differ from defaults
-        if self.sy != "R":
-            parts.append(f"SY={self.sy}")
-            
-        if self.al != 0.0:
-            parts.append(f"AL={self.al}")
-
-        # Join all parts with spaces
-        self.input = " ".join(parts)
-        
-        return self.input
+         self.input = self._build_string_generic(
+                field_order=['pa', 'fs', 'hs', 'x1', 'x2', 'x3', 'xp', 'xa', 'xc', 'sy', 'al'],               
+                float_precision=1  # Match expected output format
+            )
+       
     
     

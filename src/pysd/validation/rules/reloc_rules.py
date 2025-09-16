@@ -193,22 +193,29 @@ def validate_reloc_model(statement: 'RELOC', context: 'ValidationContext') -> Li
     
     # Check part references against SHSEC
     if statement.pa is not None:
-        # Check if the part exists in SHSEC statements using the container
-        valid_parts = []
-        if hasattr(model, 'shsec'):
-            # Collect all part names from SHSEC container
-            for shsec_stmt in model.shsec.items:
-                if hasattr(shsec_stmt, 'pa') and shsec_stmt.pa:
-                    valid_parts.append(shsec_stmt.pa)
+        # Get all part names from SHSEC container (clean iteration)
+        valid_parts = [shsec.pa for shsec in model.shsec]
         
-        if valid_parts and statement.pa not in valid_parts:
-            issues.append(ValidationIssue(
-                severity="error",
-                code="RELOC_PART_NOT_FOUND",
-                message=f"RELOC {statement.id} references part '{statement.pa}' not found in SHSEC",
-                location=f"RELOC.{statement.id}",
-                suggestion=f"Use one of the defined parts: {', '.join(sorted(set(valid_parts)))}"
-            ))
+        # ALWAYS validate part references - fail if part doesn't exist
+        if statement.pa not in valid_parts:
+            if not valid_parts:
+                # No SHSEC parts defined at all
+                issues.append(ValidationIssue(
+                    severity="error",
+                    code="RELOC_PART_NO_SHSEC",
+                    message=f"RELOC {statement.id} references part '{statement.pa}' but no SHSEC parts are defined",
+                    location=f"RELOC.{statement.id}",
+                    suggestion="Define SHSEC statements with parts before referencing them in RELOC"
+                ))
+            else:
+                # SHSEC parts exist, but referenced part is not among them
+                issues.append(ValidationIssue(
+                    severity="error",
+                    code="RELOC_PART_NOT_FOUND",
+                    message=f"RELOC {statement.id} references part '{statement.pa}' not found in SHSEC",
+                    location=f"RELOC.{statement.id}",
+                    suggestion=f"Use one of the defined parts: {', '.join(sorted(set(valid_parts)))}"
+                ))
         
         # Check naming conventions
         if len(statement.pa) > 8:  # Arbitrary limit

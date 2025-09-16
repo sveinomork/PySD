@@ -53,34 +53,13 @@ class RETYP(StatementBase):
         return str(self.id)
     
     def _build_input_string(self) -> None:
-        """Build the input string (pure formatting logic)."""
-        parts = ["RETYP", f"ID={self.id}"]
-
-        # Optional parameters (only add if not None/default)
-        if self.mp is not None:
-            parts.append(f"MP={self.mp}")
-        if self.ar is not None:
-            parts.append(f"AR={self.ar:.6g}")
-        if self.nr is not None:
-            parts.append(f"NR={self.nr}")
-        if self.di is not None:
-            parts.append(f"DI={self.di:.6g}")
-        if self.cc is not None:
-            parts.append(f"CC={self.cc:.6g}")
-        if self.c2 is not None:
-            parts.append(f"C2={self.c2:.6g}")
-        if self.th is not None:
-            parts.append(f"TH={self.th:.6g}")
-        if self.os is not None:
-            parts.append(f"OS={self.os:.6g}")
-        if self.bc is not None:
-            parts.append(f"BC={self.bc:.6g}")
-        if self.lb:
-            parts.append(f"LB={self.lb}")
-        if self.comment:
-            parts.append(f"% {self.comment}")
-
-        self.input = " ".join(parts)
+        """Build the input string using enhanced generic builder."""
+        self.input = self._build_string_generic(
+            field_order=['id', 'mp', 'ar', 'nr', 'di', 'cc', 'c2', 'th', 'os', 'bc', 'lb'],
+            exclude={'comment'},  # Exclude comment from regular field processing
+            float_precision=6,
+            comment=self.comment
+        )
 
     def __str__(self) -> str:
         return self.input

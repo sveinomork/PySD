@@ -79,28 +79,22 @@ class GRECO(StatementBase):
 
     @field_validator('bas', 'elc', mode='before')
     @classmethod
-    def normalize_cases_input(cls, v: Any) -> Optional[Cases]:
+    def convert_to_cases(cls, v: Any) -> Optional[Cases]:
         """Convert various input formats to Cases."""
         if v is None:
             return v
-        return normalize_cases(v)
+        return Cases(v)
     
   
     def _build_input_string(self) -> None:
         """Build the input string (pure formatting logic)."""
-        parts = []
-        if self.id or self.bas or self.elc:
-            normal = ["GRECO"]
-            if self.id:
-                normal.append(f"ID={self.id}")
-            if self.bas:
-                normal.append(f"BAS={self.bas.formatted()}")
-            if self.elc:
-                normal.append(f"ELC={self.elc.formatted()}")
-            parts.append(" ".join(normal))
-        
-        self.input = "\n".join(parts)
-    
+        self.start_string()  # Sets self.input = "GRECO"
+
+        if self.id and self.bas:
+            self.add_param("ID", self.id)
+            self.add_param("BAS", str(self.bas))
+            if self.elc is not None:
+                self.add_param("ELC", str(self.elc))
 
     def __iter__(self):
         """Make the object iterable so list(obj) works"""
