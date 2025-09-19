@@ -65,33 +65,9 @@ class SD_BASE(BaseModel):
     # Maintain order of all items (excluded from serialization but tracked internally)
     all_items: List[StatementType] = Field(default_factory=list, exclude=True, description="Ordered list of all items")
    
-    # Container fields - generated dynamically by ContainerFactory
-    # This eliminates 20+ repetitive field definitions!
-    greco: BaseContainer[GRECO] = Field(default_factory=lambda: BaseContainer[GRECO](), description="GRECO container")
-    basco: BaseContainer[BASCO] = Field(default_factory=lambda: BaseContainer[BASCO](), description="BASCO container")
-    loadc: BaseContainer[LOADC] = Field(default_factory=lambda: BaseContainer[LOADC](), description="LOADC container")
-    shsec: BaseContainer[SHSEC] = Field(default_factory=lambda: BaseContainer[SHSEC](), description="SHSEC container")
-    shaxe: BaseContainer[SHAXE] = Field(default_factory=lambda: BaseContainer[SHAXE](), description="SHAXE container")
-    cmpec: BaseContainer[CMPEC] = Field(default_factory=lambda: BaseContainer[CMPEC](), description="CMPEC container")
-    rmpec: BaseContainer[RMPEC] = Field(default_factory=lambda: BaseContainer[RMPEC](), description="RMPEC container")
-    retyp: BaseContainer[RETYP] = Field(default_factory=lambda: BaseContainer[RETYP](), description="RETYP container")
-    reloc: BaseContainer[RELOC] = Field(default_factory=lambda: BaseContainer[RELOC](), description="RELOC container")
-    lores: BaseContainer[LORES] = Field(default_factory=lambda: BaseContainer[LORES](), description="LORES container")
-    xtfil: BaseContainer[XTFIL] = Field(default_factory=lambda: BaseContainer[XTFIL](), description="XTFIL container")
-    desec: BaseContainer[DESEC] = Field(default_factory=lambda: BaseContainer[DESEC](), description="DESEC container")
-    table: BaseContainer[TABLE] = Field(default_factory=lambda: BaseContainer[TABLE](), description="TABLE container")
-    rfile: BaseContainer[RFILE] = Field(default_factory=lambda: BaseContainer[RFILE](), description="RFILE container")
-    incdf: BaseContainer[INCDF] = Field(default_factory=lambda: BaseContainer[INCDF](), description="INCDF container")
-    decas: BaseContainer[DECAS] = Field(default_factory=lambda: BaseContainer[DECAS](), description="DECAS container")
-    depar: BaseContainer[DEPAR] = Field(default_factory=lambda: BaseContainer[DEPAR](), description="DEPAR container")
-    filst: BaseContainer[FILST] = Field(default_factory=lambda: BaseContainer[FILST](), description="FILST container")
-    headl: BaseContainer[HEADL] = Field(default_factory=lambda: BaseContainer[HEADL](), description="HEADL container")
-    cases: BaseContainer[Cases] = Field(default_factory=lambda: BaseContainer[Cases](), description="CASES container")
-    
-    # Container-only approach: ALL statements use containers for consistency!
-    heading: BaseContainer[HEADING] = Field(default_factory=lambda: BaseContainer[HEADING](), description="HEADING container")
-    execd: BaseContainer[EXECD] = Field(default_factory=lambda: BaseContainer[EXECD](), description="EXECD container")
-    
+    # ✅ PHASE 3 COMPLETE: All container fields are now created dynamically!
+    # No more manual container field definitions - they're auto-generated from ContainerFactory
+   
     # New simplified validation control
     validation_level: ValidationLevel = Field(default=ValidationLevel.NORMAL, exclude=True, description="Validation level: ValidationLevel enum")
     cross_object_validation: bool = Field(default=True, exclude=True, description="Enable immediate cross-object validation during add()")
@@ -153,6 +129,9 @@ class SD_BASE(BaseModel):
         self._validation_manager = ValidationManager(self)
         self.router = StatementRouter(self)
         
+        # Create all container fields dynamically
+        self._create_dynamic_containers()
+        
         # Set parent model references - ContainerFactory provides the registry
         for container_name in ContainerFactory.get_container_names():
             container = getattr(self, container_name, None)
@@ -160,6 +139,38 @@ class SD_BASE(BaseModel):
                 container.set_parent_model(self)
         return self
     
+    def _create_dynamic_containers(self) -> None:
+        """
+        Create all container fields dynamically based on ContainerFactory registry.
+        This replaces the need for manual container field definitions.
+        """
+        from .model.container_factory import ContainerFactory
+        
+        # Store containers in a private dict to avoid Pydantic validation issues
+        self._dynamic_containers = ContainerFactory.create_containers()
+    
+    def __getattr__(self, name: str):
+        """
+        Dynamic container access - provides containers on-demand.
+        This allows access to containers without defining them as Pydantic fields.
+        """
+        # Check if it's a dynamic container
+        if hasattr(self, '_dynamic_containers') and name in self._dynamic_containers:
+            return self._dynamic_containers[name]
+        
+        # Check if it's a valid container name from the factory
+        from .model.container_factory import ContainerFactory
+        if ContainerFactory.is_valid_container(name):
+            # Create the container if it doesn't exist yet
+            if not hasattr(self, '_dynamic_containers'):
+                self._dynamic_containers = {}
+            if name not in self._dynamic_containers:
+                containers = ContainerFactory.create_containers()
+                self._dynamic_containers.update(containers)
+            return self._dynamic_containers[name]
+        
+        # Not a container, raise normal AttributeError
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
 
     def add(self, item: Union[StatementType, Sequence[StatementType]], validation: bool = None) -> None:
@@ -239,6 +250,16 @@ class SD_BASE(BaseModel):
         if self.validation_enabled:
             self.validator.validate_cross_references()
         return self
+    
+    def __init_subclass__(cls, **kwargs):
+        """Dynamically inject container fields from ContainerFactory."""
+        super().__init_subclass__(**kwargs)
+        
+        # Inject all container fields dynamically
+        from .model.container_factory import ContainerFactory
+        ContainerFactory.inject_container_fields(cls)
+        
+    
     
     def _finalize_model(self) -> None:
         """Mark model as complete and trigger final validation."""

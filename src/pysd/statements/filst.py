@@ -1,8 +1,7 @@
 from __future__ import annotations
 from typing import Optional
 from pydantic import  Field
-from ..validation.rule_system import execute_validation_rules
-from ..validation.core import ValidationContext
+
 from .statement_base import StatementBase
 
 
@@ -56,12 +55,12 @@ class FILST(StatementBase):
     vers: Optional[str] = Field(None, description="File version (max 8 characters)")
     date: Optional[str] = Field(None, description="Date of last revision (max 12 characters)")
     resp: Optional[str] = Field(None, description="Responsible person/group (max 4 characters)")
-    pri: bool = Field(False, description="Print all current FILST lines")
+    pri: bool = Field(None, description="Print all current FILST lines")
     
     @property
     def identifier(self) -> str:
         """Get unique identifier for this FILST statement."""
-        return self.name 
+        return self._build_identifier(field_order=['name'], add_hash=True)
     
 
     
@@ -69,21 +68,14 @@ class FILST(StatementBase):
         """Build input string and run instance-level validation."""
         
         # Build input string
-        parts = ["FILST"]
         if self.pri:
-            parts.append("PRI=")
-        else:
-            # The 'name' is mandatory in this case, use default if None
-            name_value = self.name if self.name is not None else "sd"
-            parts.append(f"NAME={name_value}")
-            if self.vers is not None:
-                parts.append(f"VERS={self.vers}")
-            if self.date is not None:
-                parts.append(f"DATE={self.date}")
-            if self.resp is not None:
-                parts.append(f"RESP={self.resp}")
+           self.start_string = "FILST"
+           self.add_param("PRI", "")  # Empty value becomes "PRI="
 
-        self.input = " ".join(parts)
-        return self.input
+        else:
+           # The 'name' is mandatory in this case, use default if None
+           self.input = self._build_string_generic(
+               field_order=['name', 'vers', 'date', 'resp'])
+        
     
     

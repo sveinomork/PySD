@@ -8,11 +8,11 @@ Additional lines will replace the third line.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
+from pydantic import field_validator
+from .statement_base import StatementBase
 
 
-@dataclass
-class HEADL:
+class HEADL(StatementBase):
     """
 ### Usage
 Defines header information for ShellDesign output files and reports.
@@ -41,15 +41,28 @@ HEADL(heading="Bridge Pier Analysis - Phase 1")
     
     heading: str
     
-    def __post_init__(self) -> None:
-        """Validate input parameters."""
-        if not self.heading:
+    @field_validator('heading')
+    @classmethod
+    def validate_heading(cls, v):
+        """Validate heading text."""
+        if not v:
             raise ValueError("Heading text cannot be empty")
         
-        if len(self.heading) > 64:
+        if len(v) > 64:
             raise ValueError("Heading text must be maximum 64 characters")
+            
+        return v
     
     @property
     def input(self) -> str:
         """Generate the HEADL input string."""
         return f"HEADL {self.heading}"
+    
+    def _build_input_string(self) -> str:
+        """Build the input string for this HEADL statement."""
+        return f"HEADL {self.heading}"
+    
+    @property
+    def identifier(self) -> str:
+        """Get unique identifier for this HEADL statement."""
+        return self._build_identifier(field_order=['heading'], add_hash=True)

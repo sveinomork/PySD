@@ -1,9 +1,8 @@
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Union
+from .statement_base import StatementBase
 
-@dataclass
-class INCDF:
+class INCDF(StatementBase):
     """
     Opens an additional input file.
 
@@ -16,10 +15,15 @@ class INCDF:
         The file name or path to the input file to be included.
     """
     path: Union[str, Path]
-    input: str = field(init=False)
-
-    def __post_init__(self):
-        self.input = f"INCDF {self.path}"
 
     def __str__(self) -> str:
-        return self.input
+        return f"INCDF {self.path}"
+    
+    def _build_input_string(self) -> str:
+        """Build the input string for this INCDF statement."""
+        return f"INCDF {self.path}"
+    
+    @property
+    def identifier(self) -> str:
+        """Get unique identifier for this INCDF statement."""
+        return self._build_identifier(field_order=['path'], add_hash=True)

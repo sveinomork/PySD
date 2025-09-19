@@ -35,6 +35,8 @@ from ..statements.depar import DEPAR
 from ..statements.filst import FILST
 from ..statements.headl import HEADL
 from ..statements.cases import Cases
+from ..statements.statement_heading import HEADING
+from ..statements.execd import EXECD
 
 from ..containers.base_container import BaseContainer
 
@@ -134,11 +136,11 @@ class ContainerFactory:
         
         # Previously list-based, now container-based for consistency!
         'heading': {
-            'type': None,  # Will be imported later to avoid circular imports
+            'type': HEADING,
             'description': 'HEADING comment blocks'
         },
         'execd': {
-            'type': None,  # Will be imported later to avoid circular imports
+            'type': EXECD,
             'description': 'EXECD execution statements'
         }
     }
@@ -219,40 +221,45 @@ class ContainerFactory:
         
         return imports
     
-
-    
     @classmethod
     def create_container_fields(cls) -> Dict[str, Any]:
         """
         Generate all Pydantic field declarations for containers.
         
         This replaces 20+ manual field definitions with dynamic generation.
-        ALL statements now use containers for consistency!
         
         Returns:
             Dict mapping field names to Pydantic Field objects
         """
-        # Import here to avoid circular imports
-        from ..statements.statement_heading import HEADING
-        from ..statements.execd import EXECD
-        
-        # Update the None types
-        cls._statement_registry['heading']['type'] = HEADING
-        cls._statement_registry['execd']['type'] = EXECD
-        
         fields = {}
         
-        # Create container fields for ALL statements
-        for name, info in cls._statement_registry.items():
-            if info['type'] is not None:
-                statement_type = info['type']
-                fields[name] = Field(
-                    default_factory=lambda st=statement_type: BaseContainer[st](),
-                    description=info['description']
-                )
+        for container_name, statement_type in cls._container_registry.items():
+            # Create the field definition with proper type hints
+            fields[container_name] = Field(
+                default_factory=lambda st=statement_type: BaseContainer[st](),
+                description=f"{statement_type.__name__} container"
+            )
         
         return fields
-    
+
+    @classmethod
+    def inject_container_fields(cls, model_class: Type) -> None:
+        """
+        Dynamically inject container fields into a model class.
+        
+        This allows SD_BASE to get all container fields without manual definition.
+        """
+        container_fields = cls.create_container_fields()
+        
+        for field_name, field_def in container_fields.items():
+            # Add field to model annotations and fields
+            model_class.__annotations__[field_name] = f"BaseContainer[{cls._container_registry[field_name].__name__}]"
+            setattr(model_class, field_name, field_def)
+        
+        # Rebuild the model to recognize new fields
+        model_class.model_rebuild()
+
+   
     @classmethod
     def create_containers(cls) -> Dict[str, BaseContainer]:
         """
