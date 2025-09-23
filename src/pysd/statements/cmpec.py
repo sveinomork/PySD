@@ -30,7 +30,7 @@ class CMPEC(StatementBase):
     ecm: Optional[float] = Field(None, description="Secant modulus of elasticity [kPa]")
     fcn: Optional[float] = Field(None, description="In situ compression strength [kPa]")
     ftm: Optional[float] = Field(None, description="In situ tensile strength [kPa]")
-    acc: float = Field(0.85, description="Coefficient for longterm effects")
+    acc: Optional[float] = Field(None, description="Coefficient for longterm effects")
     
     # Figure 3.3 related parameters
     exp: Optional[float] = Field(None, description="Exponent n in equation 3.17")
@@ -38,17 +38,17 @@ class CMPEC(StatementBase):
     ecu: Optional[float] = Field(None, description="Ultimate strain")
     
     # Design properties with defaults
-    mfu: float = Field(1.5, description="Design material factor (ULS)")
-    mfa: float = Field(1.2, description="Design material factor (ALS)")
-    mfs: float = Field(1.0, description="Design material factor (SLS/CRW)")
-    k1c: float = Field(0.15, description="Shear parameter k1 for compression")
-    k1t: float = Field(0.30, description="Shear parameter k1 for tension")
-    k2: float = Field(0.15, description="Shear parameter k2")
-    cot: float = Field(2.5, description="Shear cot(theta)")
+    mfu: Optional[float] = Field(None, description="Design material factor (ULS)")
+    mfa: Optional[float] = Field(None, description="Design material factor (ALS)")
+    mfs: Optional[float] = Field(None, description="Design material factor (SLS/CRW)")
+    k1c: Optional[float] = Field(None, description="Shear parameter k1 for compression")
+    k1t: Optional[float] = Field(None, description="Shear parameter k1 for tension")
+    k2: Optional[float] = Field(None, description="Shear parameter k2")
+    cot: Optional[float] = Field(None, description="Shear cot(theta)")
     
     # Reduced compression strength parameters
-    tsp: float = Field(100.0, description="Design fc2d = fcd/(0.8+tsp*ept)")
-    tsd: float = Field(1.0, description="Design min(fc2d) = fac*fcd")
+    tsp: Optional[float] = Field(None, description="Design fc2d = fcd/(0.8+tsp*ept)")
+    tsd: Optional[float] = Field(None, description="Design min(fc2d) = fac*fcd")
     
     # Location parameters
     la: Optional[int] = Field(None, description="LAREA id-number")
@@ -64,8 +64,23 @@ class CMPEC(StatementBase):
     def identifier(self) -> str:
         """Get unique identifier for this GRECO statement."""
         return self.id
-
+    
     def _build_input_string(self) -> None:
+        """Build the input string using enhanced generic builder."""
+        if self.pri is not None:
+            # Special case: print option only
+            self.start_string()
+            self.add_param("TAB","" )
+            return
+
+        self.input = self._build_string_generic(
+            field_order=['id', 'gr', 'rh', 'fck', 'ecm', 'fcn', 'ftm', 'acc', 'exp', 'ec2', 'ecu', 'mfu',
+                          'mfa', 'mfs', 'k1c', 'k1t', 'k2', 'cot', 'tsp', 'tsd', 'la', 'pa', 'fs', 'hs'],
+            exclude={'comment'},  # Exclude comment from regular field processing
+            float_precision=6,
+        )
+
+    def _build_input_string1(self) -> None:
         """Build input string and run instance-level validation."""
         
 

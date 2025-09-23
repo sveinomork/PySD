@@ -75,96 +75,45 @@ class XTFIL(StatementBase):
     hs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="H-section range")
 
     # Plot items
-    plot_items: List[str] = Field(default_factory=list, description="List of plot items to include")
+    ax: Optional[str] = Field(None, description="123-axes)")
+    fh: Optional[str] = Field(None, description=" F- and H-section numbers")
+    th: Optional[str] = Field(None, description="shell thickness")                           
+    re: Optional[str] = Field(None, description="rebar layer cross section area")
+    te: Optional[str] = Field(None, description="tendon layer cross section area")
+    st: Optional[str] = Field(None, description="stirrup cross section area")
+    nd: Optional[str] = Field(None, description="node displacements (only area plot)")
+    df: Optional[str] = Field(None, description="design forces and moments")
+    pf: Optional[str] = Field(None, description="principal membrane forces")
+    pm: Optional[str] = Field(None, description="principal moments")
+    ps: Optional[str] = Field(None, description="principal shear forces")
+    pe: Optional[str] = Field(None, description="principal face strain")
+    cs: Optional[str] = Field(None, description="utilization ratio concrete stresses")
+    rs: Optional[str] = Field(None, description="utilization ratio rebar stresses")
+    ts: Optional[str] = Field(None, description="utilization ratio tendon stresses")
+    sc: Optional[str] = Field(None, description="utilization ratios shear capacity")
+    cw: Optional[str] = Field(None, description="utilization ratio crack widths")
+    tw: Optional[str] = Field(None, description="utilization ratio crack widths at tendons")
+    cz: Optional[str] = Field(None, description="Results compression zone tightness")
+    ct: Optional[str] = Field(None, description="Results crack width tightness")
+    ms: Optional[str] = Field(None, description="Results maximum membrane stress tightness")
+    lf: Optional[str] = Field(None, description="location dependent load factors")
+    pv: Optional[str] = Field(None, description="only peak plots of all design cases are plotted if more than one case is stored")
 
-    # Plot options
-    peak_value_only: bool = Field(False, description="Only plot peak values")
-    reb_tol: float = Field(10.0, description="Rebar tolerance (mm²)")
-    ten_tol: float = Field(100.0, description="Tendon tolerance (mm²)")
-    thi_tol: float = Field(10.0, description="Thickness tolerance (mm)")
-    num_levels: int = Field(64, description="Number of legend levels")
-    reb_labels: bool = Field(True, description="Show rebar labels")
-    thi_labels: bool = Field(True, description="Show thickness labels")
-    time_it: bool = Field(False, description="Show plotting time")
-    
-    # Auto-generated fields
-    key: str = Field(default="", init=False, description="Key for dictionary storage")
- 
+   
+
     @property
     def identifier(self) -> str:
         """Get unique identifier for this XTFIL statement."""
-        return self.key
+        return self._build_identifier(field_order=['fn', 'pa'], add_hash=True)
     
     
 
     def _build_input_string(self) -> str:
-        """Build the XTFIL input string."""
-        # Generate the key
-        key_parts = [f"FN={self.fn}"]
-        key_parts.append(f"{self.pa}")
-        if self.fs is not None:
-            if isinstance(self.fs, tuple):
-                key_parts.append(f"FS{self.fs[0]}-{self.fs[1]}")
-            else:
-                key_parts.append(f"FS{self.fs}")
-        if self.hs is not None:
-            if isinstance(self.hs, tuple):
-                key_parts.append(f"HS{self.hs[0]}-{self.hs[1]}")
-            else:
-                key_parts.append(f"HS{self.hs}")
-        self.key = "_".join(key_parts)
-            
-        # Build the XTFIL input string
-        parts = ["XTFIL"]
+        self.input = self._build_string_generic(
+                field_order=['fn', 'pa', 'fs', 'hs', 'ax', 'fh', 'th', 're', 'te', 'st', 'nd', 'df', 'pf', 'pm', 'ps', 
+                             'pe', 'cs', 'rs', 'ts', 'sc', 'cw', 'tw', 'cz', 'ct', 'ms', 'lf', 'pv'],
+                float_precision=3  # Use 3 decimal places for better readability
+            )
         
-        # Add required parameters
-        parts.append(f"FN={self.fn}")
-        parts.append(f"PA={self.pa}")
-        
-        # Add section ranges if specified
-        if self.fs is not None:
-            if isinstance(self.fs, tuple):
-                parts.append(f"FS={self.fs[0]}-{self.fs[1]}")
-            else:
-                parts.append(f"FS={self.fs}")
-        if self.hs is not None:
-            if isinstance(self.hs, tuple):
-                parts.append(f"HS={self.hs[0]}-{self.hs[1]}")
-            else:
-                parts.append(f"HS={self.hs}")
-            
-        # Add plot items if specified
-        for item in self.plot_items:
-            parts.append(f"PI={item}")
-            
-        # Add peak value flag if True
-        if self.peak_value_only:
-            parts.append("PV")
-            
-        # Add tolerance values if non-default
-        if self.reb_tol != 10.0:
-            parts.append(f"REBTOL={self.reb_tol}")
-        if self.ten_tol != 100.0:
-            parts.append(f"TENTOL={self.ten_tol}")
-        if self.thi_tol != 10.0:
-            parts.append(f"THITOL={self.thi_tol}")
-            
-        # Add legend levels if non-default
-        if self.num_levels != 64:
-            parts.append(f"NUMLEV={self.num_levels}")
-            
-        # Add label settings if not default
-        if not self.reb_labels:
-            parts.append("REBLAB=OFF")
-        if not self.thi_labels:
-            parts.append("THILAB=OFF")
-            
-        # Add timing flag if True
-        if self.time_it:
-            parts.append("TIMEIT")
-            
-        # Join all parts with spaces
-        self.input = " ".join(parts)
-        return self.input
     
     

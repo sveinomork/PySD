@@ -71,27 +71,13 @@ class LORES(StatementBase):
     pri_olc: bool = Field(False, description="If True, list OLC reaction forces")
     pri_alc: bool = Field(False, description="If True, list ALL reaction forces on SIN file")
 
-    # Auto-generated fields
-    id: str = Field(default="", init=False, description="Unique identifier")
+   
   
 
    
     @property
     def identifier(self) -> str:
-        """Get unique identifier for this LORES statement."""
-        # Create identifier based on the mode of operation
-        if self.lc is not None and self.part is not None:
-            # Manual mode: use LC number and part
-            return f"{self.lc}_{self.part}"
-        elif self.sin:
-            return "SIN"
-        elif self.pri_olc:
-            return "PRI_OLC"
-        elif self.pri_alc:
-            return "PRI_ALC"
-        else:
-            # Fallback for other cases
-            return f"LORES_{id(self)}"
+       return self._build_identifier( add_hash=True)
    
     
     def _build_input_string(self) -> str:

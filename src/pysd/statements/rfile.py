@@ -114,7 +114,7 @@ class RFILE(StatementBase):
     @property
     def identifier(self) -> str:
         """Get unique identifier for this RFILE statement."""
-        return str(1)
+        return self._build_identifier(field_order=['fnm'], add_hash=True)
 
 
    

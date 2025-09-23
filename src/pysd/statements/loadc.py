@@ -137,8 +137,6 @@ LOADC(pri=True)
         elif self.pri:
             self.add_param("PRI", "")  # Empty value becomes "PRI="
 
-    def __str__(self) -> str:
-        return self.input
     
     def is_olc(self, olc: int) -> bool:
         """

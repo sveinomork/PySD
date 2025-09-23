@@ -117,45 +117,7 @@ class TABLE(StatementBase):
  
     @property
     def identifier(self) -> str:
-        """Get descriptive identifier based on TABLE purpose."""
-        # Start with the table type
-        if self.tab:
-            base = f"TAB_{self.tab}"
-        elif self.ur:
-            base = f"UR_{self.ur}"
-        else:
-            base = "TABLE"
-        
-        # Add key distinguishing features
-        parts = [base]
-        
-        if self.pa:
-            parts.append(f"PA_{self.pa}")
-        
-        if self.fs:
-            if isinstance(self.fs, tuple):
-                parts.append(f"FS_{self.fs[0]}_{self.fs[1]}")
-            else:
-                parts.append(f"FS_{self.fs}")
-        
-        if self.hs:
-            if isinstance(self.hs, tuple):
-                parts.append(f"HS_{self.hs[0]}_{self.hs[1]}")
-            else:
-                parts.append(f"HS_{self.hs}")
-        
-        if self.ls:
-            parts.append(f"LS_{self.ls}")
-        
-        # Create final identifier
-        identifier = "_".join(parts)
-        
-        # If too long, use hash of the full identifier
-        if len(identifier) > 50:
-            return f"TABLE_{abs(hash(identifier)):x}"
-        
-        return identifier
-        
+       return self._build_identifier( add_hash=True)
 
 
     def _build_input_string(self) -> str:

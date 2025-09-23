@@ -139,24 +139,4 @@ class TestValidationLevels:
         assert model.cross_object_validation
         assert validation_config.level == ValidationLevel.NORMAL
     
-    def test_backward_compatibility(self):
-        """Test that old context manager API still works"""
-        output_file = "tests/test_output/test_validation_levels_compat.mdl"
-        
-        # Old API should still work
-        with SD_BASE.create_writer(output_file) as model:
-            model.add(LOADC(run_number=1, alc=1, olc=110))
-            model.add(BASCO(id=101, load_cases=[LoadCase(lc_type='OLC', lc_numb=110)]))
-            
-            decas = DECAS(ls='ULS', bas=101)
-            model.add(decas)
-            
-            assert decas.input == "DECAS LS=ULS BAS=101"
-        
-        # File should be created
-        import os
-        assert os.path.exists(output_file)
-        
-        # Clean up
-        if os.path.exists(output_file):
-            os.remove(output_file)
+    

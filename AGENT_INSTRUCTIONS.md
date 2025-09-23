@@ -40,3 +40,4 @@
 - **ASK** the user for clarification
 - **READ** existing code patterns
 - **DON'T ASSUME** - especially about test modifications
+- **DON'T implement** - backward compatibility if not spesifically asked

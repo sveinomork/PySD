@@ -21,24 +21,6 @@ class LoadCase(BaseModel):
     def is_in_loadcase(self, id: int,type:str) -> bool:
         return self.lc_type == type and self.lc_numb == id
     
-# class LoadCaseList(BaseModel):
-#     """
-#     Container for multiple LOADC statements.
-  
-#     """
-#     loadcases: list[LoadCase] = Field(default_factory=list)
-
-#     def add_loadc(self, loadcase: LoadCase) -> None:
-#         """Add a LOADC statement to the list."""
-#         self.loadcases.append(loadcase)
-
-#     def __iter__(self):
-#         """Make the object iterable so list(obj) works"""
-#         return iter(self.loadcases)
-
-#     def to_list(self) -> list[LoadCase]:
-#         """Get the list of LOADC statements."""
-#         return self.loadcases
 
 
     

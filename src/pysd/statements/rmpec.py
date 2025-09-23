@@ -23,24 +23,24 @@ class RMPEC(StatementBase):
     
     # Material properties
     gr: Optional[float] = Field(None, description="Steel grade, eg. 500 [kPa]")
-    esk: float = Field(default=200.0E6, description="Modulus of elasticity [kPa] [default 200*1.0E6]")
+    esk: Optional[float] = Field(None, description="Modulus of elasticity [kPa] [default 200*1.0E6]")
     fyk: Optional[float] = Field(None, description="Yield strength [kPa]")
     fsk: Optional[float] = Field(None, description="Ultimate strength [kPa]")
-   
-    den: float = Field(7850.0, description="Steel density [kg/m3]")
-    
+
+    den: Optional[float] = Field(None, description="Steel density [kg/m3]")
+
     # Design properties - ULS
-    mfu: float = Field(default=1.15, description="Design material factor ULS [default 1.15]")
-    epu: float = Field(default=0.010, description="Ultimate tensile strain ULS [m/m] [default 0.010]")
+    mfu: Optional[float] = Field(None, description="Design material factor ULS [default 1.15]")
+    epu: Optional[float] = Field(None, description="Ultimate tensile strain ULS [m/m] [default 0.010]")
 
     # Design properties - ALS
-    mfa: float = Field(default=1.00, description="Design material factor ALS [default 1.00]")
-    epa: float = Field(default=0.010, description="Ultimate tensile strains ALS [m/m] [default 0.010]")
+    mfa: Optional[float] = Field(None, description="Design material factor ALS [default 1.00]")
+    epa: Optional[float] = Field(None, description="Ultimate tensile strains ALS [m/m] [default 0.010]")
 
     # Design properties - SLS
-    mfs: float = Field(default=1.00, description="Design material factor SLS [default 1.00]")
-    eps: Optional[float] = Field(default=None, description="Ultimate tensile strain SLS [m/m]")
-    
+    mfs: Optional[float] = Field(None, description="Design material factor SLS [default 1.00]")
+    eps: Optional[float] = Field(None, description="Ultimate tensile strain SLS [m/m] [default 0.010]")
+
     # Print option
     pri: Optional[Literal['']] = Field(None, description="Print option")
     
@@ -51,73 +51,17 @@ class RMPEC(StatementBase):
 
    
 
- 
-    def _build_input_string(self) -> 'RMPEC':
-
-
-        def format_float(value: float) -> str:
-            """Format float value according to the requirements"""
-            if value.is_integer():
-                return f"{int(value)}"
-            elif abs(value) < 0.01:
-                return f"{value:.4f}"
-            elif abs(value) > 1000:
-                return f"{value:.0f}"
-            elif abs(value) < 10:
-                return f"{value:.2f}"
-            else:
-                return f"{value:.0f}"
-
-        # Build the RMPEC input string
+    def _build_input_string(self) -> None:
+        """Build the input string using enhanced generic builder."""
         if self.pri is not None:
-            self.input = "RMPEC PRI="
-            return self
-            
-        parts = ["RMPEC"]
-        
-        # Add identification
-        if self.id is not None:
-            parts.append(f"ID={self.id}")
-        
-        # Add material properties
-        if self.gr is not None:
-            parts.append(f"GR={self.gr}")
-            
-        if self.esk != 200.0E6:
-            parts.append(f"ESK={format_float(self.esk)}")
-            
-        if self.fyk is not None:
-            parts.append(f"FYK={format_float(self.fyk)}")
-            
-        if self.fsk is not None:
-            parts.append(f"FSK={format_float(self.fsk)}")
-            
-        if self.den != 7850.0:
-            parts.append(f"DEN={format_float(self.den)}")
-        
-        # Add design properties if they differ from defaults
-        if self.mfu != 1.15:
-            parts.append(f"MFU={format_float(self.mfu)}")
-            
-        if self.epu != 0.010:
-            parts.append(f"EPU={format_float(self.epu)}")
-        
-        if self.mfa != 1.00:
-            parts.append(f"MFA={format_float(self.mfa)}")
-            
-        if self.epa != 0.010:
-            parts.append(f"EPA={format_float(self.epa)}")
-            
-        # Only include MFS if it differs from default or if EPS is specified
-        if self.mfs != 1.00:
-            parts.append(f"MFS={format_float(self.mfs)}")
-            
-        if self.eps is not None:
-            parts.append(f"EPS={format_float(self.eps)}")
-            
-        # Join all parts with spaces
-        self.input = " ".join(parts)
-        
-        return self.input
-    
+            # Special case: print option only
+            self.start_string()
+            self.add_param("TAB","" )
+            return
+
+        self.input = self._build_string_generic(
+            field_order=['id', 'gr', 'rh', 'esk', 'fyk', 'fsk', 'den', 'mfu', 'epu', 'mfa', 'epa', 'mfs', 'eps'],                
+            exclude={'comment'},  # Exclude comment from regular field processing
+            float_precision=6,
+        )
     

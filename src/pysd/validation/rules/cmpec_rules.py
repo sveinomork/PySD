@@ -62,7 +62,7 @@ def validate_cmpec_density_range(obj: 'CMPEC', context: ValidationContext) -> Li
         return [ValidationIssue(
             severity=ValidationSeverity.ERROR.value,
             code="CMPEC-RH-001",
-            message=f"CMPEC density {obj.rh} kg/m3 must be between 1150 and 2150 for lightweight concrete",
+            message=f"CMPEC density {obj.rh} kg/m3 must be between 1150 and 2150 for concrete",
             location=f'CMPEC.{obj.id}.rh',
             suggestion='Use density between 1150 and 2150 kg/m3'
         )]

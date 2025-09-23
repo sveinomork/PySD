@@ -15,15 +15,13 @@ class INCDF(StatementBase):
         The file name or path to the input file to be included.
     """
     path: Union[str, Path]
-
-    def __str__(self) -> str:
-        return f"INCDF {self.path}"
-    
-    def _build_input_string(self) -> str:
-        """Build the input string for this INCDF statement."""
-        return f"INCDF {self.path}"
-    
+     
     @property
     def identifier(self) -> str:
         """Get unique identifier for this INCDF statement."""
         return self._build_identifier(field_order=['path'], add_hash=True)
+
+    def _build_input_string(self) -> str:
+        """Build the input string for this INCDF statement."""
+        return f"INCDF {self.path}"
+   

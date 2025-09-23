@@ -79,49 +79,4 @@ class RELOC(StatementBase):
             float_precision=6
         )
     
-    def _build_input_string1(self) -> str:
-        """Build the RELOC input string."""
-        parts = ["RELOC", f"ID={self.id}"]
-        
-        # RT (Rebar Type)
-        if isinstance(self.rt, tuple):
-            if self.rt[0] == self.rt[1]:
-                parts.append(f"RT={self.rt[0]}")
-            else:
-                parts.append(f"RT={self.rt[0]}-{self.rt[1]}")
-        else:
-            parts.append(f"RT={self.rt}")
-            
-        # Optional parameters
-        if self.cov is not None:
-            parts.append(f"COV={self.cov}")
-        if self.fa != 0:
-            parts.append(f"FA={self.fa}")
-        if self.al != 0.0:
-            parts.append(f"AL={self.al}")
-        if self.os is not None:
-            parts.append(f"OS={self.os}")
-        if self.rp != "12":
-            parts.append(f"RP={self.rp}")
-            
-        # Location area parameters
-        if self.la is not None:
-            parts.append(f"LA={self.la}")
-        else:
-            if self.pa is not None:
-                parts.append(f"PA={self.pa}")
-            if self.fs is not None:
-                if isinstance(self.fs, tuple):
-                    parts.append(f"FS={self.fs[0]}-{self.fs[1]}")
-                else:
-                    parts.append(f"FS={self.fs}")
-            if self.hs is not None:
-                if isinstance(self.hs, tuple):
-                    parts.append(f"HS={self.hs[0]}-{self.hs[1]}")
-                else:
-                    parts.append(f"HS={self.hs}")
-
-        self.input = " ".join(parts)
-        return self.input
-    
     

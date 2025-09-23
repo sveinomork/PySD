@@ -27,8 +27,10 @@ def validate_rmpec_positive_values(obj: 'RMPEC', context: ValidationContext) -> 
     """Validate that material properties are positive."""
     issues = []
     
-    # Check density
-    if obj.den <= 0:
+    if obj.den is None:
+        return []
+
+    if  obj.den <= 0:
         issues.append(ValidationIssue(
             severity=ValidationSeverity.ERROR.value,
             code="RMPEC-DEN-001",

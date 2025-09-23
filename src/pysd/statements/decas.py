@@ -85,71 +85,7 @@ DECAS(ls="ULS", bas=[(101,102)], greco="A")
     @property
     def identifier(self) -> str:
         """Get unique identifier for this DECAS statement."""
-     
-        
-        # Start with load scenario
-        parts = [self.ls]
-        
-        # Add key distinguishing parameters
-        if self.stl is not None:
-            parts.append(f"STL{self.stl}")
-        if self.dwp is not None:
-            parts.append(f"DWP{self.dwp}")
-        if self.cw is not None:
-            parts.append(f"CW{self.cw}")
-        if self.por:
-            parts.append("POR")
-        if self.emp_ok:
-            parts.append("EMP")
-        
-        # Add load case information - this is the key extension you requested
-        if self.bas and isinstance(self.bas, Cases) and self.bas.ranges:
-            first_range = self.bas.ranges[0]
-            if isinstance(first_range, int):
-                parts.append(f"BAS{first_range}")
-            elif isinstance(first_range, tuple):
-                parts.append(f"BAS{first_range[0]}-{first_range[1]}")
-        elif self.bas:
-            # Handle string or other formats
-            bas_str = str(self.bas).replace(',', '').replace('-', '_')[:10]  # Truncate for readability
-            parts.append(f"BAS{bas_str}")
-        
-        if self.olc and isinstance(self.olc, Cases) and self.olc.ranges:
-            first_range = self.olc.ranges[0]
-            if isinstance(first_range, int):
-                parts.append(f"OLC{first_range}")
-            elif isinstance(first_range, tuple):
-                parts.append(f"OLC{first_range[0]}-{first_range[1]}")
-        elif self.olc:
-            olc_str = str(self.olc).replace(',', '').replace('-', '_')[:10]
-            parts.append(f"OLC{olc_str}")
-        
-        if self.elc and isinstance(self.elc, Cases) and self.elc.ranges:
-            first_range = self.elc.ranges[0]
-            if isinstance(first_range, int):
-                parts.append(f"ELC{first_range}")
-            elif isinstance(first_range, tuple):
-                parts.append(f"ELC{first_range[0]}-{first_range[1]}")
-        elif self.elc:
-            elc_str = str(self.elc).replace(',', '').replace('-', '_')[:10]
-            parts.append(f"ELC{elc_str}")
-        
-        # Add GRECO if present
-        if self.greco:
-            parts.append(f"G{self.greco}")
-        
-        # Build human-readable identifier
-        identifier = "_".join(parts)
-        
-        # If identifier gets too long or complex, use hash fallback
-        if len(identifier) > 60:
-            # Use the complete input string for uniqueness, but hash it for brevity
-            input_str = self.input if hasattr(self, 'input') else str(self)
-            hash_obj = hashlib.sha256(input_str.encode())
-            short_hash = hash_obj.hexdigest()[:10]  # 10 chars for better uniqueness
-            return f"{self.ls}_{short_hash}"
-        
-        return identifier
+        return self._build_identifier(field_order=['ls'], add_hash=True)
 
     @field_validator('pha', 'ilc', 'olc', 'plc', 'elc', 'bas', mode='before')
     @classmethod
@@ -222,5 +158,4 @@ DECAS(ls="ULS", bas=[(101,102)], greco="A")
 
         self.input = builder.input
 
-    def __str__(self) -> str:
-        return self.input
+  
