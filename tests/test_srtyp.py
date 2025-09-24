@@ -1,6 +1,8 @@
 import pytest
 
-from pysd.statements.retyp import RETYP
+from pysd.sdmodel import SD_BASE
+from pysd import ValidationLevel
+
 from pysd.statements.rmpec import RMPEC
 
 from pysd.statements import SRTYP
@@ -35,14 +37,13 @@ def test_srtyp_incteracting_with_sd_base_failure():
 
     model = SD_BASE(validation_level=ValidationLevel.NORMAL, cross_object_validation=True)
     model.add(RMPEC(id=1, fyk=500.0E6, fsk=600.0E6), validation=True)  # Immediate validation
-    retyp = RETYP(id=1, mp=2, ar=753.0E-6 ,  lb="1.0D12_c150c150")
+    srtyp = SRTYP(id=1, mp=2, ar=753.0E-6 ,  lb="1.0D12_c150c150")
     with pytest.raises(ValueError, match=r"Model validation failed"):
-        model.add(retyp, validation=True)  # Immediate validation
+        model.add(srtyp, validation=True)  # Immediate validation
 
 def test_srtyp_incteracting_with_sd_base_success():
-    """Test RETYP interacting with SD_BASE model"""
-    from pysd.sdmodel import SD_BASE
-    from pysd import ValidationLevel
+    """Test SRTYP interacting with SD_BASE model"""
+    
 
     model = SD_BASE(validation_level=ValidationLevel.NORMAL, cross_object_validation=True)
     model.add(RMPEC(id=1, fyk=500.0E6, fsk=600.0E6), validation=True)  # Immediate validation
@@ -53,9 +54,9 @@ def test_srtyp_incteracting_with_sd_base_success():
 
 
 if __name__ == "__main__":
-    test_srtyp_parameters()
-    test_srtyp_method1()
-    test_srtyp_method2()
+    #test_srtyp_parameters()
+    #test_srtyp_method1()
+    #test_srtyp_method2()
   
     test_srtyp_incteracting_with_sd_base_success()
     print("All tests passed.")
