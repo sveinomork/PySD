@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Optional, Any,Literal
 from pydantic import  Field, field_validator
-from .cases import Cases, normalize_cases
+from .cases import Cases
 
 
 from .statement_base import StatementBase
@@ -14,29 +14,14 @@ class GRECO(StatementBase):
     """
     Active loads (ELC) are balanced by GRECO boundary reactions containing 6 BAS (one per load resultant: Fx, Fy, Fz, Mx, My, Mz). 
     ShellDesign calculates scale factors ensuring equilibrium between ELC and scaled GRECO reactions.
-
-    ### Usage
-
     Define as a object to generate GRECO input lines for ShellDesign to ensure proper load balancing and reaction scaling.
 
     ### Examples
 
     ```python
     # Basic GRECO with BAS range
-    GRECO(
-        id='A',
-        bas=LoadCaseDefinition(cases=[(11, 16)])
-    )
+    GRECO(id='A', bas=Cases((11, 16)))
     # -> 'GRECO ID=A BAS=11-16'
-
-    # GRECO with multiple BAS values and ranges
-    GRECO(
-        id='B',
-        bas=LoadCaseDefinition(cases=[21, 22, (31, 34)]),
-        elc=LoadCaseDefinition(cases=[(1, 34)])
-    )
-    # -> 'GRECO ID=B BAS=21,22,31-34 ELC=1-34'
-
     ```
 
     ### Parameters
@@ -51,13 +36,6 @@ class GRECO(StatementBase):
         - Range of equilibrium load cases to include.
         - Example: [(1, 34)] -> "ELC=1-34"
         - ELC must be defined as OLC in LOADC statements
-
-    ### Validation Rules
-
-    1. **ID Format**: Must be a single uppercase letter A-Z
-    2. **BAS Count**: Must have exactly 6 BAS (one per load resultant: Fx, Fy, Fz, Mx, My, Mz)
-    3. **ELC Reference**: All ELC values must be defined as OLC in LOADC statements
-    4. **Uniqueness**: GRECO ID must be unique within the model
 
     ### Notes
 

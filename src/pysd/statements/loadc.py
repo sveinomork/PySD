@@ -1,11 +1,10 @@
 from typing import Optional, Union, Any
-from pydantic import BaseModel, Field, field_validator, model_validator
-from .cases import Cases, normalize_cases
+from pydantic import Field, field_validator
+from .cases import Cases 
 from .statement_base import StatementBase
 
 class LOADC(StatementBase):
     """
-### Usage
 Controls load case processing, output formatting, and analysis execution parameters.
 
 ### Examples
@@ -119,9 +118,7 @@ LOADC(pri=True)
 
     def _build_input_string(self) -> None:
         """Build the input string using hybrid approach - Cases handle their own formatting."""
-        
-        
-       
+          
         # Start building using hybrid approach
         self.start_string()  # Sets self.input = "LOADC"
         
@@ -308,47 +305,3 @@ LOADC(pri=True)
             return []
         
    
-# class LoadcList(BaseModel):
-#     """
-#     Container for multiple LOADC statements.
-#     """
-#     loadc: list[LOADC] = Field(default_factory=list)
-
-#     @staticmethod
-#     def _validate_olc_uniqueness(loadc_list: list[LOADC]):
-#         """Checks for OLC uniqueness within a given list of LOADC items."""
-#         all_olcs:set[int] = set()
-#         for loadc_item in loadc_list:
-#             for olc in loadc_item.get_olc_list():
-#                 if olc in all_olcs:
-#                     raise ValueError(f"Duplicate OLC value found: {olc}")
-#                 all_olcs.add(olc)
-
-#     @model_validator(mode='after')
-#     def validate_unique_olc(self) -> 'LoadcList':
-#         """Ensures that no two LOADC items have overlapping OLC values."""
-#         self._validate_olc_uniqueness(self.loadc)
-#         return self
-
-#     def add_loadc(self, loadc: LOADC) -> None:
-#         """Add a LOADC statement to the list."""
-#         self._validate_olc_uniqueness(self.loadc + [loadc])
-#         self.loadc.append(loadc)
-
-#     def __iter__(self):
-#         """Make the object iterable so list(obj) works"""
-#         return iter(self.loadc)
-    
-#     def to_list(self) -> list[LOADC]:
-#         """Get the list of LOADC statements."""
-#         return self.loadc
-    
-  
-
-#     def get_corresponding_alc(self, olc: int) -> int | None:
-#         for lc in self:
-#             if lc.is_olc(olc):
-#                 return lc.get_corresponding_alc(olc)
-#         return None
-    
-    

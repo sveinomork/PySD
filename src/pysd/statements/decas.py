@@ -10,51 +10,70 @@ import hashlib
 
 class DECAS(StatementBase):
     """
-### Usage
-Defines design cases and their governing load combinations for structural verification.
 
-### Examples
-```python
-# Single design case with load combinations
-DECAS(ls="ULS", ilc=[101, 102, 103])
-# -> 'DECAS LS=ULS ILC=101,102,103'
+    Defines design cases and their governing load combinations for structural verification.
 
-# Single design case with one load case
-DECAS(ls="ULS", bas=101)
-# -> 'DECAS LS=ULS BAS=101'
+    ### Examples
+    ```python
+    # Single design case with load combinations
+    DECAS(ls="ULS", ilc=[101, 102, 103])
+    # -> 'DECAS LS=ULS ILC=101,102,103'
 
-# Design case with phase angles using CaseBuilder
-DECAS(ls="ULS", pha=CaseBuilder().add(0).add(45, 90))
-# -> 'DECAS LS=ULS PHA=0,45-90'
+    # Single design case with one load case
+    DECAS(ls="ULS", bas=101)
+    # -> 'DECAS LS=ULS BAS=101'
 
-# Design case with BAS and GRECO letter
-DECAS(ls="FLS", bas="300-305", greco="A")
-# -> 'DECAS LS=FLS BAS=300-305:A'
+    # Design case with phase angles using CaseBuilder
+    DECAS(ls="ULS", pha=CaseBuilder().add(0).add(45, 90))
+    # -> 'DECAS LS=ULS PHA=0,45-90'
 
-# Using tuple format with GRECO
-DECAS(ls="ULS", bas=(101,102), greco="A")
-# -> 'DECAS LS=ULS BAS=101-102:A'
+    # Design case with BAS and GRECO letter
+    DECAS(ls="FLS", bas="300-305", greco="A")
+    # -> 'DECAS LS=FLS BAS=300-305:A'
 
-# Using tuple format with step
-DECAS(ls="ULS", bas=(101,110,2), greco="B")
-# -> 'DECAS LS=ULS BAS=101-110-2:B'
+    # Using tuple format with GRECO
+    DECAS(ls="ULS", bas=(101,102), greco="A")
+    # -> 'DECAS LS=ULS BAS=101-102:A'
 
-# Using list format with GRECO  
-DECAS(ls="ULS", bas=[(101,102)], greco="A")
-# -> 'DECAS LS=ULS BAS=101-102:A'
-```
+    # Using tuple format with step
+    DECAS(ls="ULS", bas=(101,110,2), greco="B")
+    # -> 'DECAS LS=ULS BAS=101-110-2:B'
 
-### Parameters
+    # Using list format with GRECO  
+    DECAS(ls="ULS", bas=[(101,102)], greco="A")
+    # -> 'DECAS LS=ULS BAS=101-102:A'
+    ```
 
-- [Parameters documented in class definition]
+    ### Parameters
+    - ls: Load scenario type (ULS, ALS, SLS, CRW, FLS)
+    - stl: Steel ID reference
+    - dwp: Deep water point ID reference
+    - cw: Controlled wave ID (only for LS=CRW) 
+    - dcw: Design controlled wave ID (only for LS=CRW)
+    - dtc: Design time constant ID (only for LS=CRW)
+    - por: Enable pore pressure effects
+    - emp_ok: Enable EMP=OK mode (not for LS=FLS)
+    - pha: Phase angles for dynamic analysis. Use 'ALL' for all phases or specify ranges
+    - ilc: Internal Load Cases
+    - olc: Output Load Cases
+    - plc: Primary Load Cases
+    - elc: Environmental Load Cases
+    - bas: BAS load combinations (required for LS=FLS). Use with greco
+    - txt: Optional text description (max 80 chars)
+    - greco: Optional GRECO letter for BAS load combinations (appended as :A, :B, etc.)
+    
 
-### Notes
 
-- Design cases group load combinations for different limit state verifications.
-- Load case parameters support three input formats: CaseBuilder, string, or list.
-- Phase angles (PHA) support stepped ranges for dynamic analysis.
-- BAS can include GRECO letters for specific load combination versions.
-"""
+
+    
+
+    ### Notes
+
+    - Design cases group load combinations for different limit state verifications.
+    - Load case parameters support three input formats: CaseBuilder, string, or list.
+    - Phase angles (PHA) support stepped ranges for dynamic analysis.
+    - BAS can include GRECO letters for specific load combination versions.
+    """
     ls: Literal['ULS', 'ALS', 'SLS', 'CRW', 'FLS'] = Field(..., description="Load scenario type: ULS=Ultimate Limit State, ALS=Accidental Limit State, SLS=Serviceability Limit State, CRW=Controlled Response Wave, FLS=Fatigue Limit State")
 
     # Optional IDs for various features

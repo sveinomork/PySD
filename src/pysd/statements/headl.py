@@ -41,17 +41,7 @@ class HEADL(StatementBase):
     
     heading: str
     
-    @field_validator('heading')
-    @classmethod
-    def validate_heading(cls, v):
-        """Validate heading text."""
-        if not v:
-            raise ValueError("Heading text cannot be empty")
-        
-        if len(v) > 64:
-            raise ValueError("Heading text must be maximum 64 characters")
-            
-        return v
+   
     @property
     def identifier(self) -> str:
         """Get unique identifier for this HEADL statement."""

@@ -19,7 +19,8 @@ Example:
     >>> model.write("model.inp")
 """
 
-from .sdmodel import SD_BASE, StatementType, StatementProtocol
+from .sdmodel import SD_BASE
+from .types import StatementType, StatementProtocol
 from .validation.core import ValidationLevel
 from .helpers import create_axes_based_on_3_points_in_plane
 from . import statements

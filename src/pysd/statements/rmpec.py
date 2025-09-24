@@ -11,12 +11,7 @@ class RMPEC(StatementBase):
     Define rebar material property sets according to Eurocode 2.
     The ID is related to the MP statement in the RETYP statement.
 
-    ### Validation Rules
-
-    1. **ID Range**: Must be between 1 and 99999999
-    2. **Density Range**: Must be positive value (typically around 7850 kg/m3 for steel)
-    3. **Material Factors**: Must be positive values
-    4. **Uniqueness**: ID must be unique within container
+   
     """
     # Required for identification
     id: int = Field(..., description="Material property set ID (1-99999999)")

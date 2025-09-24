@@ -4,7 +4,7 @@ from pysd.statements import RFILE
 import os
 import tempfile
 
-def test_rfile_from_main_py():
+def test_rfile_simple():
     """Test the RFILE statement from main.py"""
     with tempfile.TemporaryDirectory() as tmpdir:
         file_path = os.path.join(tmpdir, "R1.SIN")

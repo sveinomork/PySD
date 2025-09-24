@@ -6,43 +6,69 @@ from .statement_base import StatementBase
 
 class SHAXE(StatementBase):
     """
-    Define local 1-2-3 axes for FE sections based on one of three mutually exclusive modes:
+    Define local 1-2-3 axes for finite element sections using three mutually exclusive modes.
 
-    **Mode 1 (Explicit Axes):**
-        Provide X1, X2, X3 vectors directly as xyz-components.
+    Mode 1 provides explicit X1, X2, X3 vectors. Mode 2 uses point-axis definition where 
+    3-axis points toward P and 1-axis approximates A-vector. Mode 3 creates polar coordinate 
+    system with radial 1-axis, tangential 2-axis, and normal 3-axis.
 
-    **Mode 2 (Point-Axis Definition):**
-        Define axis system based on a point P and a direction vector A.
-        3-axis points toward P, 1-axis approximates A-vector.
+    ### Examples
+    ```python
+    # Mode 1: Explicit axes definition
+    SHAXE(pa="PLATE", x1=(1, 0, 0), x2=(0, 1, 0), x3=(0, 0, 1))
+    # -> "SHAXE PA=PLATE X1=1.000,0.000,0.000 X2=0.000,1.000,0.000 X3=0.000,0.000,1.000"
 
-    **Mode 3 (Center-Axis Definition - Polar):**
-        Define local axes for radial geometry using center point C and direction vector A.
-        1-axis is radial, 2-axis tangential, 3-axis normal to shell plane.
-    
-    Only one mode may be active per instance.
+    # Mode 2: Point-axis definition for cylinder walls  
+    SHAXE(pa="WALL", xp=(0, 0, 0), xa=(0, 0, 1), al=-90, fs=(1, 10))
+    # -> "SHAXE PA=WALL XP=0.000,0.000,0.000 XA=0.000,0.000,1.000 AL=-90.000 FS=1-10"
 
-    Examples:
-    Independent of section location:
-        >>> shaxe1 = SHAXE(pa="A1", x1=(1, 0, 0), x2=(0, 1, 0), x3=(0, 0, -1), fs=(1, 10))
-        >>> print(shaxe1.input)
-        'SHAXE PA=A1 X1=1,0,0 X2=0,1,0 X3=0,0,-1 FS=1-10'
+    # Mode 3: Center-axis definition for radial arrangement
+    SHAXE(pa="DOME", xc=(0, 0, 0), xa=(0, 0, 1), fs=(1, 10), hs=(15, 50))
+    # -> "SHAXE PA=DOME XC=0.000,0.000,0.000 XA=0.000,0.000,1.000 FS=1-10 HS=15-50"
+    ```
 
-    Cylinder walls:
-        >>> shaxe2 = SHAXE(pa="A2", xp=(0, 0, 0), xa=(0, 0, 1), al=-90, fs=(1, 10), hs=(1, 5))
-        >>> print(shaxe2.input)  
-        'SHAXE PA=A2 XP=0,0,0 XA=0,0,1 AL=-90 FS=1-10 HS=1-5'
+    ### Parameters
+    pa : str
+        Structural part name to which the axes apply. Must match existing part name.
 
-    Circlar plate /dome with radial arrangement:
-        >>> shaxe3 = SHAXE(pa="A3", xc=(0, 0, 0), xa=(0, 0, 1), fs=(1, 10), hs=(15, 50))
-        >>> print(shaxe3.input)  
-        'SHAXE PA=A3 XC=0,0,0 XA=0,0,1 FS=1-10 HS=15-50'
+    x1 : Optional[Tuple[float, float, float]], default=None
+        XYZ components of the local 1-axis (Mode 1 only).
 
-    ### Validation Rules
+    x2 : Optional[Tuple[float, float, float]], default=None
+        XYZ components of the local 2-axis (Mode 1 only).
 
-    1. **PA Format**: Must be provided and non-empty
-    2. **Mode Validation**: Exactly one of the three modes must be active
-    3. **Vector Components**: All vector components must be valid floats
-    4. **Cross-Reference**: PA must exist as a part name in SHSEC statements
+    x3 : Optional[Tuple[float, float, float]], default=None
+        XYZ components of the local 3-axis (Mode 1 only).
+
+    xp : Optional[Tuple[float, float, float]], default=None
+        Coordinates of point P - target for 3-axis direction (Mode 2 only).
+
+    xa : Optional[Tuple[float, float, float]], default=None
+        Direction vector A components. Approximate 1-axis direction in Mode 2, 
+        shell normal direction in Mode 3.
+
+    xc : Optional[Tuple[float, float, float]], default=None
+        Center point C coordinates for radial/polar systems (Mode 3 only).
+
+    fs : Optional[Tuple[int, int]], default=None
+        F-section index range (i1, i2). If None, applies to all F-sections.
+
+    hs : Optional[Tuple[int, int]], default=None
+        H-section index range (j1, j2). If None, applies to all H-sections.
+
+    sy : Optional[Literal["R", "L"]], default=None
+        Handedness of axis system. "R" = right-hand (default), "L" = left-hand.
+
+    al : Optional[float], default=None
+        Rotation angle in degrees for adjusting 1-axis direction toward 2-axis.
+
+    ### Notes
+    - Exactly one mode must be active: either (x1,x2,x3) OR (xp,xa) OR (xc,xa)
+    - Mode 1 requires all three vectors x1, x2, x3 to be specified
+    - Mode 2 requires both xp and xa parameters
+    - Mode 3 requires both xc and xa parameters
+    - PA parameter must reference existing part name from SHSEC statements
+    - Vector components use 3 decimal places for precision
     """
 
     # ─── Common Parameters ──────────────────────────────────────────────

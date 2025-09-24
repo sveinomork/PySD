@@ -5,6 +5,26 @@ from .statement_base import StatementBase
 class LoadCase(BaseModel):
     """
     Represents a load case in BASCO statement load type, load number and load factor
+    ### Examples
+    ```python
+    # Basic combination of two load cases
+    LoadCase(lc_type='ELC', lc_numb=1, lc_fact=1.11)
+    # -> 'LF=1.11 ELC=1'
+    ```
+
+    ### Parameters
+    - **lc_type**: Literal['ILC', 'OLC', 'ELC', 'BAS', 'PLC', 'BLC']
+        - Type of load case:
+            - ILC: Input Load Case
+            - OLC: Original Load Case
+            - ELC: Equilibrium Load Case
+            - BAS: Basic Load Combination
+            - PLC: Prestressing Tendon Load Case
+    - **lc_numb**: int
+        - Load case number (1-99999999).
+    - **lc_fact**: float 
+        - Load factor (default is 1.0).
+
     """
     lc_type: Literal['ILC', 'OLC', 'ELC', 'BAS', 'PLC', 'BLC']
     lc_numb: int
@@ -28,7 +48,7 @@ class LoadCase(BaseModel):
 
 class BASCO( StatementBase):
     """
-    ### Usage
+    
     Defines load combinations from existing load cases (ILC, OLC, ELC, BAS, PLC, BLC) with specified factors for the ShellDesign system.
     
     ### Examples
@@ -62,7 +82,6 @@ class BASCO( StatementBase):
     ```
 
     ### Parameters
-
     - **id**: int
         - Identification number (1-99999999).
     - **load_cases**: List[LoadCase]
@@ -79,7 +98,6 @@ class BASCO( StatementBase):
         - Identification text (max 80 chars).
 
     ### Notes
-
     - At least one load case must be provided (max 30).
     - The input string is automatically split into multiple lines if it exceeds 100 characters.
     - Each load case is always paired with its factor (LF=...).

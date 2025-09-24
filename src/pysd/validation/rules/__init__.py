@@ -18,5 +18,6 @@ from . import xtfil_rules
 from . import desec_rules
 from . import table_rules
 from . import decas_rules
+from . import srtyp_rules
 
 __all__ = []

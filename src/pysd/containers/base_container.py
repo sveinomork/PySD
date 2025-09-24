@@ -1,5 +1,8 @@
-from typing import List, Protocol, runtime_checkable, Self, Union, Any, TypeVar, Generic, Optional, Iterator
+from typing import List, Protocol, runtime_checkable, Self, Union, Any, TypeVar, Generic, Optional, Iterator, TYPE_CHECKING
 from pydantic import BaseModel, Field, model_validator
+
+if TYPE_CHECKING:
+    from ..sdmodel import SD_BASE
 
 
 @runtime_checkable
@@ -57,7 +60,7 @@ class BaseContainer(BaseModel, Generic[T]):
             seen_ids.add(item_id)
         return self
     
-    def set_parent_model(self, parent_model) -> None:
+    def set_parent_model(self, parent_model: 'SD_BASE') -> None:
         """Set the parent model for validation control."""
         self.parent_model = parent_model
     

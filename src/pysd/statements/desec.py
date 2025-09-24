@@ -1,59 +1,73 @@
 from __future__ import annotations
 from typing import Optional, Tuple, Union
-from pydantic import Field, field_validator
-from ..validation.rule_system import execute_validation_rules
-from ..validation.core import ValidationContext
+from pydantic import Field
 from .statement_base import StatementBase
 
 class DESEC(StatementBase):
     """
-    Represents the DESEC statement used for defining design sections and their geometry.
+    Define design sections and their geometry for structural analysis workflows.
     
-    This is used in structural analysis workflows and supports several cases depending
-    on the presence of OLC/FE result files or if it's a CSM analysis.
-    
-   ### Cases:
-    -------
-    Case 1: No OLC/FE result file -> DESEC defines section geometry.
-    Case 2: OLC/FE result file -> DESEC stores sections on DEC-file.
-    Case 3: CSM analysis -> DESEC may redefine geometry.
+    Supports multiple analysis cases: section geometry definition without OLC/FE files,
+    section storage on DEC-file with OLC/FE results, and geometry redefinition for CSM analysis.
 
-   ### Parameters:
-    -----------
+    ### Examples
+    ```python
+    # Basic design section with part name only
+    DESEC(pa="WALL")
+    # -> "DESEC PA=WALL"
+
+    # Design section with thickness and coordinates
+    DESEC(pa="PLATE", th=0.25, x=10.5, y=5.2, z=0.0)
+    # -> "DESEC PA=PLATE TH=0.250000 X=10.500000 Y=5.200000 Z=0.000000"
+
+    # Design section with section ranges and thickness gradients
+    DESEC(pa="SHELL", fs=(1, 10), hs=(5, 15), th=0.3, t11=0.01, t22=-0.005)
+    # -> "DESEC PA=SHELL FS=1-10 HS=5-15 TH=0.300000 T11=0.010000 T22=-0.005000"
+    ```
+
+    ### Parameters
     pa : str
-        Structural part identity (max 8 characters). Required.
-    
-    fs : Optional[Union[int, Tuple[int, int]]]
-        F-section range or single section. Default is all.
-        Examples: 5 (single section) or (1, 30) (range)
+        Structural part identity (max 8 characters). Must match existing part name.
 
-    hs : Optional[Union[int, Tuple[int, int]]]
-        H-section range or single section. Default is all.
-        Examples: 2 (single section) or (1, 5) (range)
+    fs : Optional[Union[int, Tuple[int, int]]], default=None
+        F-section range or single section. If None, applies to all F-sections.
+        Examples: 5 (single section) or (1, 30) (range).
 
-    th : Optional[float]
-        Shell thickness in meters. Default is 0.
+    hs : Optional[Union[int, Tuple[int, int]]], default=None
+        H-section range or single section. If None, applies to all H-sections.
+        Examples: 2 (single section) or (1, 5) (range).
 
-    t11 : Optional[float]
-        Shell thickness gradient ∂t1/∂x1. Default is 0.
+    th : Optional[float], default=None
+        Shell thickness in meters. Default value is 0 if not specified.
 
-    t12 : Optional[float]
-        Shell thickness gradient ∂t1/∂x2. Default is 0.
+    t11 : Optional[float], default=None
+        Shell thickness gradient ∂t1/∂x1. Default value is 0.
 
-    t21 : Optional[float]
-        Shell thickness gradient ∂t2/∂x1. Default is 0.
+    t12 : Optional[float], default=None
+        Shell thickness gradient ∂t1/∂x2. Default value is 0.
 
-    t22 : Optional[float]
-        Shell thickness gradient ∂t2/∂x2. Default is 0.
+    t21 : Optional[float], default=None
+        Shell thickness gradient ∂t2/∂x1. Default value is 0.
 
-    x : Optional[float]
-        X-coordinate. Default is 0.
+    t22 : Optional[float], default=None
+        Shell thickness gradient ∂t2/∂x2. Default value is 0.
 
-    y : Optional[float]
-        Y-coordinate. Default is 0.
+    x : Optional[float], default=None
+        X-coordinate in global coordinate system. Default value is 0.
 
-    z : Optional[float]
-        Z-coordinate. Default is 0.
+    y : Optional[float], default=None
+        Y-coordinate in global coordinate system. Default value is 0.
+
+    z : Optional[float], default=None
+        Z-coordinate in global coordinate system. Default value is 0.
+
+    ### Notes
+    - Case 1: Without OLC/FE result file, DESEC defines section geometry
+    - Case 2: With OLC/FE result file, DESEC stores sections on DEC-file
+    - Case 3: In CSM analysis, DESEC may redefine existing geometry
+    - PA parameter must reference existing structural part from other statements
+    - All coordinate and thickness values use 6 decimal places for precision
+    - Section ranges can be single values or tuples for range specification
     """
     pa: str = Field(..., description="Structural part identity (max 8 characters)")
     

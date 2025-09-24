@@ -11,7 +11,7 @@ class RETYP(StatementBase):
     All validation rules are implemented in src/pysd/validation/rules/retyp_rules.py
     
     ### Examples:
-    ---------------
+
     ```python
     # Method 1 (direct area input):
     RETYP(id=20101, mp=1, ar=2094e-6, c2=0.060, th=0.025, di=0.020, nr=1, bc=0.75)
@@ -61,5 +61,3 @@ class RETYP(StatementBase):
             comment=self.comment
         )
 
-    def __str__(self) -> str:
-        return self.input

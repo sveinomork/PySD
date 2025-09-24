@@ -3,6 +3,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 from ..validation.rule_system import execute_validation_rules
 from ..validation.core import ValidationContext
+from .registry import register_statement
 
 
 class StringBuilderHelper:
@@ -55,12 +56,12 @@ class StatementBase(BaseModel, ABC):
     def _build_input_string(self) -> None:
         pass
 
-    def _build_identifier(self, field_order: list[str], add_hash: bool = False) -> str:
+    def _build_identifier(self, field_order: list[str] = None, add_hash: bool = False) -> str:
         """
         Build a unique identifier string from specified fields in order.
         
         Args:
-            field_order: List of field names in the order they should appear
+            field_order: List of field names in the order they should appear (optional)
             add_hash: If True, add a hash of the object at the end
             
         Returns:
@@ -69,8 +70,18 @@ class StatementBase(BaseModel, ABC):
         Examples:
             pa="Ye", fs=(1,10), hs=(1,5) with field_order=["pa", "fs", "hs"] 
             -> "YE_1_10_1_5"
+            
+            _build_identifier(add_hash=True) -> uses all non-None fields + hash
         """
         parts = []
+        
+        # If no field_order specified, use all non-None fields in alphabetical order
+        if field_order is None:
+            field_order = sorted([f for f in self.__dict__.keys() 
+                                 if not f.startswith('_') and f not in {'input'} 
+                                 and getattr(self, f) is not None
+                                 and not (isinstance(getattr(self, f), bool) and getattr(self, f) is False)
+                                 and not (isinstance(getattr(self, f), list) and len(getattr(self, f)) == 0)])
         
         for field_name in field_order:
             if hasattr(self, field_name):
@@ -284,3 +295,14 @@ class StatementBase(BaseModel, ABC):
 
     def __str__(self) -> str:
         return self.input
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        # Skip the abstract base class itself
+        if cls is StatementBase:
+            return
+        # Allow opting out per class if ever needed
+        if getattr(cls, "_exclude_from_registry", False):
+            return
+        # Register this concrete Statement subclass
+        register_statement(cls)

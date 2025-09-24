@@ -1,9 +1,9 @@
-import sys
+
 
 import pytest
 
 from pysd.statements.rmpec import RMPEC
-sys.path.append('C:\\Users\\som\\coding\\PySD\\src')
+
 from pysd.statements import RETYP
 
 def test_retyp_parameters():

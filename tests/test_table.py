@@ -2,7 +2,7 @@ import sys
 sys.path.append('C:\\Users\\som\\coding\\PySD\\src')
 from pysd.statements import TABLE
 
-def test_table_from_main_py():
+def test_table_simple():
     """Test the TABLE statements from main.py"""
     table1 = TABLE(tab="GE")
     assert table1.input == "TABLE TAB=GE"

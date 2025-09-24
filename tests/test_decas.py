@@ -3,6 +3,7 @@ from pysd.statements import DECAS, CaseBuilder, BASCO, LoadCase, LOADC
 from pysd.sdmodel import SD_BASE
 from pysd.statements.greco import GRECO
 from pysd.validation.core import ValidationLevel
+from pysd.model.model_writer import ModelWriter
 
 def test_decas_bas_validation():
     """Test that DECAS validates the bas parameter exists and works correctly"""
@@ -44,14 +45,18 @@ def test_decas_bas_validation_with_greco():
 def test_decas_validation_error():
     """Test that DECAS raises an error when the bas parameter does not exist"""
     import pytest
+    import os
     
     # Create SDModel and add basic load cases first
     output_file = "tests/test_output/test_decas_validation_error.mdl"
     
+    # Ensure output directory exists
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    
     # The validation error should be raised when the context exits (during finalization)
     with pytest.raises(ValueError, match=r"DECAS_LOAD_CASES_NOT_FOUND.*references undefined load cases: \[999\]"):
-        with SD_BASE.create_writer(output_file) as model:
-            model.validation_enabled = True
+        with ModelWriter.create_writer(output_file) as model:
+            model.validator.enable_validation()
 
             model.add(LOADC(run_number=1,alc=1,olc=110))
             model.add(BASCO(id=101, load_cases=[LoadCase(lc_type='OLC', lc_numb=110)]))

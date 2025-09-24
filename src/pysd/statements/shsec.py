@@ -14,12 +14,9 @@ class SHSEC(StatementBase):
      ```python
      SHSEC(pa="plate1", se=1001, el=113,xf=(1,0,0),xh=(0,-1,0),fs=(1,7),hs=(2,5))
      → 'SHSEC PA=plate1 SE=1001 EL=113 XF=1,0,0 XH=0,-1,0 FS=1-7 HS=2-5'
-
-
      ```
-   
 
-    Parameters:
+    ### Parameters:
         pa: structural part name (max 8 characters)
         se: start super element number
             - 1000*type+index for SESAM
@@ -45,20 +42,7 @@ class SHSEC(StatementBase):
         ns: number of sections per element [default=4]
         tab: element table wanted or not [default=OFF]
         ver: OLC number to be verified (integration verification)
-        
-    Examples:
-       
-        
-    Note: For alternative 3 and 4, local shell axis system from the analysis is used as
-          123-axes if no SHAXE-statement is given.
-
-    ### Validation Rules
-
-    1. **PA Format**: Must be max 8 characters
-    2. **Element Specification**: Exactly one element specification must be provided
-    3. **NE Range**: If provided, must be 1-10
-    4. **Section Ranges**: FS and HS ranges must be valid (start <= end)
-    5. **Uniqueness**: Key (generated from PA + sections) must be unique within container
+ 
     """
     # Required parameters
     pa: str = Field(..., description="Structural part name (max 8 chars)")

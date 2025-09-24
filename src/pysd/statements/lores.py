@@ -9,8 +9,6 @@ class LORES(StatementBase):
     """
     Represents the LORES statement for defining load resultants.
 
-    Purpose:
-    --------
     Defines load resultants of the OLCs (Output Load Cases) where the response
     is to be re-calculated for a new support system defined with GRECO.
 
@@ -20,8 +18,7 @@ class LORES(StatementBase):
     2.  **Automatic Generation**: Generate LORES data from a SIN file.
     3.  **Print/List**: List reaction forces for OLCs or ALCs.
 
-    Usage Examples:
-    ---------------
+    ### Examples:
     1. Manual definition of real part for OLC 1:
        LORES(lc=1, part='REAL', resultants=[-9.7283E+02, 4.1105E-09])
        -> "LORES 1 REAL -9.7283E+02 4.1105E-09"
@@ -39,8 +36,8 @@ class LORES(StatementBase):
     5. Print ALC reaction forces:
        LORES(pri_alc=True) -> "LORES PRI=ALC"
 
-    Parameters:
-    -----------
+    ### Parameters:
+  
     lc : Optional[int]
         OLC-number for manual definition.
 

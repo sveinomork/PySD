@@ -22,9 +22,9 @@ class TestValidationLevels:
         assert validation_config.level == ValidationLevel.DISABLED
         
         # Check that validation flags are disabled
-        assert not model.validation_enabled
-        assert not model.container_validation_enabled
-        assert not model.cross_container_validation_enabled
+        assert not model.validator.validation_enabled
+        assert not model.validator.container_validation_enabled
+        assert not model.validator.cross_container_validation_enabled
         
         # Should be able to add invalid statements without error
         model.add(LOADC(run_number=1, alc=1, olc=110))
@@ -42,9 +42,9 @@ class TestValidationLevels:
         assert validation_config.level == ValidationLevel.NORMAL
         
         # Check that validation flags are enabled
-        assert model.validation_enabled
-        assert model.container_validation_enabled
-        assert model.cross_container_validation_enabled
+        assert model.validator.validation_enabled
+        assert model.validator.container_validation_enabled
+        assert model.validator.cross_container_validation_enabled
         
         # Should validate correctly with valid statements
         model.add(LOADC(run_number=1, alc=1, olc=110))
@@ -63,9 +63,9 @@ class TestValidationLevels:
         assert validation_config.level == ValidationLevel.STRICT
         
         # Check that validation flags are enabled
-        assert model.validation_enabled
-        assert model.container_validation_enabled
-        assert model.cross_container_validation_enabled
+        assert model.validator.validation_enabled
+        assert model.validator.container_validation_enabled
+        assert model.validator.cross_container_validation_enabled
         
         # Should validate strictly
         model.add(LOADC(run_number=1, alc=1, olc=110))

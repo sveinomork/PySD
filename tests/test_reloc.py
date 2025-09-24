@@ -23,7 +23,7 @@ def test_reloc_statement():
     """
     reloc = RELOC(id="X11", rt=(16101, 20101),al=0, fa=1, fs=(5, 10), hs=3)
     print(reloc.input)
-    assert reloc.input == "RELOC ID=X11 RT=16101-20101 FA=1 FS=5-10 AL=0.0 HS=3"
+    assert reloc.input == "RELOC ID=X11 RT=16101-20101 FA=1 AL=0 FS=5-10 HS=3"
 
 def test_reloc_in_model():
     """Test RELOC in a full model context."""
@@ -42,7 +42,3 @@ def test_reloc_in_model():
     sd_model.add(reloc)
     assert sd_model.reloc[0].input == "RELOC ID=X11 RT=1-2 FA=1 AL=0 PA=PLATE FS=5-10 HS=3"
 
-if __name__ == "__main__":
-    #test_reloc_attributes()
-    #test_reloc_statement()
-    test_reloc_in_model()

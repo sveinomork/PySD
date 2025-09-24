@@ -11,7 +11,7 @@ class XTFIL(StatementBase):
     Data is fetched from an OLC-file and optionally from a DEC-file.
     The XTFIL command defines what data should be included in plot files and how it should be presented.
     
-    Parameters:
+    ### Parameters:
         fn: str
             Name of plot file (max 32 characters)
         pa: str

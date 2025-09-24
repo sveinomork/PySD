@@ -1,47 +1,89 @@
 from __future__ import annotations
 from typing import Optional, Tuple, Union, Literal
 from pydantic import Field
-from ..validation.rule_system import execute_validation_rules
-from ..validation.core import ValidationContext
 from .statement_base import StatementBase
 
 
 class RELOC(StatementBase):
     """
-    Defines rebar locations and properties.
+    Define reinforcement bar placement and configuration within shell sections.
     
-    ### Validation Rules
-    
-    1. **ID Length**: Must be max 4 characters
-    2. **Angle Range**: AL (angle) must be between -90 and +90 degrees
-    3. **Location Exclusivity**: Cannot use both LA and combination of PA/FS/HS
-    4. **Positive Values**: COV, OS must be positive if specified
-    5. **Reference Validation**: RT must reference existing RETYP statements
-    
-    This statement is used to specify where and how reinforcement bars (rebars)
-    are placed within shell sections. It links to a rebar type defined by a
-    RETYP statement and can specify the location through part names, section
-    ranges, or location areas.
+    Links to rebar types defined by RETYP statements and specifies placement through 
+    part names, section ranges, or location areas. Controls cover, face position, 
+    direction, and layer offsets.
 
-    ### Examples:
-    ---------------
+    ### Examples
+ 
     ```python
-    # Rebar in a specific section range:
+    # Rebar in specific section range with face and direction
     RELOC(id='X11', rt=(16101, 20101), fa=1, fs=(5, 10), hs=3)
-    → "RELOC ID=X11 RT=16101-20101 FA=1 FS=5-10 HS=3"
+    # → "RELOC ID=X11 RT=16101-20101 FA=1 FS=5-10 HS=3"
 
-    # Rebar with a specific angle across the entire model:
+    # Rebar with specific angle across entire model
     RELOC(id='Y21', rt=20101, fa=2, al=90)
-    → "RELOC ID=Y21 RT=20101 FA=2 AL=90"
+    # → "RELOC ID=Y21 RT=20101 FA=2 AL=90"
 
-    # Rebar defined by a location area with a specific cover:
+    # Rebar defined by location area with custom cover
     RELOC(id='B1', rt=(101, 101), la=5, cov=50.0)
-    → "RELOC ID=B1 RT=101 COV=50.0 LA=5"
+    # → "RELOC ID=B1 RT=101 COV=50.0 LA=5"
 
-    # Example of rebar in the centre of the cross section
+    # Center placement with part specification
     RELOC(id="Y02", pa="VEGG", rt=2, fa=0, al=90)
-    → "RELOC ID=Y02 PA=VEGG RT=2 FA=0 AL=90"
+    # → "RELOC ID=Y02 PA=VEGG RT=2 FA=0 AL=90"
     ```
+
+    ### Parameters
+  
+    id : str
+        Location identity (max 4 characters). Must be unique within model.
+
+    rt : int | Tuple[int, int]
+        Rebar type number or range (rt1, rt2). References RETYP statement ID.
+        Single value or tuple range, e.g., 101 or (101, 105).
+
+    cov : Optional[float], default=None
+        Rebar cover in millimeters. Overrides C2 value from RETYP statement.
+        Must be positive value when specified.
+
+    fa : Optional[Literal[0, 1, 2]], default=None
+        Shell face placement:
+        - 0: Center of shell thickness
+        - 1: Face 1 (typically bottom/inner face)  
+        - 2: Face 2 (typically top/outer face)
+
+    al : Optional[float], default=None
+        Direction angle in degrees (-90 to +90). 
+        0° = local X-direction, 90° = local Y-direction.
+
+    os : Optional[float], default=None
+        Offset to layer center in meters. Overrides offset from RETYP statement.
+        Positive values move toward face 2, negative toward face 1.
+
+    rp : Optional[Literal["12", "XY", "XZ", "YZ"]], default=None
+        Reference plane for direction angle AL:
+        - "12": Local shell coordinate system
+        - "XY", "XZ", "YZ": Global coordinate planes
+
+    pa : Optional[str], default=None
+        Structural part identity (name). If None, applies to all parts.
+        Must match existing part name in model.
+
+    fs : Optional[int | Tuple[int, int]], default=None
+        F-section number or range (f1, f2). Mutually exclusive with la.
+
+    hs : Optional[int | Tuple[int, int]], default=None  
+        H-section number or range (h1, h2). Mutually exclusive with la.
+
+    la : Optional[int], default=None
+        Section set number from LAREA statement. 
+        Mutually exclusive with pa, fs, hs parameters.
+
+    ### Notes
+   
+    - Location can be specified by part/sections (pa/fs/hs) OR location area (la), not both
+    - Cover and offset parameters override corresponding RETYP values when specified  
+    - Default face placement (fa=None) uses RETYP statement's face specification
+    - Direction angle uses shell's local coordinate system unless rp specifies otherwise
     """
     
     # Required fields
@@ -78,5 +120,4 @@ class RELOC(StatementBase):
             exclude={'comment'},  # Exclude comment from regular field processing
             float_precision=6
         )
-    
-    
+

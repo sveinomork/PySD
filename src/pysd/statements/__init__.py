@@ -19,6 +19,7 @@ from .decas import DECAS
 from .table import TABLE
 from .incdf import INCDF
 from .retyp import RETYP 
+from .srtyp import SRTYP
 from .reloc import RELOC
 from .cmpec import CMPEC
 from .rmpec import RMPEC  
@@ -26,7 +27,7 @@ from .lores import LORES
 from .rfile import RFILE
 from .depar import DEPAR
 from .statement_heading import HEADING
-
+#from ..statement_config import ALL_STATEMENTS
 
 
        
@@ -60,7 +61,17 @@ __all__ = [
     "RMPEC",
     "LORES",
     "RETYP",
+    "SRTYP",
     "RFILE",
     "DEPAR",
     "HEADING"
 ]
+
+def __getattr__(name: str):
+    # Helpful message if a contributor forgets to add a new class to __all__
+    if name not in __all__:
+        raise AttributeError(
+            f"pysd.statements has no attribute {name!r}. "
+            f"If you added a new statement, import it in pysd.statements.__init__ and add it to __all__."
+        )
+    raise  # Let normal AttributeError propagate if Python got here by mistake

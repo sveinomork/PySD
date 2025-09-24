@@ -11,32 +11,15 @@ from __future__ import annotations
 from typing import Dict, Any, Type, TYPE_CHECKING
 from pydantic import Field
 
+
+
 if TYPE_CHECKING:
     from ..sdmodel import SD_BASE
 
-# Import all statement types for container creation
-from ..statements.greco import GRECO
-from ..statements.basco import BASCO
-from ..statements.loadc import LOADC
-from ..statements.shsec import SHSEC
-from ..statements.shaxe import SHAXE
-from ..statements.cmpec import CMPEC
-from ..statements.rmpec import RMPEC
-from ..statements.retyp import RETYP
-from ..statements.reloc import RELOC
-from ..statements.lores import LORES
-from ..statements.xtfil import XTFIL
-from ..statements.desec import DESEC
-from ..statements.table import TABLE
-from ..statements.rfile import RFILE
-from ..statements.incdf import INCDF
-from ..statements.decas import DECAS
-from ..statements.depar import DEPAR
-from ..statements.filst import FILST
-from ..statements.headl import HEADL
-from ..statements.cases import Cases
-from ..statements.statement_heading import HEADING
-from ..statements.execd import EXECD
+
+from ..statements.registry import STATEMENT_CLASSES as _AUTO_REG
+# Ensure all statements are imported so auto-registry is populated
+from .. import statements as _statements  # noqa: F401  (import for side effects)
 
 from ..containers.base_container import BaseContainer
 
@@ -50,175 +33,74 @@ class ContainerFactory:
     """
     
     # Unified statement registry - single source of truth for ALL statements
-    # ALL statements now use container storage for consistency and simplicity
-    _statement_registry = {
-        # Container-based statements
-        'greco': {
-            'type': GRECO,
-            'description': 'GRECO statements for load case definitions'
-        },
-        'basco': {
-            'type': BASCO,
-            'description': 'BASCO statements for basic controls'
-        },
-        'loadc': {
-            'type': LOADC,
-            'description': 'LOADC statements for load case control'
-        },
-        'shsec': {
-            'type': SHSEC,
-            'description': 'SHSEC statements for shell sections'
-        },
-        'shaxe': {
-            'type': SHAXE,
-            'description': 'SHAXE statements for shell axis definitions'
-        },
-        'cmpec': {
-            'type': CMPEC,
-            'description': 'CMPEC statements for composite sections'
-        },
-        'rmpec': {
-            'type': RMPEC,
-            'description': 'RMPEC statements for removing composite sections'
-        },
-        'retyp': {
-            'type': RETYP,
-            'description': 'RETYP statements for element type changes'
-        },
-        'reloc': {
-            'type': RELOC,
-            'description': 'RELOC statements for element relocation'
-        },
-        'lores': {
-            'type': LORES,
-            'description': 'LORES statements for load result processing'
-        },
-        'xtfil': {
-            'type': XTFIL,
-            'description': 'XTFIL statements for external file operations'
-        },
-        'desec': {
-            'type': DESEC,
-            'description': 'DESEC statements for design sections'
-        },
-        'table': {
-            'type': TABLE,
-            'description': 'TABLE statements for tabular data'
-        },
-        'rfile': {
-            'type': RFILE,
-            'description': 'RFILE statements for result file operations'
-        },
-        'incdf': {
-            'type': INCDF,
-            'description': 'INCDF statements for include file operations'
-        },
-        'decas': {
-            'type': DECAS,
-            'description': 'DECAS statements for design case definitions'
-        },
-        'depar': {
-            'type': DEPAR,
-            'description': 'DEPAR statements for design parameters'
-        },
-        'filst': {
-            'type': FILST,
-            'description': 'FILST statements for file listings'
-        },
-        'headl': {
-            'type': HEADL,
-            'description': 'HEADL statements for heading lines'
-        },
-        'cases': {
-            'type': Cases,
-            'description': 'CASES for case range definitions'
-        },
-        
-        # Previously list-based, now container-based for consistency!
-        'heading': {
-            'type': HEADING,
-            'description': 'HEADING comment blocks'
-        },
-        'execd': {
-            'type': EXECD,
-            'description': 'EXECD execution statements'
-        }
-    }
+    # In auto mode, this is synthesized from STATEMENT_CLASSES (via _build_auto_statement_registry).
+    # A manual registry can be supplied here if ever needed (kept empty by default).
+    _statement_registry: dict[str, dict] = {}
     
-    # Backward compatibility - keep old name as alias  
-    _container_registry = {name: info['type'] 
-                          for name, info in _statement_registry.items() 
-                          if info['type'] is not None}
 
+    USE_AUTO_REGISTRY: bool = True  # default to auto registry
+    
+    @classmethod
+    def _build_auto_statement_registry(cls) -> dict[str, dict]:
+        """
+        Build the same structure as _statement_registry but from STATEMENT_CLASSES.
+        Maps lowercased class names to {'type': class, 'description': ...}
+        """
+        auto = {}
+        for cls_name, cls_type in _AUTO_REG.items():
+            container_name = cls_name.lower()
+            auto[container_name] = {
+                'type': cls_type,
+                'description': f'{cls_name} statements'
+            }
+        # If you have non-StatementBase special cases, add them here if needed
+        return auto
+
+    @classmethod
+    def _get_active_registry(cls) -> dict[str, dict]:
+        return cls._build_auto_statement_registry() if cls.USE_AUTO_REGISTRY else cls._statement_registry
+
+    @classmethod
+    def _get_container_types_dict(cls) -> Dict[str, Type]:
+        """Helper: name -> concrete statement class (filters out None)."""
+        reg = cls._get_active_registry()
+        return {name: info['type'] for name, info in reg.items() if info.get('type') is not None}
     
     @classmethod
     def get_routing_registry(cls) -> Dict[Type, str]:
         """Generate StatementRouter registry - ALL statements route to containers now!"""
-        # Import here to avoid circular imports
-        from ..statements.statement_heading import HEADING
-        from ..statements.execd import EXECD
-        
-        # Update the None types with actual imports
-        cls._statement_registry['heading']['type'] = HEADING
-        cls._statement_registry['execd']['type'] = EXECD
-        
-        # Simple container routing for ALL statements - no more list complexity!
-        routing = {}
-        for name, info in cls._statement_registry.items():
-            if info['type'] is not None:
-                routing[info['type']] = name  # Direct container name, no '_list' suffix!
-        
+        reg = cls._get_active_registry()
+        # Simple container routing for ALL statements - direct container name
+        routing: Dict[Type, str] = {}
+        for name, info in reg.items():
+            t = info.get('type')
+            if t is not None:
+                routing[t] = name
         return routing
     
     @classmethod
     def get_container_registry(cls) -> Dict[str, Type]:
         """Get ALL statements (now all are container-based for consistency)."""
-        # Import here to avoid circular imports
-        from ..statements.statement_heading import HEADING
-        from ..statements.execd import EXECD
-        
-        # Update the None types
-        cls._statement_registry['heading']['type'] = HEADING
-        cls._statement_registry['execd']['type'] = EXECD
-        
-        return {name: info['type'] 
-                for name, info in cls._statement_registry.items() 
-                if info['type'] is not None}
+        return cls._get_container_types_dict()
     
     @classmethod
     def get_all_statement_types(cls) -> list[Type]:
         """Get all statement types for StatementType union generation."""
-        # Import here to avoid circular imports
-        from ..statements.statement_heading import HEADING
-        from ..statements.execd import EXECD
-        
-        # Update the None types
-        cls._statement_registry['heading']['type'] = HEADING
-        cls._statement_registry['execd']['type'] = EXECD
-        
-        types = []
-        for info in cls._statement_registry.values():
-            if info['type'] is not None:
-                types.append(info['type'])
-        
-        return types
+        reg = cls._get_active_registry()
+        return [info['type'] for info in reg.values() if info.get('type') is not None]
     
     @classmethod
     def get_all_imports(cls) -> Dict[str, str]:
         """Generate import statements for all statement types."""
-        imports = {}
-        
+        imports: Dict[str, str] = {}
+        reg = cls._get_active_registry()
         # All statement imports (no more container vs list distinction)
-        for name, info in cls._statement_registry.items():
-            if info['type'] is not None:
-                statement_type = info['type']
-                module_name = statement_type.__module__.split('.')[-1]
-                imports[statement_type.__name__] = f"from .statements.{module_name} import {statement_type.__name__}"
-            elif name == 'heading':
-                imports['HEADING'] = "from .statements.statement_heading import HEADING"
-            elif name == 'execd':
-                imports['EXECD'] = "from .statements.execd import EXECD"
-        
+        for info in reg.values():
+            t = info.get('type')
+            if t is None:
+                continue
+            module_name = t.__module__.split('.')[-1]
+            imports[t.__name__] = f"from .statements.{module_name} import {t.__name__}"
         return imports
     
     @classmethod
@@ -231,15 +113,13 @@ class ContainerFactory:
         Returns:
             Dict mapping field names to Pydantic Field objects
         """
-        fields = {}
-        
-        for container_name, statement_type in cls._container_registry.items():
+        fields: Dict[str, Any] = {}
+        for container_name, statement_type in cls._get_container_types_dict().items():
             # Create the field definition with proper type hints
             fields[container_name] = Field(
                 default_factory=lambda st=statement_type: BaseContainer[st](),
                 description=f"{statement_type.__name__} container"
             )
-        
         return fields
 
     @classmethod
@@ -250,10 +130,10 @@ class ContainerFactory:
         This allows SD_BASE to get all container fields without manual definition.
         """
         container_fields = cls.create_container_fields()
-        
+        container_types = cls._get_container_types_dict()
         for field_name, field_def in container_fields.items():
             # Add field to model annotations and fields
-            model_class.__annotations__[field_name] = f"BaseContainer[{cls._container_registry[field_name].__name__}]"
+            model_class.__annotations__[field_name] = f"BaseContainer[{container_types[field_name].__name__}]"
             setattr(model_class, field_name, field_def)
         
         # Rebuild the model to recognize new fields
@@ -270,32 +150,30 @@ class ContainerFactory:
         Returns:
             Dict mapping container names to BaseContainer instances
         """
-        containers = {}
-        
-        for container_name, statement_type in cls._container_registry.items():
+        containers: Dict[str, BaseContainer] = {}
+        for container_name, statement_type in cls._get_container_types_dict().items():
             containers[container_name] = BaseContainer[statement_type]()
-        
         return containers
     
     @classmethod
     def get_container_types(cls) -> Dict[str, Type]:
         """Get mapping of container names to their statement types."""
-        return cls._container_registry.copy()
+        return cls._get_container_types_dict().copy()
     
     @classmethod
     def get_container_names(cls) -> list[str]:
         """Get list of all container names - ALL statements are containers now!"""
-        return list(cls._statement_registry.keys())
+        return list(cls._get_active_registry().keys())
     
     @classmethod
     def is_valid_container(cls, container_name: str) -> bool:
         """Check if a container name is valid."""
-        return container_name in cls._container_registry
+        return container_name in cls._get_active_registry()
     
     @classmethod
     def get_statement_type(cls, container_name: str) -> Type | None:
         """Get the statement type for a container name."""
-        return cls._container_registry.get(container_name)
+        return cls._get_container_types_dict().get(container_name)
     
     @classmethod
     def add_container_type(cls, container_name: str, statement_type: Type) -> None:
@@ -309,7 +187,14 @@ class ContainerFactory:
             container_name: Name of the container field (e.g., 'new_statement')
             statement_type: The statement class type (e.g., NEW_STATEMENT)
         """
-        cls._container_registry[container_name] = statement_type
+        # Manual extension path (primarily for manual registry mode)
+        if not cls.USE_AUTO_REGISTRY:
+            cls._statement_registry[container_name] = {
+                'type': statement_type,
+                'description': f'{statement_type.__name__} statements'
+            }
+            return
+        raise NotImplementedError("Add new statements by defining a new StatementBase subclass; it will auto-register.")
     
     @classmethod
     def setup_container_parent_references(cls, model: 'SD_BASE') -> None:
@@ -322,10 +207,10 @@ class ContainerFactory:
             model: The SD_BASE model instance
         """
         print("DEBUG: ContainerFactory.setup_container_parent_references called")  # DEBUG
-        
+
         # Get ALL container names (no more filtering needed)
         container_names = cls.get_container_names()
-        
+
         print(f"DEBUG: Registry has {len(container_names)} containers: {container_names}")  # DEBUG
         
         for container_name in container_names:
@@ -337,3 +222,18 @@ class ContainerFactory:
                     print(f"DEBUG: Set parent for {container_name}")  # DEBUG
             else:
                 print(f"DEBUG: Container {container_name} not found on model")  # DEBUG
+    
+    @classmethod
+    def debug_compare_manual_vs_auto(cls) -> dict:
+        """
+        Compare current manual _statement_registry against auto-registered statements.
+        Returns a dict with sets for diff inspection (no side effects).
+        """
+        manual = set(cls._statement_registry.keys())
+        auto = {name.lower() for name in _AUTO_REG.keys()}  # class names -> container names
+        return {
+            "manual_container_names": manual,
+            "auto_container_names": auto,
+            "only_in_manual": sorted(manual - auto),
+            "only_in_auto": sorted(auto - manual),
+        }

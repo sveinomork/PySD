@@ -14,31 +14,75 @@ if TYPE_CHECKING:
 
 class ValidationManager:
     """
-    Simple validation manager that handles the validation logic
-    previously embedded in SD_BASE.
+    Validation manager that handles all validation logic and internal state.
     
-    Goal: Reduce sdmodel.py complexity, not add features.
+    This class now manages its own internal validation state instead of
+    storing it on the SD_BASE model, providing a cleaner separation of concerns.
     """
     
     def __init__(self, model: 'SD_BASE'):
         self.model = model
+        
+        # Internal validation state (moved from SD_BASE)
+        self._validation_enabled: bool = True
+        self._container_validation_enabled: bool = True 
+        self._cross_container_validation_enabled: bool = True
+        self._building_mode: bool = True
+        self._deferred_cross_validation: bool = True
+        
+        # Initialize state based on model's high-level settings
+        self._configure_from_model_settings()
+    
+    def _configure_from_model_settings(self) -> None:
+        """Configure internal state based on model's validation_level and settings."""
+        from ..validation.core import ValidationLevel
+        
+        if self.model.validation_level == ValidationLevel.DISABLED:
+            self._validation_enabled = False
+            self._container_validation_enabled = False
+            self._cross_container_validation_enabled = False
+        elif self.model.validation_level in [ValidationLevel.NORMAL, ValidationLevel.STRICT]:
+            self._validation_enabled = True
+            self._container_validation_enabled = True
+            self._cross_container_validation_enabled = True
+    
+    # Properties to access internal state (backward compatibility)
+    @property
+    def validation_enabled(self) -> bool:
+        return self._validation_enabled
+    
+    @property 
+    def container_validation_enabled(self) -> bool:
+        return self._container_validation_enabled
+        
+    @property
+    def cross_container_validation_enabled(self) -> bool:
+        return self._cross_container_validation_enabled
+        
+    @property
+    def building_mode(self) -> bool:
+        return self._building_mode
+        
+    @property
+    def deferred_cross_validation(self) -> bool:
+        return self._deferred_cross_validation
     
     def should_run_cross_validation(self) -> bool:
         """Check if cross-container validation should run."""
         from ..validation.core import validation_config
         
         # Skip validation if disabled globally
-        if validation_config.level == 'disabled' or not self.model.validation_enabled:
+        if validation_config.level == 'disabled' or not self._validation_enabled:
             return False
         
         # SMART DEFERRAL: Skip cross-container validation during building mode
-        if (self.model.building_mode and 
-            self.model.deferred_cross_validation and 
-            self.model.cross_container_validation_enabled):
+        if (self._building_mode and 
+            self._deferred_cross_validation and 
+            self._cross_container_validation_enabled):
             return False
             
         # Skip cross-container validation if specifically disabled
-        if not self.model.cross_container_validation_enabled:
+        if not self._cross_container_validation_enabled:
             return False
             
         return True
@@ -113,13 +157,18 @@ class ValidationManager:
     
     def finalize_model(self) -> None:
         """Finalize model and run deferred validation."""
-        self.model.building_mode = False  # Exit building mode
+        self._building_mode = False  # Exit building mode
         
         # If we deferred cross-container validation, run it now
-        if (self.model.deferred_cross_validation and 
-            self.model.cross_container_validation_enabled and 
-            self.model.validation_enabled):
+        if (self._deferred_cross_validation and 
+            self._cross_container_validation_enabled and 
+            self._validation_enabled):
             self.validate_cross_references()
+    
+    def finalize_model_and_validation(self) -> None:
+        """Complete model finalization with full validation - used by I/O operations."""
+        # This is the method that ModelWriter should call
+        self.finalize_model()
     
     def validate_integrity(self) -> dict:
         """Validate integrity - moved from SD_BASE."""
@@ -146,63 +195,61 @@ class ValidationManager:
         
         return issues_by_severity
     
-    # =============================================================================
-    # Validation Control Methods (moved from SD_BASE)
-    # =============================================================================
+ 
     
     def disable_container_validation(self) -> None:
         """Disable container-level validation only."""
-        self.model.container_validation_enabled = False
+        self._container_validation_enabled = False
     
     def enable_container_validation(self) -> None:
         """Enable container-level validation."""
-        self.model.container_validation_enabled = True
+        self._container_validation_enabled = True
     
     def disable_cross_container_validation(self) -> None:
         """Disable cross-container validation only."""
-        self.model.cross_container_validation_enabled = False
+        self._cross_container_validation_enabled = False
     
     def enable_cross_container_validation(self) -> None:
         """Enable cross-container validation."""
-        self.model.cross_container_validation_enabled = True
+        self._cross_container_validation_enabled = True
     
     def disable_deferred_validation(self) -> None:
         """Disable automatic deferral - validate immediately during building."""
-        self.model.deferred_cross_validation = False
+        self._deferred_cross_validation = False
     
     def enable_deferred_validation(self) -> None:
         """Enable automatic deferral (default behavior)."""
-        self.model.deferred_cross_validation = True
+        self._deferred_cross_validation = True
     
     def disable_validation(self) -> None:
         """Disable validation for batch operations."""
-        self.model.validation_enabled = False
+        self._validation_enabled = False
     
     def enable_validation(self) -> None:
         """Re-enable validation and perform full model validation."""
-        self.model.validation_enabled = True
+        self._validation_enabled = True
         # Trigger cross-reference validation
         self.validate_cross_references()
     
     @contextmanager
     def container_validation_disabled(self):
         """Context manager to temporarily disable container validation."""
-        original_state = self.model.container_validation_enabled
-        self.model.container_validation_enabled = False
+        original_state = self._container_validation_enabled
+        self._container_validation_enabled = False
         try:
             yield
         finally:
-            self.model.container_validation_enabled = original_state
+            self._container_validation_enabled = original_state
     
     @contextmanager
     def cross_validation_disabled(self):
         """Context manager to temporarily disable cross-container validation."""
-        original_state = self.model.cross_container_validation_enabled
-        self.model.cross_container_validation_enabled = False
+        original_state = self._cross_container_validation_enabled
+        self._cross_container_validation_enabled = False
         try:
             yield
         finally:
-            self.model.cross_container_validation_enabled = original_state
+            self._cross_container_validation_enabled = original_state
     
     @contextmanager
     def immediate_validation(self):

@@ -10,19 +10,19 @@ class EXECD(StatementBase):
     This statement must always be included at the end of the top-level
     input file. It defines the design method to be used for the analysis.
 
-    Usage Examples:
-    ---------------
-    1. No design calculations (e.g., for creating OLC-files):
+    ### Examples:
+    ```python
+    # 1. No design calculations (e.g., for creating OLC-files):
        EXECD() -> "EXECD DM="
 
-    2. Verification of user-defined reinforcement:
+    # 2. Verification of user-defined reinforcement:
        EXECD(dm='V') -> "EXECD DM=V"
 
-    3. Search for necessary section reinforcement:
+    # 3. Search for necessary section reinforcement:
        EXECD(dm='S') -> "EXECD DM=S"
 
-    Parameters:
-    -----------
+    ### Parameters:
+   
     dm : Optional[Literal['V', 'S', 'A']]
         The design method to use.
         - None: No design calculations (DM=).

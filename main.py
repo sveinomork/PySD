@@ -251,30 +251,8 @@ def main(output_file: str = r"turtorial.inp") -> None:
     # Create analysis components last
     create_analysis_components(model)
     
-    # Get validation summary after model creation
-    summary = model.get_validation_summary()
-    print(f"Model created with {summary['total_items']} total items")
     
-    # Display validation results
-    integrity = summary['integrity_issues']
     
-    if summary['has_errors']:
-        print("❌ Model has validation errors:")
-        for error in integrity['errors']:
-            print(f"  ERROR: {error}")
-    
-    if summary['has_warnings']:
-        print("⚠️  Model has validation warnings:")
-        for warning in integrity['warnings']:
-            print(f"  WARNING: {warning}")
-    
-    if integrity.get('info'):
-        print("ℹ️  Model has validation info:")
-        for info in integrity['info']:
-            print(f"  INFO: {info}")
-    
-    if not summary['has_warnings'] and not summary['has_errors']:
-        print("✅ Model validation passed")
     
     # CLEAN AND SIMPLE: Just call write()
     model.write(output_file)

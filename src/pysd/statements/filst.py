@@ -55,12 +55,12 @@ class FILST(StatementBase):
     vers: Optional[str] = Field(None, description="File version (max 8 characters)")
     date: Optional[str] = Field(None, description="Date of last revision (max 12 characters)")
     resp: Optional[str] = Field(None, description="Responsible person/group (max 4 characters)")
-    pri: bool = Field(None, description="Print all current FILST lines")
-    
+    pri: Optional[bool] = Field(None, description="Print all current FILST lines")
+
     @property
     def identifier(self) -> str:
         """Get unique identifier for this FILST statement."""
-        return self._build_identifier(field_order=['name'], add_hash=True)
+        return self._build_identifier(add_hash=True)
     
 
     
@@ -69,13 +69,22 @@ class FILST(StatementBase):
         
         # Build input string
         if self.pri:
-           self.start_string = "FILST"
+           self.start_string()  # Call the method, don't assign to it
            self.add_param("PRI", "")  # Empty value becomes "PRI="
-
         else:
-           # The 'name' is mandatory in this case, use default if None
-           self.input = self._build_string_generic(
-               field_order=['name', 'vers', 'date', 'resp'])
+           # For FILST, we need to include the 'name' field, but _build_string_generic
+           # always excludes it. So we'll build it manually.
+           from .statement_base import StringBuilderHelper
+           
+           helper = StringBuilderHelper(self.statement_name)
+           
+           # Add fields in the desired order
+           for field_name in ['name', 'vers', 'date', 'resp']:
+               value = getattr(self, field_name, None)
+               if value is not None:
+                   helper.add_param(field_name, value)
+           
+           self.input = helper.input
         
     
     

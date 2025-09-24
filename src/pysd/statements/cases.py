@@ -10,7 +10,7 @@ class Cases(BaseModel):
     Universal case sequence handler for ShellDesign statements.
     Supports single values, ranges, stepped ranges, and optional GRECO letters.
     
-    Examples:
+    ### Examples:
         Cases(ranges=[1, (2, 5)]) -> "1,2-5"
         Cases(ranges=[1, (2, 5, 2)], greco="A") -> "1,2-5-2:A"
         Cases(value=(1, 5)) -> "1-5"  # Direct tuple input
@@ -20,15 +20,8 @@ class Cases(BaseModel):
     ranges: List[CaseRange] = Field(..., min_length=1)
     greco: str = Field(default="", description="Optional GRECO letter identifier")
     
-    def __init__(self, value: Any = None, ranges: List[CaseRange] = None, greco: str = "", **kwargs):
-        """
-        Enhanced constructor that accepts various input formats.
+    def __init__(self, value: int|float = None, ranges: List[CaseRange] = None, greco: str = "", **kwargs):
         
-        Args:
-            value: Any input type (int, tuple, str, list) - will be normalized to ranges
-            ranges: Direct ranges list (traditional constructor)
-            greco: GRECO letter
-        """
         if value is not None and ranges is None:
             # Convert value to ranges using normalize_cases logic
             normalized = normalize_cases(value)

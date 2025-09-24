@@ -9,8 +9,8 @@ class INCDF(StatementBase):
     This allows for including other input files into the main file,
     making it possible to structure large models.
 
-    Parameters:
-    -----------
+    ### Parameters:
+   
     path : Union[str, Path]
         The file name or path to the input file to be included.
     """
