@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Union, Sequence, Any
+from typing import List, Union, Sequence, Any, Protocol, runtime_checkable
 from pydantic import BaseModel, Field, model_validator
 
 # Note: No per-statement runtime imports needed; auto-registry handles discovery
@@ -10,7 +10,15 @@ from .model.validation_manager import ValidationManager
 from .model.container_factory import ContainerFactory
 from .validation.core import ValidationLevel
 
-from .types import StatementType
+
+# Runtime type alias and protocol (type-only details live in sdmodel.pyi)
+@runtime_checkable
+class StatementProtocol(Protocol):
+    """Protocol that all statement classes must implement."""
+    input: str
+
+# Keep runtime light to avoid Pydantic schema issues
+StatementType = Any
 
 
 class SD_BASE(BaseModel):
@@ -74,7 +82,8 @@ class SD_BASE(BaseModel):
         """Set parent model references for all containers and initialize router."""
         # Import here to avoid circular imports
         from .model.statement_router import StatementRouter
-        from .containers.base_container import BaseContainer
+        from .model.base_container import BaseContainer
+        
         
         # Initialize ValidationManager and StatementRouter
         self._validation_manager = ValidationManager(self)

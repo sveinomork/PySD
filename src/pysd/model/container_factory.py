@@ -21,7 +21,7 @@ from ..statements.registry import STATEMENT_CLASSES as _AUTO_REG
 # Ensure all statements are imported so auto-registry is populated
 from .. import statements as _statements  # noqa: F401  (import for side effects)
 
-from ..containers.base_container import BaseContainer
+from .base_container import BaseContainer
 
 
 class ContainerFactory:

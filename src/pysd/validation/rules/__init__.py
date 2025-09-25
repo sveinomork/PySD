@@ -19,5 +19,7 @@ from . import desec_rules
 from . import table_rules
 from . import decas_rules
 from . import srtyp_rules
+from . import tetyp_rules
+from . import temat_rules
 
 __all__ = []

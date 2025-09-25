@@ -1,10 +1,10 @@
-from src.pysd.statements import (
+from pysd.statements import (
     DESEC, RFILE, SHAXE, LOADC, GRECO, FILST, BASCO, LoadCase,
     RETYP, DECAS, RELOC, EXECD, LORES, CMPEC, SHSEC, XTFIL,
-    TABLE, RMPEC, CaseBuilder, Cases, HEADING, DEPAR
+    TABLE, RMPEC, Cases, HEADING, DEPAR
 )
-from src.pysd import SD_BASE, ValidationLevel
-from src.pysd.helpers import create_axes_based_on_3_points_in_plane
+from pysd import SD_BASE, ValidationLevel
+from pysd.helpers import create_axes_based_on_3_points_in_plane
 from shapely.geometry import Point
 
 # Note: Global validation mode configuration is no longer needed

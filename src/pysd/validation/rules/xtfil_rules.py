@@ -7,13 +7,14 @@ Implements three levels of validation:
 3. Model-level: Cross-container validation (part references, etc.)
 """
 
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, cast
 from ..core import ValidationIssue
 from ..rule_system import instance_rule, container_rule, model_rule
 
 if TYPE_CHECKING:
+    from ...sdmodel import SD_BASE
     from ...statements.xtfil import XTFIL
-    from ...containers.base_container import BaseContainer
+    from ...model.base_container import BaseContainer
     from ..core import ValidationContext
 
 
@@ -29,9 +30,9 @@ def validate_xtfil_model(statement: 'XTFIL', context: 'ValidationContext') -> Li
     
     if context.full_model is None:
         return issues
-    
-    model = context.full_model
-    
+
+    model = cast('SD_BASE', context.full_model)
+
     # Check if structural part exists in DESEC statements
     if hasattr(model, 'desec'):
         desec_parts = []

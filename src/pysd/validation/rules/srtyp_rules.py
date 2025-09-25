@@ -7,15 +7,18 @@ Implements three levels of validation:
 3. Model-level: Cross-container validation (material references, etc.)
 """
 
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, cast
+
+
 
 
 from ..core import ValidationIssue
 from ..rule_system import instance_rule, container_rule, model_rule
 
 if TYPE_CHECKING:
+    from ...sdmodel import SD_BASE
     from ...statements.srtyp import SRTYP
-    from ...containers.base_container import BaseContainer
+    from ...model.base_container import BaseContainer
     from ..core import ValidationContext
 
 
@@ -165,13 +168,15 @@ def validate_srtyp_model(statement: 'SRTYP', context: 'ValidationContext') -> Li
     
     if context.full_model is None:
         return issues
-    
-    model = context.full_model
-    
+
+    model = cast('SD_BASE', context.full_model)
+
     # Check material property references
     if statement.mp is not None:
         # Check if material exists in RMPEC container
-        if hasattr(model, 'rmpec') and not model.rmpec.has_id(statement.mp):
+        # Convert float MP to int for comparison with RMPEC integer IDs
+        mp_id = int(statement.mp) if isinstance(statement.mp, float) and statement.mp.is_integer() else statement.mp
+        if hasattr(model, 'rmpec') and not model.rmpec.has_id(mp_id):
             issues.append(ValidationIssue(
                 severity="error",
                 code="SRTYP_MATERIAL_NOT_FOUND",

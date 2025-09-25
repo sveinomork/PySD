@@ -12,8 +12,7 @@ from typing import TYPE_CHECKING, List, Dict, Type
 from collections import defaultdict
 
 if TYPE_CHECKING:
-    from ..sdmodel import SD_BASE
-    from ..types import StatementType
+    from ..sdmodel import SD_BASE, StatementType
 
 class StatementRouter:
     """

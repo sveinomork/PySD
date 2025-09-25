@@ -94,26 +94,16 @@ class ValidationManager:
         
         issues = []
         
-        # Get all statements from all containers
+        # Get all statements from all containers dynamically
+        # This ensures all registered statement types participate in validation
+        from ..model.container_factory import ContainerFactory
+        
         all_statements = []
-        all_statements.extend(self.model.greco.items)
-        all_statements.extend(self.model.basco.items)
-        all_statements.extend(self.model.loadc.items)
-        all_statements.extend(self.model.shsec.items)
-        all_statements.extend(self.model.shaxe.items)
-        all_statements.extend(self.model.cmpec.items)
-        all_statements.extend(self.model.rmpec.items)
-        all_statements.extend(self.model.retyp.items)
-        all_statements.extend(self.model.reloc.items)
-        all_statements.extend(self.model.lores.items)
-        all_statements.extend(self.model.xtfil.items)
-        all_statements.extend(self.model.desec.items)
-        all_statements.extend(self.model.table.items)
-        all_statements.extend(self.model.rfile.items)
-        all_statements.extend(self.model.incdf.items)
-        all_statements.extend(self.model.decas.items)
-        all_statements.extend(self.model.depar.items)
-        all_statements.extend(self.model.filst.items)
+        for container_name in ContainerFactory.get_container_names():
+            if hasattr(self.model, container_name):
+                container = getattr(self.model, container_name)
+                if hasattr(container, 'items'):
+                    all_statements.extend(container.items)
         
         for statement in all_statements:
             context = ValidationContext(

@@ -1,18 +1,31 @@
 # Type stubs for IDE support — enables hover docs and auto-completion.
 # This stub has no runtime effect.
 
-from typing import Sequence, Any, overload
+from typing import Sequence, Any, overload, Protocol, runtime_checkable, TypeAlias, Union
 from pydantic import BaseModel
 
-from .types import StatementType
+from pysd.statements.temat import TEMAT
 from .validation.core import ValidationLevel
 from .model.validation_manager import ValidationManager
-from .containers.base_container import BaseContainer
+from .model.base_container import BaseContainer
 from .statements import (
-    GRECO, BASCO, LOADC, SHSEC, SHAXE, CMPEC, RMPEC, RETYP, SRTYP, RELOC,
-    LORES, XTFIL, DESEC, TABLE, RFILE, INCDF, DECAS, DEPAR, FILST, HEADL,
-    Cases, EXECD, HEADING,
+    GRECO, BASCO, LOADC, SHSEC, SHAXE, CMPEC, RMPEC, RETYP, SRTYP, TETYP, RELOC, SRLOC,
+    TELOC, LORES, XTFIL, DESEC, TABLE, RFILE, INCDF, DECAS, DEPAR, FILST, HEADL,
+    Cases, EXECD, HEADING
 )
+
+@runtime_checkable
+class StatementProtocol(Protocol):
+    """Protocol that all statement classes must implement."""
+    input: str
+
+
+# Type alias for all supported statement types (type checkers/IDEs only)
+StatementType: TypeAlias = Union[
+    GRECO, BASCO, LOADC, SHSEC, SHAXE, CMPEC, RMPEC, RETYP, SRTYP, TETYP, RELOC, SRLOC,
+    TELOC, LORES, XTFIL, DESEC, TABLE, RFILE, INCDF, DECAS, DEPAR, FILST, HEADL,
+    Cases, EXECD, HEADING
+]
 
 class SD_BASE(BaseModel):
     """
@@ -74,11 +87,23 @@ class SD_BASE(BaseModel):
     retyp: BaseContainer[RETYP]
     """Container for RETYP statements — Rebar Type definitions."""
 
+    tetyp: BaseContainer[TETYP]
+    """Container for TETYP statements — Tendon Type definitions."""
+
     srtyp: BaseContainer[SRTYP]
     """Container for SRTYP statements — Shear Reinforcement Type definitions."""
 
+    temat: BaseContainer[TEMAT]
+    """Container for TEMAT statements — Tendon Material definitions."""
+
     reloc: BaseContainer[RELOC]
     """Container for RELOC statements — Rebar Location definitions."""
+    
+    teloc: BaseContainer[TELOC]
+    """Container for TELOC statements — Tendon Location definitions."""
+
+    srloc: BaseContainer[SRLOC]
+    """Container for SRLOC statements — Shear Reinforcement Location definitions."""
 
     lores: BaseContainer[LORES]
     """Container for LORES statements — Load Result processing."""

@@ -13,7 +13,7 @@ from ..rule_system import instance_rule, container_rule, model_rule
 
 if TYPE_CHECKING:
     from ...statements.lores import LORES
-    from ...containers.base_container import BaseContainer
+    from ...model.base_container import BaseContainer
     from ..core import ValidationContext
 
 

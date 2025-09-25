@@ -20,9 +20,13 @@ from .table import TABLE
 from .incdf import INCDF
 from .retyp import RETYP 
 from .srtyp import SRTYP
+from .tetyp import TETYP
 from .reloc import RELOC
+from .srloc import SRLOC
+from .teloc import TELOC
 from .cmpec import CMPEC
-from .rmpec import RMPEC  
+from .rmpec import RMPEC 
+from .temat import TEMAT 
 from .lores import LORES
 from .rfile import RFILE
 from .depar import DEPAR
@@ -57,11 +61,15 @@ __all__ = [
     "TABLE",
     "INCDF",
     "RELOC",
+    "SRLOC",
+    "TELOC",
     "CMPEC",
     "RMPEC",
+    "TEMAT",
     "LORES",
     "RETYP",
     "SRTYP",
+    "TETYP",
     "RFILE",
     "DEPAR",
     "HEADING"

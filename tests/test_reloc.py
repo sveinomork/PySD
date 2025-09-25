@@ -3,7 +3,7 @@ import sys
 from pysd.statements import SHSEC
 from pysd.statements.rmpec import RMPEC
 from pysd.validation.core import ValidationLevel
-sys.path.append('C:\\Users\\som\\coding\\PySD\\src')
+
 from pysd.statements import RELOC
 
 def test_reloc_attributes():

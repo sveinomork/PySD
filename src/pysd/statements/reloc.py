@@ -105,8 +105,7 @@ class RELOC(StatementBase):
     # Location area alternative 2
     la: Optional[int] = Field(None, description="Section set number from LAREA statement. Mutually exclusive with pa, fs, hs")
     
-    # Auto-generated fields
-    input: str = Field(default="", init=False, description="Generated input string")
+
     
     @property
     def identifier(self) -> str:

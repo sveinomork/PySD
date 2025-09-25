@@ -12,7 +12,6 @@ from .core import (
     ValidationConfig,
     validation_config
 )
-from .error_codes import ErrorCodes
 from .messages import ErrorMessageBuilder
 from .rule_system import (
     instance_rule,
@@ -35,7 +34,6 @@ __all__ = [
     "PySDValidationError",
     "ValidationConfig",
     "validation_config",
-    "ErrorCodes",
     "ErrorMessageBuilder",
     "instance_rule",
     "container_rule", 

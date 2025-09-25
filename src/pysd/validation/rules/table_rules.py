@@ -8,7 +8,7 @@ from ..core import ValidationIssue, ValidationContext
 
 if TYPE_CHECKING:
     from ...statements.table import TABLE
-    from ...containers.base_container import BaseContainer
+    from ...model.base_container import BaseContainer
 
 # Instance-level validation rules
 @instance_rule('TABLE')
