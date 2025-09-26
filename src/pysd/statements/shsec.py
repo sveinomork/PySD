@@ -8,7 +8,7 @@ from .statement_base import StatementBase
 class SHSEC(StatementBase):
     """
     ### Purpose
-    Creation of shell sections/design sections.
+    Create extrapolated section.
     
     ### Example
      ```python

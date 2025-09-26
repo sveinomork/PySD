@@ -8,6 +8,10 @@ def test_loadc():
     loadc1 = LOADC(run_number=1, alc=(1,7), olc=(101,107))
     assert loadc1.input == "LOADC RN=1 ALC=1-7 OLC=101-107"
 
+def test_loadc_with_comment():
+    loadc1 = LOADC(run_number=1, alc=(1,6), olc=(201,206),comment="Equilibrium load case")
+    assert loadc1.input == "LOADC RN=1 ALC=1-6 OLC=201-206 % Equilibrium load case"
+
 def test_loadc_table_and_pri():
     loadc2 = LOADC(table=True)
     assert loadc2.input == "LOADC TAB="

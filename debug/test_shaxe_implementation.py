@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from pysd import SD_BASE
 from pysd.statements.shaxe import SHAXE
-from pysd.statements.shsec import SHSEC
+from pysd.statements.shext import SHSEC
 from pysd.validation.core import ValidationMode, set_validation_mode
 
 

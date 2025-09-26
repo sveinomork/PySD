@@ -3,7 +3,7 @@
 Test script to see what parts are defined in SHSEC
 """
 
-from src.pysd.statements.shsec import SHSEC
+from pysd.statements.shext import SHSEC
 from src.pysd.statements.reloc import RELOC
 from src.pysd.sdmodel import SD_BASE
 

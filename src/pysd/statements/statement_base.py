@@ -41,6 +41,9 @@ class StringBuilderHelper:
 
 class StatementBase(BaseModel, ABC):
     input: str = Field(default="", init=False)
+    # General optional trailing comment for all statements. When set, builders
+    # should append it as "% <comment>" at the end of the line.
+    comment: str | None = Field(default=None, description="Optional trailing comment to append as '% <text>'.")
     
     @property
     @abstractmethod
@@ -119,7 +122,7 @@ class StatementBase(BaseModel, ABC):
         self,
         exclude: set[str] | None = None,
         default_values: dict[str, Any] | None = None,
-        # NEW ENHANCED PARAMETERS
+       
         field_order: list[str] | None = None,
         bool_flags: set[str] | None = None,
         special_formatting: dict[str, callable] | None = None,
@@ -204,7 +207,11 @@ class StatementBase(BaseModel, ABC):
             else:
                 parts.append(f"{field.upper()}={value}")
 
-        # Add comment if provided
+        # If no explicit comment provided, fall back to the instance's comment attribute
+        if comment is None:
+            comment = getattr(self, "comment", None)
+
+        # Add comment if provided (explicit or from attribute)
         if comment:
             parts.append(f"% {comment}")
 
@@ -267,6 +274,8 @@ class StatementBase(BaseModel, ABC):
         
         # 2. Build input string
         self._build_input_string()
+        # 3. Append trailing comment if provided and not already present
+        self._append_comment_if_needed()
     
     def _execute_instance_validation(self) -> None:
         """Execute instance-level validation rules."""
@@ -276,6 +285,16 @@ class StatementBase(BaseModel, ABC):
         
         for issue in issues:
             context.add_issue(issue)
+    
+    def _append_comment_if_needed(self) -> None:
+        """Ensure trailing comment is appended if the instance has a comment.
+        Avoid duplicate insertion if already present (e.g., generic builder added it).
+        """
+        c = getattr(self, 'comment', None)
+        if c:
+            marker = f"% {c}"
+            if marker not in self.input:
+                self.input += f" {marker}"
     
     def validate_cross_references(self, context: ValidationContext) -> None:
         """

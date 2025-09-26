@@ -97,7 +97,7 @@ def create_load_components(sd_model: SD_BASE) -> None:
     
     # Create and add LOADC entries first
     loadc = [
-        LOADC(run_number=1, alc=(1,6), olc=(201,206)),
+        LOADC(run_number=1, alc=(1,6), olc=(201,206),comment="Equilibrium load case"),
         LOADC(run_number=1, alc=(11,16), olc=(101,106)),
         LOADC(table=True),
         LOADC(pri=True)

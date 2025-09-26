@@ -4,12 +4,12 @@
 from typing import Sequence, Any, overload, Protocol, runtime_checkable, TypeAlias, Union
 from pydantic import BaseModel
 
-from pysd.statements.temat import TEMAT
+
 from .validation.core import ValidationLevel
 from .model.validation_manager import ValidationManager
 from .model.base_container import BaseContainer
 from .statements import (
-    GRECO, BASCO, LOADC, SHSEC, SHAXE, CMPEC, RMPEC, RETYP, SRTYP, TETYP, RELOC, SRLOC,
+    GRECO, BASCO, LOADC, SHSEC, SHEXT, SHAXE, CMPEC, RMPEC, TEMAT, RETYP, SRTYP, TETYP, RELOC, SRLOC,
     TELOC, LORES, XTFIL, DESEC, TABLE, RFILE, INCDF, DECAS, DEPAR, FILST, HEADL,
     Cases, EXECD, HEADING
 )
@@ -22,7 +22,7 @@ class StatementProtocol(Protocol):
 
 # Type alias for all supported statement types (type checkers/IDEs only)
 StatementType: TypeAlias = Union[
-    GRECO, BASCO, LOADC, SHSEC, SHAXE, CMPEC, RMPEC, RETYP, SRTYP, TETYP, RELOC, SRLOC,
+    GRECO, BASCO, LOADC, SHSEC, SHEXT, SHAXE, CMPEC, RMPEC, RETYP, SRTYP, TETYP, RELOC, SRLOC,
     TELOC, LORES, XTFIL, DESEC, TABLE, RFILE, INCDF, DECAS, DEPAR, FILST, HEADL,
     Cases, EXECD, HEADING
 ]

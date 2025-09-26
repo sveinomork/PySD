@@ -59,8 +59,7 @@ class StatementRouter:
         """
         Route multiple items with optimized batch processing.
         
-        Much simpler now - ALL statements go to containers!
-        Replaces the 40+ line _add_batch method from SD_BASE.
+        
         """
         # Group items by type for batch processing
         grouped_items = defaultdict(list)

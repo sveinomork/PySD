@@ -14,6 +14,7 @@ from .execd import EXECD
 from .filst import FILST
 from .loadc import LOADC
 from .shsec import SHSEC
+from .shext import SHEXT
 from .xtfil import XTFIL
 from .decas import DECAS
 from .table import TABLE
@@ -56,6 +57,7 @@ __all__ = [
     "EXECD",
     "FILST",
     "SHSEC",
+    "SHEXT",
     "XTFIL",
     "DECAS",
     "TABLE",

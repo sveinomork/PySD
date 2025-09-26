@@ -5,7 +5,7 @@ from ..core import ValidationIssue, ValidationContext, ValidationSeverity
 from ..rule_system import instance_rule, container_rule, model_rule
 
 if TYPE_CHECKING:
-    from ...statements.shsec import SHSEC
+    from ...statements.shext import SHSEC
 
 # Instance-level validation rules (run during object creation)
 @instance_rule('SHSEC')
