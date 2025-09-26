@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import Optional, Any,Literal
-from pydantic import  Field, field_validator
+from typing import Optional, Any, Literal
+from pydantic import Field, field_validator
 from .cases import Cases
 
 
@@ -8,11 +8,39 @@ from .statement_base import StatementBase
 
 # Define the type for valid GRECO IDs (single uppercase letters A-Z)
 # Note: Using str instead of Literal to allow custom validation control
-GrecoID = Literal['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
+GrecoID = Literal[
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "J",
+    "K",
+    "L",
+    "M",
+    "N",
+    "O",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z",
+]
+
 
 class GRECO(StatementBase):
     """
-    Active loads (ELC) are balanced by GRECO boundary reactions containing 6 BAS (one per load resultant: Fx, Fy, Fz, Mx, My, Mz). 
+    Active loads (ELC) are balanced by GRECO boundary reactions containing 6 BAS (one per load resultant: Fx, Fy, Fz, Mx, My, Mz).
     ShellDesign calculates scale factors ensuring equilibrium between ELC and scaled GRECO reactions.
     Define as a object to generate GRECO input lines for ShellDesign to ensure proper load balancing and reaction scaling.
 
@@ -43,27 +71,27 @@ class GRECO(StatementBase):
     - No versions are allowed in the LoadCaseDefinition parameter.
     - When using LoadCaseDefinition, the version parameter must be empty.
     """
+
     # Required fields - using str instead of Literal for flexible validation
     id: str = Field(..., description="GRECO version ID (single uppercase letter A-Z)")
     bas: Optional[Cases] = Field(None, description="BAS load cases (must be exactly 6)")
-    elc: Optional[Cases] = Field(None, description="ELC load cases (must reference OLC in LOADC)")
-    
-    
+    elc: Optional[Cases] = Field(
+        None, description="ELC load cases (must reference OLC in LOADC)"
+    )
 
     @property
     def identifier(self) -> str:
         """Get unique identifier for this GRECO statement."""
         return self.id
 
-    @field_validator('bas', 'elc', mode='before')
+    @field_validator("bas", "elc", mode="before")
     @classmethod
     def convert_to_cases(cls, v: Any) -> Optional[Cases]:
         """Convert various input formats to Cases."""
         if v is None:
             return v
         return Cases(v)
-    
-  
+
     def _build_input_string(self) -> None:
         """Build the input string (pure formatting logic)."""
         self.start_string()  # Sets self.input = "GRECO"
@@ -80,14 +108,14 @@ class GRECO(StatementBase):
             return iter(self.bas)
         else:
             return iter([])
-    
+
     def to_list(self) -> list[int]:
         """
         Get a list of all BAS case numbers.
-        
+
         Returns:
             List[int]: All BAS case numbers expanded from ranges
-            
+
         Examples:
             greco.to_list() -> [211, 212, 213, 214, 215, 218]
         """
@@ -95,5 +123,3 @@ class GRECO(StatementBase):
             return self.bas.to_list()
         else:
             return []
-
-   

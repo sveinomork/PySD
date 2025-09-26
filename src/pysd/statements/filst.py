@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Optional
-from pydantic import  Field
+from pydantic import Field
 
 from .statement_base import StatementBase
 
@@ -51,40 +51,40 @@ class FILST(StatementBase):
         If True, prints all current FILST lines. Mutually exclusive with
         other parameters. Default is False.
     """
+
     name: Optional[str] = Field(None, description="File identity (max 48 characters)")
     vers: Optional[str] = Field(None, description="File version (max 8 characters)")
-    date: Optional[str] = Field(None, description="Date of last revision (max 12 characters)")
-    resp: Optional[str] = Field(None, description="Responsible person/group (max 4 characters)")
+    date: Optional[str] = Field(
+        None, description="Date of last revision (max 12 characters)"
+    )
+    resp: Optional[str] = Field(
+        None, description="Responsible person/group (max 4 characters)"
+    )
     pri: Optional[bool] = Field(None, description="Print all current FILST lines")
 
     @property
     def identifier(self) -> str:
         """Get unique identifier for this FILST statement."""
         return self._build_identifier(add_hash=True)
-    
 
-    
     def _build_input_string(self) -> None:
         """Build input string and run instance-level validation."""
-        
+
         # Build input string
         if self.pri:
-           self.start_string()  # Call the method, don't assign to it
-           self.add_param("PRI", "")  # Empty value becomes "PRI="
+            self.start_string()  # Call the method, don't assign to it
+            self.add_param("PRI", "")  # Empty value becomes "PRI="
         else:
-           # For FILST, we need to include the 'name' field, but _build_string_generic
-           # always excludes it. So we'll build it manually.
-           from .statement_base import StringBuilderHelper
-           
-           helper = StringBuilderHelper(self.statement_name)
-           
-           # Add fields in the desired order
-           for field_name in ['name', 'vers', 'date', 'resp']:
-               value = getattr(self, field_name, None)
-               if value is not None:
-                   helper.add_param(field_name, value)
-           
-           self.input = helper.input
-        
-    
-    
+            # For FILST, we need to include the 'name' field, but _build_string_generic
+            # always excludes it. So we'll build it manually.
+            from .statement_base import StringBuilderHelper
+
+            helper = StringBuilderHelper(self.statement_name)
+
+            # Add fields in the desired order
+            for field_name in ["name", "vers", "date", "resp"]:
+                value = getattr(self, field_name, None)
+                if value is not None:
+                    helper.add_param(field_name, value)
+
+            self.input = helper.input

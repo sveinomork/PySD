@@ -13,8 +13,8 @@ from .base_container import BaseContainer, HasIdentifier
 __all__ = [
     "ValidationManager",
     "StatementRouter",
-    "ContainerFactory", 
+    "ContainerFactory",
     "ModelWriter",
     "BaseContainer",
-    "HasIdentifier"
+    "HasIdentifier",
 ]

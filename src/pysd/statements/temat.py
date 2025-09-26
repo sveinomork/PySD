@@ -1,7 +1,6 @@
-
 from __future__ import annotations
 from typing import Optional, Literal
-from pydantic import  Field
+from pydantic import Field
 
 from .statement_base import StatementBase
 
@@ -20,7 +19,7 @@ class TEMAT(StatementBase):
 
     ### Parameters
     id : int
-        Material property set ID (1-99999999)   
+        Material property set ID (1-99999999)
     fsy : float
         Yield stress [kPa]
     esk : float
@@ -28,72 +27,83 @@ class TEMAT(StatementBase):
     fam : Optional[float]
         Factor for calculating modeified curve from eps=FAM*eps to epm. Default is no modified curve.
         See Section 4.1.1.3  for DNV curve, section 4.2.1.3 for NS curve and 4.3.1.3 for EC2 curve.
-        (default:1.0) 
+        (default:1.0)
     epm : Optional[float]
         modified strain  (default:0.010)
     epu : Optional[float]
         Ultimate tensile strain [m/m] (default:0.020)
     mfu : Optional[float]
-        Design material factor ULS 
+        Design material factor ULS
     mfa : Optional[float]
-        Design material factor ALS 
+        Design material factor ALS
     mfs : Optional[float]
-        Design material factor SLS 
+        Design material factor SLS
     mff : Optional[float]
-        Design material factor FLS 
+        Design material factor FLS
     pri : Optional[Literal['','TAB']]
         PRI= Print out all stored TEMAT sets  PRI=TAB prints material curve
-    
+
     """
+
     # Required for identification
     id: int = Field(..., description="Material property set ID (1-99999999)")
-    
+
     # Material properties
     # Required fields
     fsy: float = Field(None, description="Yield stress [kPa]")
     esk: float = Field(None, description="Modulus of elasticity [kPa]")
     # optional fields
-    fam: Optional[float] = Field(None, description="Factor for calculating modeified curve from eps.")
+    fam: Optional[float] = Field(
+        None, description="Factor for calculating modeified curve from eps."
+    )
     epm: Optional[float] = Field(None, description="Modified strain  (default:0.010)")
     epu: Optional[float] = Field(None, description="Ultimate strength [kPa]")
 
     # Design properties - ULS
     mfu: Optional[float] = Field(None, description="Design material factor ULS ")
-  
+
     # Design properties - ALS
     mfa: Optional[float] = Field(None, description="Design material factor ALS ")
-   
+
     # Design properties - SLS
     mfs: Optional[float] = Field(None, description="Design material factor SLS ")
-   
+
     # Design properties - FLS
     mff: Optional[float] = Field(None, description="Design material factor FLS ")
 
     # Print option
-    pri: Optional[Literal['', 'TAB']] = Field(None, description="Print option")
-    
+    pri: Optional[Literal["", "TAB"]] = Field(None, description="Print option")
+
     @property
     def identifier(self) -> str:
         """Get unique identifier for this RMPEC statement."""
         return str(self.id)
-
-   
 
     def _build_input_string(self) -> None:
         """Build the input string using enhanced generic builder."""
         if self.pri is not None:
             # Special case: print option only
             self.start_string()
-            self.add_param("PRI","" )
+            self.add_param("PRI", "")
             return
-        if self.pri == 'TAB':
+        if self.pri == "TAB":
             self.start_string()
-            self.add_param("PRI","TAB" )
+            self.add_param("PRI", "TAB")
             return
 
         self.input = self._build_string_generic(
-            field_order=['id', 'fsy', 'esk', 'fam', 'epm', 'epu', 'mfu', 'mfa', 'mfs', 'mff'],
-            exclude={'comment'},  # Exclude comment from regular field processing
+            field_order=[
+                "id",
+                "fsy",
+                "esk",
+                "fam",
+                "epm",
+                "epu",
+                "mfu",
+                "mfa",
+                "mfs",
+                "mff",
+            ],
+            exclude={"comment"},  # Exclude comment from regular field processing
             float_precision=6,
         )
-    

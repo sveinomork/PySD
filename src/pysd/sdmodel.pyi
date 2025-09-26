@@ -1,30 +1,98 @@
 # Type stubs for IDE support — enables hover docs and auto-completion.
 # This stub has no runtime effect.
 
-from typing import Sequence, Any, overload, Protocol, runtime_checkable, TypeAlias, Union
+from typing import (
+    Sequence,
+    Any,
+    overload,
+    Protocol,
+    runtime_checkable,
+    TypeAlias,
+    Union,
+)
 from pydantic import BaseModel
-
 
 from .validation.core import ValidationLevel
 from .model.validation_manager import ValidationManager
 from .model.base_container import BaseContainer
 from .statements import (
-    GRECO, BASCO, LOADC, SHSEC, SHEXT, SHAXE, CMPEC, RMPEC, TEMAT, RETYP, SRTYP, TETYP, RELOC, SRLOC,
-    TELOC, LORES, XTFIL, DESEC, TABLE, RFILE, INCDF, DECAS, DEPAR, FILST, HEADL,
-    Cases, EXECD, HEADING
+    GRECO,
+    BASCO,
+    LOADC,
+    SHSEC,
+    SHEXT,
+    LAREA,
+    SHAXE,
+    CMPEC,
+    CMPGM,
+    CMPNS,
+    CMPOS,
+    RMPEC,
+    RMPOS,
+    RMPNS,
+    TEMAT,
+    RETYP,
+    SRTYP,
+    TETYP,
+    RELOC,
+    SRLOC,
+    TELOC,
+    LORES,
+    XTFIL,
+    DESEC,
+    TABLE,
+    RFILE,
+    INCDF,
+    DECAS,
+    DEPAR,
+    FILST,
+    HEADL,
+    Cases,
+    EXECD,
+    HEADING,
 )
 
 @runtime_checkable
 class StatementProtocol(Protocol):
     """Protocol that all statement classes must implement."""
-    input: str
 
+    input: str
 
 # Type alias for all supported statement types (type checkers/IDEs only)
 StatementType: TypeAlias = Union[
-    GRECO, BASCO, LOADC, SHSEC, SHEXT, SHAXE, CMPEC, RMPEC, RETYP, SRTYP, TETYP, RELOC, SRLOC,
-    TELOC, LORES, XTFIL, DESEC, TABLE, RFILE, INCDF, DECAS, DEPAR, FILST, HEADL,
-    Cases, EXECD, HEADING
+    GRECO,
+    BASCO,
+    LOADC,
+    SHSEC,
+    SHEXT,
+    LAREA,
+    SHAXE,
+    CMPEC,
+    CMPGM,
+    CMPNS,
+    CMPOS,
+    RMPEC,
+    RMPOS,
+    RMPNS,
+    RETYP,
+    SRTYP,
+    TETYP,
+    RELOC,
+    SRLOC,
+    TELOC,
+    LORES,
+    XTFIL,
+    DESEC,
+    TABLE,
+    RFILE,
+    INCDF,
+    DECAS,
+    DEPAR,
+    FILST,
+    HEADL,
+    Cases,
+    EXECD,
+    HEADING,
 ]
 
 class SD_BASE(BaseModel):
@@ -40,7 +108,7 @@ class SD_BASE(BaseModel):
         self,
         validation_level: ValidationLevel = ...,
         cross_object_validation: bool = ...,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None: ...
 
     validation_level: ValidationLevel
@@ -55,9 +123,10 @@ class SD_BASE(BaseModel):
     @overload
     def add(self, item: StatementType, validation: bool | None = ...) -> None: ...
     @overload
-    def add(self, item: Sequence[StatementType], validation: bool | None = ...) -> None: ...
+    def add(
+        self, item: Sequence[StatementType], validation: bool | None = ...
+    ) -> None: ...
     def add(self, item, validation: bool | None = ...) -> None: ...
-
     def write(self, output_file: str) -> None: ...
 
     # ------------------------
@@ -77,13 +146,31 @@ class SD_BASE(BaseModel):
 
     shaxe: BaseContainer[SHAXE]
     """Container for SHAXE statements — Shell Axis definitions."""
+    
+    larea: BaseContainer[LAREA]
+    """Container for LAREA statements — Load Area definitions."""
 
     cmpec: BaseContainer[CMPEC]
-    """Container for CMPEC statements — Composite Section specifications."""
+    """Container for CMPEC statements — Material concrete specifications according to Eurocode."""
 
+    cmpgm: BaseContainer[CMPGM]
+    """Container for CMPGM statements — Material properties for composite materials according to MCFT ."""
+    
+    cmpns: BaseContainer[CMPNS]
+    """Container for CMPNS statements — Material properties for non-steel materials according to NS 3473."""
+    
+    cmpos: BaseContainer[CMPOS]
+    """Container for CMPOS statements — Concrete material property sets according to DNV-ST-C502."""
+    
     rmpec: BaseContainer[RMPEC]
-    """Container for RMPEC statements — Remove Composite Section specifications."""
-
+    """Container for RMPEC statements — Material properties for reinforced steel according to Eurocode."""
+    
+    rmpos: BaseContainer[RMPOS]
+    """Container for RMPOS statements — Rebar material property sets according to DNV-ST-C502."""
+    
+    rmpns: BaseContainer[RMPNS]     
+    """Container for RMPNS statements — Rebar material property sets according to NS 3473."""
+    
     retyp: BaseContainer[RETYP]
     """Container for RETYP statements — Rebar Type definitions."""
 
@@ -98,7 +185,7 @@ class SD_BASE(BaseModel):
 
     reloc: BaseContainer[RELOC]
     """Container for RELOC statements — Rebar Location definitions."""
-    
+
     teloc: BaseContainer[TELOC]
     """Container for TELOC statements — Tendon Location definitions."""
 
@@ -143,4 +230,3 @@ class SD_BASE(BaseModel):
 
     heading: BaseContainer[HEADING]
     """Container for HEADING statements — Section headings."""
-

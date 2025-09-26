@@ -8,7 +8,7 @@ Additional lines will replace the third line.
 """
 
 from __future__ import annotations
-from pydantic import field_validator
+
 from .statement_base import StatementBase
 
 
@@ -20,7 +20,7 @@ class HEADL(StatementBase):
     ### Examples
     ```python
     # Simple header
-    HEADL(heading="VERIFICATION ANALYSIS")  
+    HEADL(heading="VERIFICATION ANALYSIS")
     # -> 'HEADL VERIFICATION ANALYSIS'
 
     # Project identification header
@@ -38,20 +38,14 @@ class HEADL(StatementBase):
     - Headers appear in output files and reports for identification.
     - Multiple HEADL statements can be used for multi-line headers.
     """
-    
+
     heading: str
-    
-   
+
     @property
     def identifier(self) -> str:
         """Get unique identifier for this HEADL statement."""
-        return self._build_identifier(field_order=['heading'], add_hash=True)
+        return self._build_identifier(field_order=["heading"], add_hash=True)
 
-    
-   
-    
     def _build_input_string(self) -> str:
         """Build the input string for this HEADL statement."""
         return f"HEADL {self.heading}"
-    
-    

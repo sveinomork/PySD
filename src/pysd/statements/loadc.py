@@ -1,101 +1,102 @@
 from typing import Optional, Union, Any
 from pydantic import Field, field_validator
-from .cases import Cases 
+from .cases import Cases
 from .statement_base import StatementBase
+
 
 class LOADC(StatementBase):
     """
-Controls load case processing, output formatting, and analysis execution parameters.
+    Controls load case processing, output formatting, and analysis execution parameters.
 
-### Examples
-```python
-# Simplified syntax - automatically sets RN from ALC
-LOADC(alc=1, olc=101)
-# -> 'LOADC RN=1 LC=1,101'
+    ### Examples
+    ```python
+    # Simplified syntax - automatically sets RN from ALC
+    LOADC(alc=1, olc=101)
+    # -> 'LOADC RN=1 LC=1,101'
 
-LOADC(alc=2, olc=102)
-# -> 'LOADC RN=2 LC=2,102'
+    LOADC(alc=2, olc=102)
+    # -> 'LOADC RN=2 LC=2,102'
 
-# Tuple syntax for ranges - automatically sets RN from first ALC value
-LOADC(alc=(1,6), olc=(101,106))
-# -> 'LOADC RN=1 LC=1-6,101-106'
+    # Tuple syntax for ranges - automatically sets RN from first ALC value
+    LOADC(alc=(1,6), olc=(101,106))
+    # -> 'LOADC RN=1 LC=1-6,101-106'
 
-LOADC(alc=(5,10), olc=(201,206))
-# -> 'LOADC RN=5 LC=5-10,201-206'
+    LOADC(alc=(5,10), olc=(201,206))
+    # -> 'LOADC RN=5 LC=5-10,201-206'
 
-# Traditional syntax using Cases
-LOADC(run_number=1, alc=Cases(ranges=[1, (2, 6)]), olc=Cases(ranges=[(101, 106)]))
-# -> 'LOADC RN=1 LC=1,2-6,101-106'
+    # Traditional syntax using Cases
+    LOADC(run_number=1, alc=Cases(ranges=[1, (2, 6)]), olc=Cases(ranges=[(101, 106)]))
+    # -> 'LOADC RN=1 LC=1,2-6,101-106'
 
-# Using string format
-LOADC(run_number=1, alc="1,2-6", olc="101-106")
-# -> 'LOADC RN=1 LC=1,2-6,101-106'
+    # Using string format
+    LOADC(run_number=1, alc="1,2-6", olc="101-106")
+    # -> 'LOADC RN=1 LC=1,2-6,101-106'
 
-# Using list format  
-LOADC(run_number=1, alc=[1, (2, 6)], olc=[(101, 106)])
-# -> 'LOADC RN=1 LC=1,2-6,101-106'
+    # Using list format
+    LOADC(run_number=1, alc=[1, (2, 6)], olc=[(101, 106)])
+    # -> 'LOADC RN=1 LC=1,2-6,101-106'
 
-# Enable table output for load results
-LOADC(table=True)
-# -> 'LOADC TAB='
+    # Enable table output for load results
+    LOADC(table=True)
+    # -> 'LOADC TAB='
 
-# Enable print output for debugging
-LOADC(pri=True)
-# -> 'LOADC PRI='
-```
+    # Enable print output for debugging
+    LOADC(pri=True)
+    # -> 'LOADC PRI='
+    ```
 
-### Parameters
+    ### Parameters
 
-- **run_number**: Optional[int]
-    - Result file run number to reference (RN=n). If not provided and alc is a single integer or tuple, alc value will be used.
-- **alc**: Optional[Union[str, int, tuple, list, Cases]]
-    - Analysis Load Cases. Supports multiple formats including tuples for ranges. Must be used with olc. If single integer or tuple and run_number not set, will auto-set run_number.
-- **olc**: Optional[Union[str, int, tuple, list, Cases]]
-    - Output Load Cases. Supports multiple formats including tuples for ranges. Must be used with alc.
-- **table**: bool
-    - If True, indicates table-based input mode. Default is False.
-- **pri**: bool
-    - If True, indicates priority-based mode. Default is False.
-- **comment**: Optional[str]
-    - Optional comment to add at end of line (for RN and LC modes).
+    - **run_number**: Optional[int]
+        - Result file run number to reference (RN=n). If not provided and alc is a single integer or tuple, alc value will be used.
+    - **alc**: Optional[Union[str, int, tuple, list, Cases]]
+        - Analysis Load Cases. Supports multiple formats including tuples for ranges. Must be used with olc. If single integer or tuple and run_number not set, will auto-set run_number.
+    - **olc**: Optional[Union[str, int, tuple, list, Cases]]
+        - Output Load Cases. Supports multiple formats including tuples for ranges. Must be used with alc.
+    - **table**: bool
+        - If True, indicates table-based input mode. Default is False.
+    - **pri**: bool
+        - If True, indicates priority-based mode. Default is False.
+    - **comment**: Optional[str]
+        - Optional comment to add at end of line (for RN and LC modes).
 
-### Notes
+    ### Notes
 
-- LOADC statements control which load cases are processed and how results are output.
-- RUN parameter specifies the analysis run number for organization.
-- ALC (Analysis Load Cases) defines the range of input load cases to process.
-- OLC (Output Load Cases) defines the range for result output numbering.
-- TABLE enables tabular output of load case results.
-- PRI enables detailed print output for debugging and verification.
-- Multiple LOADC statements can be used to control different aspects.
-- Load case ranges are inclusive (e.g., ALC=1,6 processes cases 1 through 6).
-- Simplified syntax: LOADC(alc=1, olc=101) automatically generates LOADC RN=1 LC=1,101
-- Tuple syntax: LOADC(alc=(1,6), olc=(101,106)) automatically generates LOADC RN=1 LC=1-6 OLC=101-106
-"""
+    - LOADC statements control which load cases are processed and how results are output.
+    - RUN parameter specifies the analysis run number for organization.
+    - ALC (Analysis Load Cases) defines the range of input load cases to process.
+    - OLC (Output Load Cases) defines the range for result output numbering.
+    - TABLE enables tabular output of load case results.
+    - PRI enables detailed print output for debugging and verification.
+    - Multiple LOADC statements can be used to control different aspects.
+    - Load case ranges are inclusive (e.g., ALC=1,6 processes cases 1 through 6).
+    - Simplified syntax: LOADC(alc=1, olc=101) automatically generates LOADC RN=1 LC=1,101
+    - Tuple syntax: LOADC(alc=(1,6), olc=(101,106)) automatically generates LOADC RN=1 LC=1-6 OLC=101-106
+    """
 
     run_number: Optional[int] = Field(
         default=None,
-        description="Result file run number to reference (RN=n). If not provided and alc is a single integer or tuple, alc value will be used."
+        description="Result file run number to reference (RN=n). If not provided and alc is a single integer or tuple, alc value will be used.",
     )
     alc: Optional[Union[str, int, tuple[int, int], list[int], Cases]] = Field(
         default=None,
-        description="Analysis Load Cases. Supports multiple formats including tuples for ranges. Must be used with olc. If single integer or tuple and run_number not set, will auto-set run_number."
+        description="Analysis Load Cases. Supports multiple formats including tuples for ranges. Must be used with olc. If single integer or tuple and run_number not set, will auto-set run_number.",
     )
     olc: Optional[Union[str, int, tuple[int, int], list[int], Cases]] = Field(
         default=None,
-        description="Output Load Cases. Supports multiple formats including tuples for ranges. Must be used with alc."
+        description="Output Load Cases. Supports multiple formats including tuples for ranges. Must be used with alc.",
     )
     table: bool = Field(
         default=False,
-        description="If True, indicates table-based input mode. Default is False."
+        description="If True, indicates table-based input mode. Default is False.",
     )
     pri: bool = Field(
         default=False,
-        description="If True, indicates priority-based mode. Default is False."
+        description="If True, indicates priority-based mode. Default is False.",
     )
     comment: Optional[str] = Field(
         default=None,
-        description="Optional comment to add at end of line (for RN and LC modes)."
+        description="Optional comment to add at end of line (for RN and LC modes).",
     )
 
     @property
@@ -105,7 +106,7 @@ LOADC(pri=True)
         # so we use the object id to ensure uniqueness per instance
         return f"LOADC_{id(self)}"
 
-    @field_validator('alc', 'olc', mode='before')
+    @field_validator("alc", "olc", mode="before")
     @classmethod
     def convert_to_cases(cls, v: Any) -> Cases | None:
         """Convert any input format to Cases object - Cases handles the conversion responsibility."""
@@ -118,27 +119,26 @@ LOADC(pri=True)
 
     def _build_input_string(self) -> None:
         """Build the input string using hybrid approach - Cases handle their own formatting."""
-          
+
         # Start building using hybrid approach
         self.start_string()  # Sets self.input = "LOADC"
-        
+
         if self.alc and self.olc:
             # Cases objects handle their own string formatting via __str__
             self.add_param("RN", self.run_number)
             self.add_param("ALC", str(self.alc))
             self.add_param("OLC", str(self.olc))
-                    
+
         elif self.table:
             self.add_param("TAB", "")  # Empty value becomes "TAB="
-            
+
         elif self.pri:
             self.add_param("PRI", "")  # Empty value becomes "PRI="
 
-    
     def is_olc(self, olc: int) -> bool:
         """
         Check if the given OLC number is contained in this LOADC's OLC ranges.
-        
+
         Examples:
             LOADC(alc=1, olc=(1,6)).is_olc(2) -> True (2 is in range 1-6)
             LOADC(alc=1, olc=(1,6)).is_olc(7) -> False (7 is not in range 1-6)
@@ -147,17 +147,17 @@ LOADC(pri=True)
         """
         if self.olc is None:
             return False
-        
+
         # After field validation, self.olc should be a Cases object
         if isinstance(self.olc, Cases):
             return olc in list(self.olc)
-        
+
         return False
 
     def is_alc(self, alc: int) -> bool:
         """
         Check if the given ALC number is contained in this LOADC's ALC ranges.
-        
+
         Examples:
             LOADC(alc=(1,6), olc=101).is_alc(3) -> True (3 is in range 1-6)
             LOADC(alc=(1,6), olc=101).is_alc(8) -> False (8 is not in range 1-6)
@@ -165,65 +165,65 @@ LOADC(pri=True)
         """
         if self.alc is None:
             return False
-        
+
         # After field validation, self.alc should be a Cases object
         if isinstance(self.alc, Cases):
             return alc in list(self.alc)
-        
+
         return False
-    
+
     def get_olc_list(self) -> list[int]:
         """
         Get all OLC numbers as a list.
-        
+
         Returns:
             List of all individual OLC numbers from ranges
-            
+
         Examples:
             LOADC(alc=1, olc=(101,106)).get_olc_list() -> [101, 102, 103, 104, 105, 106]
             LOADC(alc=1, olc=101).get_olc_list() -> [101]
         """
         if self.olc is None:
             return []
-        
+
         # After field validation, self.olc should be a Cases object
         if isinstance(self.olc, Cases):
             return list(self.olc)
-        
+
         return []
 
     def get_alc_list(self) -> list[int]:
         """
         Get all ALC numbers as a list.
-        
+
         Returns:
             List of all individual ALC numbers from ranges
-            
+
         Examples:
             LOADC(alc=(1,6), olc=101).get_alc_list() -> [1, 2, 3, 4, 5, 6]
             LOADC(alc=5, olc=101).get_alc_list() -> [5]
         """
         if self.alc is None:
             return []
-        
+
         # After field validation, self.alc should be a Cases object
         if isinstance(self.alc, Cases):
             return list(self.alc)
-        
+
         return []
 
     def get_corresponding_alc(self, olc: int) -> int | None:
         """
         Get the corresponding ALC number for a given OLC number based on their index positions.
-        
+
         The ALC and OLC lists are paired by index - the first ALC corresponds to the first OLC, etc.
-        
+
         Args:
             olc: The OLC number to find the corresponding ALC for
-            
+
         Returns:
             The corresponding ALC number, or None if OLC not found or no correspondence
-            
+
         Examples:
             LOADC(alc=(1,6), olc=(101,106)).get_corresponding_alc(103) -> 3
             LOADC(alc=5, olc=105).get_corresponding_alc(105) -> 5
@@ -231,14 +231,14 @@ LOADC(pri=True)
         """
         if self.olc is None or self.alc is None:
             return None
-            
+
         olc_list = self.get_olc_list()
         alc_list = self.get_alc_list()
-        
+
         # Check if the lists have the same length
         if len(olc_list) != len(alc_list):
             return None
-            
+
         try:
             # Find the index of the OLC
             index = olc_list.index(olc)
@@ -251,15 +251,15 @@ LOADC(pri=True)
     def get_corresponding_olc(self, alc: int) -> int | None:
         """
         Get the corresponding OLC number for a given ALC number based on their index positions.
-        
+
         The ALC and OLC lists are paired by index - the first ALC corresponds to the first OLC, etc.
-        
+
         Args:
             alc: The ALC number to find the corresponding OLC for
-            
+
         Returns:
             The corresponding OLC number, or None if ALC not found or no correspondence
-            
+
         Examples:
             LOADC(alc=(1,6), olc=(101,106)).get_corresponding_olc(3) -> 103
             LOADC(alc=5, olc=105).get_corresponding_olc(5) -> 105
@@ -267,14 +267,14 @@ LOADC(pri=True)
         """
         if self.alc is None or self.olc is None:
             return None
-            
+
         alc_list = self.get_alc_list()
         olc_list = self.get_olc_list()
-        
+
         # Check if the lists have the same length
         if len(alc_list) != len(olc_list):
             return None
-            
+
         try:
             # Find the index of the ALC
             index = alc_list.index(alc)
@@ -287,21 +287,19 @@ LOADC(pri=True)
     def get_alc_olc_pairs(self) -> list[tuple[int, int]]:
         """
         Get all ALC-OLC pairs as a list of tuples.
-        
+
         Returns:
             List of (alc, olc) tuples showing the correspondence
-            
+
         Examples:
             LOADC(alc=(1,3), olc=(101,103)).get_alc_olc_pairs() -> [(1,101), (2,102), (3,103)]
             LOADC(alc=5, olc=105).get_alc_olc_pairs() -> [(5,105)]
         """
         alc_list = self.get_alc_list()
         olc_list = self.get_olc_list()
-        
+
         # Only return pairs if both lists have the same length
         if len(alc_list) == len(olc_list):
             return list(zip(alc_list, olc_list))
         else:
             return []
-        
-   

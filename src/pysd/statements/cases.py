@@ -5,11 +5,12 @@ from pydantic import BaseModel, Field, field_validator
 # Type aliases
 CaseRange = Union[int, Tuple[int, int], Tuple[int, int, int]]
 
+
 class Cases(BaseModel):
     """
     Universal case sequence handler for ShellDesign statements.
     Supports single values, ranges, stepped ranges, and optional GRECO letters.
-    
+
     ### Examples:
         Cases(ranges=[1, (2, 5)]) -> "1,2-5"
         Cases(ranges=[1, (2, 5, 2)], greco="A") -> "1,2-5-2:A"
@@ -17,21 +18,27 @@ class Cases(BaseModel):
         Cases(value="1,3-5") -> "1,3-5"  # Direct string input
         Cases(value=101) -> "101"  # Direct int input
     """
+
     ranges: List[CaseRange] = Field(..., min_length=1)
     greco: str = Field(default="", description="Optional GRECO letter identifier")
-    
-    def __init__(self, value: int|float = None, ranges: List[CaseRange] = None, greco: str = "", **kwargs):
-        
+
+    def __init__(
+        self,
+        value: int | float = None,
+        ranges: List[CaseRange] = None,
+        greco: str = "",
+        **kwargs,
+    ):
         if value is not None and ranges is None:
             # Convert value to ranges using normalize_cases logic
             normalized = normalize_cases(value)
             ranges = normalized.ranges
             if not greco and normalized.greco:
                 greco = normalized.greco
-        
+
         super().__init__(ranges=ranges, greco=greco, **kwargs)
-    
-    @field_validator('ranges', mode='before')
+
+    @field_validator("ranges", mode="before")
     @classmethod
     def normalize_ranges_input(cls, v: Any) -> List[CaseRange]:
         """Handle various input formats and normalize to ranges list."""
@@ -41,8 +48,8 @@ class Cases(BaseModel):
             # Use normalize_cases to handle other formats
             normalized = normalize_cases(v)
             return normalized.ranges
-    
-    @field_validator('ranges')
+
+    @field_validator("ranges")
     @classmethod
     def validate_range_format(cls, v: List[CaseRange]) -> List[CaseRange]:
         """Validate individual range formats."""
@@ -58,8 +65,8 @@ class Cases(BaseModel):
                 if len(item) == 3 and (item[2] <= 0 or item[2] > (item[1] - item[0])):
                     raise ValueError("Step must be positive and <= range size")
         return v
-    
-    @field_validator('greco')
+
+    @field_validator("greco")
     @classmethod
     def validate_greco(cls, v: str) -> str:
         """Validate GRECO format."""
@@ -77,7 +84,7 @@ class Cases(BaseModel):
                 parts.append(f"{range_item[0]}-{range_item[1]}")
             elif len(range_item) == 3:
                 parts.append(f"{range_item[0]}-{range_item[1]}-{range_item[2]}")
-        
+
         result = ",".join(parts)
         return f"{result}:{self.greco}" if self.greco else result
 
@@ -87,7 +94,7 @@ class Cases(BaseModel):
     def __iter__(self) -> Iterator[int]:
         """
         Iterate over all individual case numbers in the ranges.
-        
+
         Examples:
             Cases(ranges=[1, (3, 6)]) -> yields 1, 3, 4, 5, 6
             Cases(ranges=[(10, 20, 2)]) -> yields 10, 12, 14, 16, 18, 20
@@ -109,10 +116,10 @@ class Cases(BaseModel):
     def to_list(self) -> List[int]:
         """
         Convert all ranges to a list of individual case numbers.
-        
+
         Returns:
             List[int]: All case numbers expanded from ranges
-            
+
         Examples:
             Cases(ranges=[1, (3, 6)]).to_list() -> [1, 3, 4, 5, 6]
             Cases(ranges=[(10, 15, 2)]).to_list() -> [10, 12, 14]
@@ -135,7 +142,7 @@ class Cases(BaseModel):
     def parse(cls, text: str) -> Cases:
         """
         Parse a case definition string.
-        
+
         Examples:
             Cases.parse("1,2-5,10-20-2") -> Cases with ranges and steps
             Cases.parse("1-5:A") -> Cases with GRECO letter
@@ -143,7 +150,7 @@ class Cases(BaseModel):
         greco = ""
         if ":" in text:
             text, greco = text.split(":", 1)
-            
+
         ranges: List[CaseRange] = []
         for part in text.split(","):
             if "-" in part:
@@ -156,45 +163,48 @@ class Cases(BaseModel):
                     raise ValueError(f"Invalid range format: {part}")
             else:
                 ranges.append(int(part))
-                
+
         return cls(ranges=ranges, greco=greco)
+
 
 class CaseBuilder:
     """Fluent builder for Cases with automatic building."""
-    
+
     def __init__(self):
         self._ranges: List[CaseRange] = []
         self._greco: str = ""
-    
+
     @classmethod
-    def create(cls) -> 'CaseBuilder':
+    def create(cls) -> "CaseBuilder":
         """Factory method to create a new CaseBuilder instance."""
         return cls()
-    
+
     @overload
-    def add(self, value: int) -> 'CaseBuilder':
+    def add(self, value: int) -> "CaseBuilder":
         """Add single case number."""
         ...
-    
+
     @overload
-    def add(self, start: int, end: int) -> 'CaseBuilder':
+    def add(self, start: int, end: int) -> "CaseBuilder":
         """Add range of cases."""
         ...
-    
+
     @overload
-    def add(self, start: int, end: int, step: int) -> 'CaseBuilder':
+    def add(self, start: int, end: int, step: int) -> "CaseBuilder":
         """Add range with step."""
         ...
-    
-    def add(self, value: int, end: Optional[int] = None, step: Optional[int] = None) -> 'CaseBuilder':
+
+    def add(
+        self, value: int, end: Optional[int] = None, step: Optional[int] = None
+    ) -> "CaseBuilder":
         """
         Add a case number or range.
-        
+
         Args:
             value: Case number, or start of range if end is provided
             end: End of range (inclusive) - optional
             step: Step value for range - optional
-            
+
         Examples:
             builder.add(101) -> single case 101
             builder.add(101, 105) -> range 101-105
@@ -210,69 +220,72 @@ class CaseBuilder:
             # Stepped range
             self._ranges.append((value, end, step))
         return self
-    
-    def add_greco(self, greco: str) -> 'CaseBuilder':
+
+    def add_greco(self, greco: str) -> "CaseBuilder":
         """Add GRECO letter identifier."""
         self._greco = greco
         return self
-    
+
     # Backward compatibility methods
-    def add_single(self, value: int) -> 'CaseBuilder':
+    def add_single(self, value: int) -> "CaseBuilder":
         """Backward compatibility: Add single case number."""
         return self.add(value)
-    
-    def add_range(self, start: int, end: int) -> 'CaseBuilder':
+
+    def add_range(self, start: int, end: int) -> "CaseBuilder":
         """Backward compatibility: Add range of cases."""
         return self.add(start, end)
-    
-    def add_stepped_range(self, start: int, end: int, step: int) -> 'CaseBuilder':
+
+    def add_stepped_range(self, start: int, end: int, step: int) -> "CaseBuilder":
         """Backward compatibility: Add range with step."""
         return self.add(start, end, step)
-    
-    def with_suffix(self, suffix: str) -> 'CaseBuilder':
+
+    def with_suffix(self, suffix: str) -> "CaseBuilder":
         """Backward compatibility: Add suffix."""
         return self.add_greco(suffix)
-    
-    def with_greco(self, greco: str) -> 'CaseBuilder':
+
+    def with_greco(self, greco: str) -> "CaseBuilder":
         """Backward compatibility: Add GRECO suffix."""
         return self.add_greco(greco)
-    
+
     def _build(self) -> Cases:
         """Internal method to build Cases object."""
         return Cases(ranges=self._ranges, greco=self._greco)
-    
+
     def __str__(self) -> str:
         """Auto-build when converted to string."""
         return str(self._build())
-    
+
     def formatted(self) -> str:
         """Get formatted string (auto-builds)."""
         return self._build().formatted()
-    
+
     # Support for Cases interface
     @property
     def ranges(self) -> List[CaseRange]:
         """Get ranges (auto-builds)."""
         return self._build().ranges
-    
+
     @property
     def greco(self) -> str:
         """Get GRECO letter (auto-builds)."""
         return self._build().greco
-    
+
     def __iter__(self) -> Iterator[int]:
         """Iterate over all individual case numbers (auto-builds)."""
         return iter(self._build())
-    
+
     def to_list(self) -> List[int]:
         """Convert to list of individual case numbers (auto-builds)."""
         return self._build().to_list()
 
+
 # Helper function to normalize inputs
-def normalize_cases(value: Union[str, List[CaseRange], CaseBuilder, Cases, int, tuple]) -> Cases:
+def normalize_cases(
+    value: Union[str, List[CaseRange], CaseBuilder, Cases, int, tuple],
+) -> Cases:
     """
     Convert various input formats to Cases object.
-    
+
     Supports:
     - String: "0,45-90" or "300-305:A"
     - List: [0, (45, 90)] or [0, (45, 90, 5)]
@@ -298,15 +311,14 @@ def normalize_cases(value: Union[str, List[CaseRange], CaseBuilder, Cases, int, 
         return value
     else:
         # Handle legacy formats for backward compatibility
-        if hasattr(value, 'cases') and hasattr(value, 'version'):
+        if hasattr(value, "cases") and hasattr(value, "version"):
             # Old LoadCaseDefinition format
-            greco = getattr(value, 'version', "")
+            greco = getattr(value, "version", "")
             return Cases(ranges=value.cases, greco=greco)
-        elif hasattr(value, '_ranges') and hasattr(value, '_suffix'):
+        elif hasattr(value, "_ranges") and hasattr(value, "_suffix"):
             # Old CaseBuilder format - try to convert
-            greco = getattr(value, '_suffix', "") or getattr(value, '_greco', "")
-            ranges = getattr(value, '_ranges', [])
+            greco = getattr(value, "_suffix", "") or getattr(value, "_greco", "")
+            ranges = getattr(value, "_ranges", [])
             return Cases(ranges=ranges, greco=greco)
         else:
             raise ValueError(f"Cannot convert {type(value)} to Cases")
-

@@ -1,7 +1,7 @@
-
 from typing import Literal, Optional
-from pydantic import  Field
+from pydantic import Field
 from .statement_base import StatementBase
+
 
 class EXECD(StatementBase):
     """
@@ -22,7 +22,7 @@ class EXECD(StatementBase):
        EXECD(dm='S') -> "EXECD DM=S"
 
     ### Parameters:
-   
+
     dm : Optional[Literal['V', 'S', 'A']]
         The design method to use.
         - None: No design calculations (DM=).
@@ -30,12 +30,16 @@ class EXECD(StatementBase):
         - 'S': Search for necessary section reinforcement.
         - 'A': Search for necessary area reinforcement.
     """
-    dm: Optional[Literal['V', 'S', 'A']] = Field(None, description="Design method: None (no design), 'V' (verify), 'S' (search), 'A' (area search)")
+
+    dm: Optional[Literal["V", "S", "A"]] = Field(
+        None,
+        description="Design method: None (no design), 'V' (verify), 'S' (search), 'A' (area search)",
+    )
 
     @property
     def identifier(self) -> str:
-        return self._build_identifier(field_order=['dm'], add_hash=True)
-    
+        return self._build_identifier(field_order=["dm"], add_hash=True)
+
     def _build_input_string(self) -> None:
         """Build input string and run instance-level validation."""
         if self.dm:

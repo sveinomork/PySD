@@ -1,9 +1,10 @@
 from __future__ import annotations
 from typing import Optional, List, Literal
-from pydantic import  Field 
+from pydantic import Field
 
 
 from .statement_base import StatementBase
+
 
 class LORES(StatementBase):
     """
@@ -37,7 +38,7 @@ class LORES(StatementBase):
        LORES(pri_alc=True) -> "LORES PRI=ALC"
 
     ### Parameters:
-  
+
     lc : Optional[int]
         OLC-number for manual definition.
 
@@ -56,31 +57,35 @@ class LORES(StatementBase):
     pri_alc : bool
         If True, list ALL reaction forces on SIN file.
     """
+
     # Mode 1: Manual definition
     lc: Optional[int] = Field(None, description="OLC-number for manual definition")
-    part: Optional[Literal['REAL', 'IMAG']] = Field(None, description="The part of the load resultant (real or imaginary)")
-    resultants: List[float] = Field(default_factory=list, description="A list of 1 to 6 load resultant values")
+    part: Optional[Literal["REAL", "IMAG"]] = Field(
+        None, description="The part of the load resultant (real or imaginary)"
+    )
+    resultants: List[float] = Field(
+        default_factory=list, description="A list of 1 to 6 load resultant values"
+    )
 
     # Mode 2: Automatic generation from SIN file
-    sin: bool = Field(False, description="If True, generate LORES data automatically from a SIN file")
+    sin: bool = Field(
+        False, description="If True, generate LORES data automatically from a SIN file"
+    )
 
     # Mode 3: Print options
     pri_olc: bool = Field(False, description="If True, list OLC reaction forces")
-    pri_alc: bool = Field(False, description="If True, list ALL reaction forces on SIN file")
+    pri_alc: bool = Field(
+        False, description="If True, list ALL reaction forces on SIN file"
+    )
 
-   
-  
-
-   
     @property
     def identifier(self) -> str:
-       return self._build_identifier( add_hash=True)
-   
-    
+        return self._build_identifier(add_hash=True)
+
     def _build_input_string(self) -> str:
         """Build the LORES input string."""
         manual_mode = self.lc is not None and self.part is not None
-        
+
         parts: List[str] = ["LORES"]
         if manual_mode:
             parts.append(str(self.lc))
@@ -96,4 +101,3 @@ class LORES(StatementBase):
 
         self.input = " ".join(parts)
         return self.input
-    

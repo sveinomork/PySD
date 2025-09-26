@@ -2,6 +2,7 @@ from typing import Optional, List, Literal
 from pydantic import BaseModel, Field
 from .statement_base import StatementBase
 
+
 class LoadCase(BaseModel):
     """
     Represents a load case in BASCO statement load type, load number and load factor
@@ -22,11 +23,12 @@ class LoadCase(BaseModel):
             - PLC: Prestressing Tendon Load Case
     - **lc_numb**: int
         - Load case number (1-99999999).
-    - **lc_fact**: float 
+    - **lc_fact**: float
         - Load factor (default is 1.0).
 
     """
-    lc_type: Literal['ILC', 'OLC', 'ELC', 'BAS', 'PLC', 'BLC']
+
+    lc_type: Literal["ILC", "OLC", "ELC", "BAS", "PLC", "BLC"]
     lc_numb: int
     lc_fact: float = 1.0
 
@@ -34,23 +36,19 @@ class LoadCase(BaseModel):
         if not isinstance(other, LoadCase):
             return NotImplemented
         return (self.lc_type, self.lc_numb) == (other.lc_type, other.lc_numb)
-    
+
     def __str__(self) -> str:
         return f"LF={self.lc_fact} {self.lc_type}={self.lc_numb}"
 
-    def is_in_loadcase(self, id: int,type:str) -> bool:
+    def is_in_loadcase(self, id: int, type: str) -> bool:
         return self.lc_type == type and self.lc_numb == id
-    
 
 
-    
-
-
-class BASCO( StatementBase):
+class BASCO(StatementBase):
     """
-    
+
     Defines load combinations from existing load cases (ILC, OLC, ELC, BAS, PLC, BLC) with specified factors for the ShellDesign system.
-    
+
     ### Examples
     ```python
     # Basic combination of two load cases
@@ -104,24 +102,32 @@ class BASCO( StatementBase):
     - The `txt` field is appended to the last line if it fits, otherwise placed on a new line.
     - The `typ` and `ldf` fields are optional modifiers.
     """
+
     id: int = Field(..., description="Identification number (1-99999999)")
-    load_cases: List[LoadCase] = Field(..., description="List of load cases with their source types and factors. Each load case can be ILC, OLC, ELC, BAS, PLC, or BLC with an optional factor")
-    typ: Optional[Literal['R', 'I', 'F']] = Field(None, description="Load type marker: None=Ordinary load, 'R'=Real part of complex wave, 'I'=Imaginary part of complex wave, 'F'=Use factors from FSFAC statement")
-    ldf: Optional[int] = Field(None, description="Reference to Location Dependent Factor defined with LDFAC statement")
+    load_cases: List[LoadCase] = Field(
+        ...,
+        description="List of load cases with their source types and factors. Each load case can be ILC, OLC, ELC, BAS, PLC, or BLC with an optional factor",
+    )
+    typ: Optional[Literal["R", "I", "F"]] = Field(
+        None,
+        description="Load type marker: None=Ordinary load, 'R'=Real part of complex wave, 'I'=Imaginary part of complex wave, 'F'=Use factors from FSFAC statement",
+    )
+    ldf: Optional[int] = Field(
+        None,
+        description="Reference to Location Dependent Factor defined with LDFAC statement",
+    )
     txt: Optional[str] = Field(None, description="Identification text (max 80 chars)")
-   
+
     @property
     def identifier(self) -> str:
         return str(self.id)
 
-
-    def _build_input_string(self) -> 'BASCO':
+    def _build_input_string(self) -> "BASCO":
         """Build BASCO input string and run instance-level validation."""
-        
-        
+
         # Build the BASCO input string
         final_lines: list[str] = []
-        
+
         # Base line with ID and optional parameters
         base_line: str = f"BASCO ID={self.id}"
         if self.ldf is not None:
@@ -146,8 +152,9 @@ class BASCO( StatementBase):
                 test_line += " " + " ".join(line_cases)
             test_line += " " + case_text
 
-            if (len(test_line) > 100 and line_cases) or \
-               (new_lf_count != line_case_count + 1 and new_lf_count != 0):
+            if (len(test_line) > 100 and line_cases) or (
+                new_lf_count != line_case_count + 1 and new_lf_count != 0
+            ):
                 # Start a new line
                 final_lines.append(current_line + " " + " ".join(line_cases))
                 current_line = base_line
@@ -173,11 +180,9 @@ class BASCO( StatementBase):
         self.input = "\n".join(final_lines)
         return self
 
-    def contains(self, bas_number: int,type:str) -> bool:
+    def contains(self, bas_number: int, type: str) -> bool:
         """Check if the load case is in the specified BAS number."""
-        return any(lc.is_in_loadcase(bas_number,type=type) for lc in self.load_cases)
+        return any(lc.is_in_loadcase(bas_number, type=type) for lc in self.load_cases)
 
     def __str__(self) -> str:
         return self.input
-    
-   

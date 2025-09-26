@@ -1,8 +1,10 @@
 import sys
-sys.path.append('C:\\Users\\som\\coding\\PySD\\src')
+
+sys.path.append("C:\\Users\\som\\coding\\PySD\\src")
 from pysd.statements import RFILE
 import os
 import tempfile
+
 
 def test_rfile_simple():
     """Test the RFILE statement from main.py"""
@@ -17,4 +19,4 @@ def test_rfile_simple():
             suf="SIN",
             typ="SHE",
         )
-        assert rfile.input == f'RFILE PRE={tmpdir} FNM=R1 SUF=SIN TYP=SHE'
+        assert rfile.input == f"RFILE PRE={tmpdir} FNM=R1 SUF=SIN TYP=SHE"

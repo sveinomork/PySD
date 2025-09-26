@@ -1,21 +1,58 @@
 from __future__ import annotations
 from typing import Optional, Tuple, Union, Literal
-from pydantic import  Field
+from pydantic import Field
 
 from .cases import Cases
 from .statement_base import StatementBase
 
 # Define Literals for the TAB and UR types to ensure valid options
 TabType = Literal[
-    'ES', 'NC', 'ND', 'EL', 'IN', 'EX', 'AX', 'GE', 'OL', 'FM', 'ST',
-    'OC', 'EC', 'BC', 'LR', 'CMP', 'DF', 'WF', 'PF', 'DP', 'PP', 'DR',
-    'DRV', 'SR', 'RS', 'RQ'
+    "ES",
+    "NC",
+    "ND",
+    "EL",
+    "IN",
+    "EX",
+    "AX",
+    "GE",
+    "OL",
+    "FM",
+    "ST",
+    "OC",
+    "EC",
+    "BC",
+    "LR",
+    "CMP",
+    "DF",
+    "WF",
+    "PF",
+    "DP",
+    "PP",
+    "DR",
+    "DRV",
+    "SR",
+    "RS",
+    "RQ",
 ]
 
 UrType = Literal[
-    'MAX', 'CS', 'RS', 'RC', 'RR', 'TS', 'VC', 'CC', 'ST', 'CW', 'TW',
-    'CZ', 'CT', 'MS', 'NS'
+    "MAX",
+    "CS",
+    "RS",
+    "RC",
+    "RR",
+    "TS",
+    "VC",
+    "CC",
+    "ST",
+    "CW",
+    "TW",
+    "CZ",
+    "CT",
+    "MS",
+    "NS",
 ]
+
 
 class TABLE(StatementBase):
     """
@@ -73,52 +110,84 @@ class TABLE(StatementBase):
         Filter by rebar or tendon location ID.
     ... and other specific parameters.
     """
+
     # Main mode: TAB or UR
     tab: Optional[TabType] = Field(None, description="The type of data table to print")
-    ur: Optional[UrType] = Field(None, description="The type of utilization ratio table to print")
+    ur: Optional[UrType] = Field(
+        None, description="The type of utilization ratio table to print"
+    )
 
     # General filters
     pa: Optional[str] = Field(None, description="Filter by structural part name")
-    fs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="Filter by F-section range")
-    hs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="Filter by H-section range")
-    ls: Optional[Literal['ULS', 'ALS', 'SLS', 'CRW', 'FLS']] = Field(None, description="Filter by limit state")
+    fs: Optional[Union[int, Tuple[int, int]]] = Field(
+        None, description="Filter by F-section range"
+    )
+    hs: Optional[Union[int, Tuple[int, int]]] = Field(
+        None, description="Filter by H-section range"
+    )
+    ls: Optional[Literal["ULS", "ALS", "SLS", "CRW", "FLS"]] = Field(
+        None, description="Filter by limit state"
+    )
     nd: Optional[int] = Field(None, description="Number of digits after decimal point")
     of: Optional[str] = Field(None, description="Redirect output to old file (append)")
-    nf: Optional[str] = Field(None, description="Redirect output to new file (overwrite)")
+    nf: Optional[str] = Field(
+        None, description="Redirect output to new file (overwrite)"
+    )
 
     # Load case filters
-    ilc: Optional[Union[Cases, str]] = Field(None, description="Filter by ILC load cases")
-    olc: Optional[Union[Cases, str]] = Field(None, description="Filter by OLC load cases")
-    elc: Optional[Union[Cases, str]] = Field(None, description="Filter by ELC load cases")
-    bas: Optional[Union[Cases, str]] = Field(None, description="Filter by BAS load cases")
-    pha: Optional[Union[Cases, str]] = Field(None, description="Filter by PHA load cases")
+    ilc: Optional[Union[Cases, str]] = Field(
+        None, description="Filter by ILC load cases"
+    )
+    olc: Optional[Union[Cases, str]] = Field(
+        None, description="Filter by OLC load cases"
+    )
+    elc: Optional[Union[Cases, str]] = Field(
+        None, description="Filter by ELC load cases"
+    )
+    bas: Optional[Union[Cases, str]] = Field(
+        None, description="Filter by BAS load cases"
+    )
+    pha: Optional[Union[Cases, str]] = Field(
+        None, description="Filter by PHA load cases"
+    )
 
     # TAB specific parameters
     el: Optional[int] = Field(None, description="Element number filter")
     se: Optional[int] = Field(None, description="Section number filter")
     rn: Optional[int] = Field(None, description="Result number filter")
-    x1: Optional[Tuple[float, float, float]] = Field(None, description="X1 coordinate filter")
-    x2: Optional[Tuple[float, float, float]] = Field(None, description="X2 coordinate filter")
-    x3: Optional[Tuple[float, float, float]] = Field(None, description="X3 coordinate filter")
+    x1: Optional[Tuple[float, float, float]] = Field(
+        None, description="X1 coordinate filter"
+    )
+    x2: Optional[Tuple[float, float, float]] = Field(
+        None, description="X2 coordinate filter"
+    )
+    x3: Optional[Tuple[float, float, float]] = Field(
+        None, description="X3 coordinate filter"
+    )
     enr: Optional[Tuple[int, int]] = Field(None, description="Element number range")
     cc: Optional[Tuple[float, float]] = Field(None, description="Coordinate center")
 
     # UR specific parameters
     tv: Optional[float] = Field(None, description="Threshold value for UR tables")
     fm: bool = Field(False, description="For UR=MAX")
-    sk: Optional[Literal['E', 'F', 'H', 'A']] = Field(None, description="Peak value summary mode")
-    rl: Optional[Union[str, Literal['ALL']]] = Field(None, description="Filter by rebar location ID")
+    sk: Optional[Literal["E", "F", "H", "A"]] = Field(
+        None, description="Peak value summary mode"
+    )
+    rl: Optional[Union[str, Literal["ALL"]]] = Field(
+        None, description="Filter by rebar location ID"
+    )
     al: Optional[float] = Field(None, description="Angle limit")
-    fa: Optional[Union[int, Literal['ALL']]] = Field(None, description="Face filter")
-    tl: Optional[Union[str, Literal['ALL']]] = Field(None, description="Filter by tendon location ID")
+    fa: Optional[Union[int, Literal["ALL"]]] = Field(None, description="Face filter")
+    tl: Optional[Union[str, Literal["ALL"]]] = Field(
+        None, description="Filter by tendon location ID"
+    )
 
     # Auto-generated fields
     id: str = Field(default="", init=False, description="Unique identifier")
- 
+
     @property
     def identifier(self) -> str:
-       return self._build_identifier( add_hash=True)
-
+        return self._build_identifier(add_hash=True)
 
     def _build_input_string(self) -> str:
         """Build the TABLE input string."""
@@ -203,4 +272,3 @@ class TABLE(StatementBase):
 
         self.input = " ".join(parts)
         return self.input
-

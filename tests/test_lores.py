@@ -1,6 +1,8 @@
 import sys
-sys.path.append('C:\\Users\\som\\coding\\PySD\\src')
+
+sys.path.append("C:\\Users\\som\\coding\\PySD\\src")
 from pysd.statements import LORES
+
 
 def test_lores_simple():
     """Test the LORES statements from main.py"""

@@ -3,10 +3,11 @@ from typing import Optional, Tuple, Union
 from pydantic import Field
 from .statement_base import StatementBase
 
+
 class DESEC(StatementBase):
     """
     Define design sections and their geometry for structural analysis workflows.
-    
+
     Supports multiple analysis cases: section geometry definition without OLC/FE files,
     section storage on DEC-file with OLC/FE results, and geometry redefinition for CSM analysis.
 
@@ -69,11 +70,18 @@ class DESEC(StatementBase):
     - All coordinate and thickness values use 6 decimal places for precision
     - Section ranges can be single values or tuples for range specification
     """
+
     pa: str = Field(..., description="Structural part identity (max 8 characters)")
-    
-    fs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="F-section range or single section")
-    hs: Optional[Union[int, Tuple[int, int]]] = Field(None, description="H-section range or single section")
-    th: Optional[float] = Field(None, description="Shell thickness in meters, default=0")
+
+    fs: Optional[Union[int, Tuple[int, int]]] = Field(
+        None, description="F-section range or single section"
+    )
+    hs: Optional[Union[int, Tuple[int, int]]] = Field(
+        None, description="H-section range or single section"
+    )
+    th: Optional[float] = Field(
+        None, description="Shell thickness in meters, default=0"
+    )
     t11: Optional[float] = Field(None, description="Shell thickness gradient ∂t1/∂x1")
     t12: Optional[float] = Field(None, description="Shell thickness gradient ∂t1/∂x2")
     t21: Optional[float] = Field(None, description="Shell thickness gradient ∂t2/∂x1")
@@ -82,20 +90,28 @@ class DESEC(StatementBase):
     y: Optional[float] = Field(None, description="Y-coordinate")
     z: Optional[float] = Field(None, description="Z-coordinate")
 
-
-
     @property
     def identifier(self) -> str:
         """Generate unique ID and input string for this DESEC statement."""
 
-        return self._build_identifier(field_order=['pa', 'hs', 'fs'], add_hash=True)
-    
+        return self._build_identifier(field_order=["pa", "hs", "fs"], add_hash=True)
 
     def _build_input_string(self) -> None:
         """Build the input string using enhanced generic builder."""
         self.input = self._build_string_generic(
-            field_order=['pa', 'hs', 'fs', 'th', 't11', 't12', 't21', 't22', 'x', 'y', 'z'],
-            exclude={'comment'},  # Exclude comment from regular field processing
+            field_order=[
+                "pa",
+                "hs",
+                "fs",
+                "th",
+                "t11",
+                "t12",
+                "t21",
+                "t22",
+                "x",
+                "y",
+                "z",
+            ],
+            exclude={"comment"},  # Exclude comment from regular field processing
             float_precision=6,
         )
-     
