@@ -6,8 +6,10 @@ No new features - just the original functionality extracted.
 """
 
 from __future__ import annotations
+import os
+from pathlib import Path
 from contextlib import contextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from ..sdmodel import SD_BASE
@@ -19,30 +21,107 @@ class ModelWriter:
     def __init__(self, model: "SD_BASE"):
         self.model = model
 
-    def write_to_file(self, output_file: str) -> None:
-        """Write model to file - exact same logic as before."""
-        with open(output_file, "w", encoding="utf-8") as f:
+    @staticmethod
+    def validate_output_path(output_file: Union[str, Path]) -> Path:
+        """Validate and resolve output file path.
+
+        Args:
+            output_file: Path to validate (str or Path)
+
+        Returns:
+            Path: Resolved absolute path
+
+        Raises:
+            ValueError: If parent directory doesn't exist or path is invalid
+            PermissionError: If path is not writable
+            TypeError: If output_file is not a string or Path
+        """
+        # Type validation
+        if not isinstance(output_file, (str, Path)):
+            raise TypeError(
+                f"output_file must be str or Path, got {type(output_file).__name__}"
+            )
+
+        # Convert to Path and resolve to absolute path
+        try:
+            path = Path(output_file).resolve()
+        except (ValueError, OSError) as e:
+            raise ValueError(f"Invalid path '{output_file}': {e}") from e
+
+        # Validate parent directory exists
+        parent = path.parent
+        if not parent.exists():
+            raise ValueError(
+                f"Parent directory does not exist: {parent}\n"
+                f"Create it first or provide a valid path."
+            )
+
+        # Check write permissions
+        if path.exists():
+            # File exists - check if we can write to it
+            if not os.access(path, os.W_OK):
+                raise PermissionError(f"No write permission for existing file: {path}")
+        else:
+            # File doesn't exist - check if we can write to parent directory
+            if not os.access(parent, os.W_OK):
+                raise PermissionError(
+                    f"No write permission for directory: {parent}"
+                )
+
+        return path
+
+    def write_to_file(self, output_file: Union[str, Path]) -> Path:
+        """Write model to file with path validation.
+
+        Args:
+            output_file: Path to the output file
+
+        Returns:
+            Path: Resolved absolute path where file was written
+
+        Raises:
+            ValueError: If parent directory doesn't exist
+            PermissionError: If path is not writable
+        """
+        # Validate path first
+        validated_path = self.validate_output_path(output_file)
+
+        # Write to file
+        with open(validated_path, "w", encoding="utf-8") as f:
             for item in self.model.all_items:
                 f.write(str(item) + "\n")
 
-    def write(self, output_file: str) -> None:
-        """Simple write method for new API - delegates to write_to_file."""
-        self.write_to_file(output_file)
+        return validated_path
+
+    def write(self, output_file: Union[str, Path]) -> Path:
+        """Simple write method for new API - delegates to write_to_file.
+
+        Returns:
+            Path: Resolved absolute path where file was written
+        """
+        return self.write_to_file(output_file)
 
     @classmethod
-    def write_model(cls, model: "SD_BASE", output_file: str) -> None:
-        """Write a model to file with finalization - convenience method.
+    def write_model(cls, model: "SD_BASE", output_file: Union[str, Path]) -> Path:
+        """Write a model to file with finalization and path validation.
 
         Args:
             model: SD_BASE model to write
             output_file: Path to output file
+
+        Returns:
+            Path: Resolved absolute path where file was written
+
+        Raises:
+            ValueError: If parent directory doesn't exist
+            PermissionError: If path is not writable
         """
         # Finalize the model first
         model._finalize_model()
 
         # Write using ModelWriter
         writer = cls(model)
-        writer.write_to_file(output_file)
+        return writer.write_to_file(output_file)
 
     @classmethod
     @contextmanager

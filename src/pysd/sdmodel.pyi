@@ -19,6 +19,7 @@ from .statements import (
     GRECO,
     BASCO,
     LOADC,
+    INPLC,
     SHSEC,
     SHEXT,
     LAREA,
@@ -63,6 +64,7 @@ StatementType: TypeAlias = Union[
     GRECO,
     BASCO,
     LOADC,
+    INPLC,
     SHSEC,
     SHEXT,
     LAREA,
@@ -140,6 +142,9 @@ class SD_BASE(BaseModel):
 
     loadc: BaseContainer[LOADC]
     """Container for LOADC statements — Load Case Control statements."""
+
+    inplc: BaseContainer[IMPLC]
+    """Container for IMPLC statements — Input Load Case definitions."""
 
     shsec: BaseContainer[SHSEC]
     """Container for SHSEC statements — Shell Section definitions."""

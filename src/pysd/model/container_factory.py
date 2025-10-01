@@ -1,5 +1,4 @@
-"""
-Container Factory - Dynamic container creation and management.
+"""Container Factory - Dynamic container creation and management.
 
 This module eliminates the 20+ repetitive container field definitions
 from SD_BASE and makes adding new statement types trivial.
@@ -8,8 +7,11 @@ Focus: Replace boilerplate with clean, dynamic container creation.
 """
 
 from __future__ import annotations
+import logging
 from typing import Dict, Any, Type, TYPE_CHECKING
 from pydantic import Field
+
+logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
@@ -216,28 +218,24 @@ class ContainerFactory:
         Args:
             model: The SD_BASE model instance
         """
-        print(
-            "DEBUG: ContainerFactory.setup_container_parent_references called"
-        )  # DEBUG
+        logger.debug("ContainerFactory.setup_container_parent_references called")
 
         # Get ALL container names (no more filtering needed)
         container_names = cls.get_container_names()
 
-        print(
-            f"DEBUG: Registry has {len(container_names)} containers: {container_names}"
-        )  # DEBUG
+        logger.debug(f"Registry has {len(container_names)} containers: {container_names}")
 
         for container_name in container_names:
             container = getattr(model, container_name, None)
             if container:
-                print(
-                    f"DEBUG: Found container {container_name}, has set_parent_model: {hasattr(container, 'set_parent_model')}"
-                )  # DEBUG
+                logger.debug(
+                    f"Found container {container_name}, has set_parent_model: {hasattr(container, 'set_parent_model')}"
+                )
                 if hasattr(container, "set_parent_model"):
                     container.set_parent_model(model)
-                    print(f"DEBUG: Set parent for {container_name}")  # DEBUG
+                    logger.debug(f"Set parent for container: {container_name}")
             else:
-                print(f"DEBUG: Container {container_name} not found on model")  # DEBUG
+                logger.debug(f"Container {container_name} not found on model")
 
     @classmethod
     def debug_compare_manual_vs_auto(cls) -> dict:

@@ -13,6 +13,7 @@ from .shaxe import SHAXE
 from .execd import EXECD
 from .filst import FILST
 from .loadc import LOADC
+from .inplc import INPLC
 from .shsec import SHSEC
 from .shext import SHEXT
 from .larea import LAREA    
@@ -54,6 +55,7 @@ __all__ = [
     # Individual statements
     "LOADC",
     "GRECO",
+    "INPLC",
     "HEADL",
     "DESEC",
     "SHAXE",

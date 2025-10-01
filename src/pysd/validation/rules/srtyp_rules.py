@@ -9,9 +9,15 @@ Implements three levels of validation:
 
 from typing import List, TYPE_CHECKING, cast
 
-
 from ..core import ValidationIssue
 from ..rule_system import instance_rule, container_rule, model_rule
+from ..validation_utils import (
+    check_duplicate_ids,
+    check_positive_values,
+    check_label_length,
+    check_material_reference,
+    check_unused_definition,
+)
 
 if TYPE_CHECKING:
     from ...sdmodel import SD_BASE
@@ -27,7 +33,7 @@ def validate_srtyp_instance(
     """Validate individual SRTYP statement."""
     issues = []
 
-    # ID range validation (moved from Pydantic validator)
+    # ID range validation - kept inline as it's simple
     if not (1 <= statement.id <= 99999999):
         issues.append(
             ValidationIssue(
@@ -39,19 +45,10 @@ def validate_srtyp_instance(
             )
         )
 
-    # Label length validation (moved from Pydantic validator)
-    if statement.lb is not None and len(statement.lb) > 16:
-        issues.append(
-            ValidationIssue(
-                severity="error",
-                code="SRTYP_LABEL_LENGTH",
-                message=f"SRTYP {statement.id} label '{statement.lb}' exceeds 16 characters",
-                location=f"SRTYP.{statement.id}",
-                suggestion="Use a label with 16 characters or less",
-            )
-        )
+    # Label length validation using utility function
+    issues.extend(check_label_length(statement, "SRTYP", max_length=16))
 
-    # Positive values validation (moved from Pydantic validator)
+    # Positive values validation using utility function
     positive_fields = {
         "ar": "cross-sectional area",
         "nr": "number of rebars",
@@ -59,19 +56,7 @@ def validate_srtyp_instance(
         "c1": "center distance",
         "c2": "nominal cover",
     }
-
-    for field_name, field_desc in positive_fields.items():
-        field_value = getattr(statement, field_name, None)
-        if field_value is not None and field_value <= 0:
-            issues.append(
-                ValidationIssue(
-                    severity="error",
-                    code="SRTYP_NEGATIVE_VALUE",
-                    message=f"SRTYP {statement.id} {field_desc} ({field_name.upper()}={field_value}) must be positive",
-                    location=f"SRTYP.{statement.id}",
-                    suggestion=f"Use a positive value for {field_desc}",
-                )
-            )
+    issues.extend(check_positive_values(statement, "SRTYP", positive_fields))
 
     # Method consistency validation
     has_area_method = statement.ar is not None
@@ -125,21 +110,8 @@ def validate_retyp_container(
     """Validate SRTYP container for consistency and uniqueness."""
     issues = []
 
-    # Check for duplicate IDs
-    ids = [stmt.id for stmt in container.items]
-    seen_ids = set()
-    for stmt_id in ids:
-        if stmt_id in seen_ids:
-            issues.append(
-                ValidationIssue(
-                    severity="error",
-                    code="SRTYP_DUPLICATE_ID",
-                    message=f"Duplicate SRTYP ID {stmt_id} found in container",
-                    location=f"SRTYP.{stmt_id}",
-                    suggestion="Use unique IDs for each SRTYP statement",
-                )
-            )
-        seen_ids.add(stmt_id)
+    # Check for duplicate IDs using utility function
+    issues.extend(check_duplicate_ids(container, "SRTYP"))
 
     # Check for consistent material references using generic container methods
     materials = set()
@@ -190,47 +162,11 @@ def validate_srtyp_model(
 
     model = cast("SD_BASE", context.full_model)
 
-    # Check material property references
-    if statement.mp is not None:
-        # Check if material exists in RMPEC container
-        # Convert float MP to int for comparison with RMPEC integer IDs
-        mp_id = (
-            int(statement.mp)
-            if isinstance(statement.mp, float) and statement.mp.is_integer()
-            else statement.mp
-        )
-        if hasattr(model, "rmpec") and not model.rmpec.has_id(mp_id):
-            issues.append(
-                ValidationIssue(
-                    severity="error",
-                    code="SRTYP_MATERIAL_NOT_FOUND",
-                    message=f"SRTYP {statement.id} references material {statement.mp} not found in RMPEC",
-                    location=f"SRTYP.{statement.id}",
-                    suggestion="Define the referenced material in RMPEC or update the MP reference",
-                )
-            )
+    # Check material property references using utility function
+    issues.extend(check_material_reference(statement, "SRTYP", model, "rmpec"))
 
-    # Check if this SRTYP is referenced by any SRTLOC statements
-    if hasattr(model, "srloc"):
-        # Use generic filtering to find SRTLOC statements that reference this SRTYP
-        referencing_srlocs = []
-        if hasattr(model.srloc, "items"):
-            referencing_srlocs = [
-                srloc
-                for srloc in model.srloc.items
-                if hasattr(srloc, "rt") and srloc.rt == statement.id
-            ]
-
-        if not referencing_srlocs:
-            issues.append(
-                ValidationIssue(
-                    severity="warning",
-                    code="SRTYP_UNUSED",
-                    message=f"SRTYP {statement.id} is not referenced by any SRTLOC statements",
-                    location=f"SRTYP.{statement.id}",
-                    suggestion="Remove unused SRTYP or add corresponding SRTLOC statements",
-                )
-            )
+    # Check if this SRTYP is referenced by any SRLOC statements using utility function
+    issues.extend(check_unused_definition(statement, "SRTYP", model, "srloc", "rt"))
 
     # Cross-validate with other SRTYP statements for consistency
     if hasattr(model, "srtyp"):

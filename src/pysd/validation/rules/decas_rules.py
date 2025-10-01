@@ -227,7 +227,11 @@ def validate_decas_model(
     # Collect GRECO references from this DECAS statement
     try:
         greco_refs = collect_greco_references_from_decas(statement)
-    except Exception as e:
+    except (ValueError, TypeError, AttributeError, KeyError) as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to extract GRECO references from DECAS: {e}", exc_info=True)
+        
         issues.append(
             ValidationIssue(
                 severity="error",
@@ -262,7 +266,11 @@ def validate_decas_model(
     # Collect load case references from this DECAS statement
     try:
         referenced_load_cases = collect_load_case_references_from_decas(statement)
-    except Exception as e:
+    except (ValueError, TypeError, AttributeError, KeyError) as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to extract load case references from DECAS: {e}", exc_info=True)
+        
         issues.append(
             ValidationIssue(
                 severity="error",

@@ -10,6 +10,11 @@ Implements three levels of validation:
 from typing import List, TYPE_CHECKING, cast
 from ..core import ValidationIssue
 from ..rule_system import instance_rule, container_rule, model_rule
+from ..validation_utils import (
+    check_duplicate_ids,
+    check_positive_values,
+    check_unused_definition,
+)
 
 if TYPE_CHECKING:
     from ...sdmodel import SD_BASE
@@ -25,7 +30,7 @@ def validate_TETYP_instance(
     """Validate individual TETYP statement."""
     issues = []
 
-    # ID range validation (moved from Pydantic validator)
+    # ID range validation - kept inline as it's simple
     if not (1 <= statement.id <= 99999999):
         issues.append(
             ValidationIssue(
@@ -37,26 +42,14 @@ def validate_TETYP_instance(
             )
         )
 
-    # Positive values validation (moved from Pydantic validator)
+    # Positive values validation using utility function
     positive_fields = {
         "ar": "cross-sectional area",
         "nr": "number of rebars",
         "eo": "initial strain",
         "os": "offset",
     }
-
-    for field_name, field_desc in positive_fields.items():
-        field_value = getattr(statement, field_name, None)
-        if field_value is not None and field_value <= 0:
-            issues.append(
-                ValidationIssue(
-                    severity="error",
-                    code="TETYP_NEGATIVE_VALUE",
-                    message=f"TETYP {statement.id} {field_desc} ({field_name.upper()}={field_value}) must be positive",
-                    location=f"TETYP.{statement.id}",
-                    suggestion=f"Use a positive value for {field_desc}",
-                )
-            )
+    issues.extend(check_positive_values(statement, "TETYP", positive_fields))
 
     # Method consistency validation
     has_area_method = statement.ar is not None
@@ -82,21 +75,8 @@ def validate_TETYP_container(
     """Validate TETYP container for consistency and uniqueness."""
     issues = []
 
-    # Check for duplicate IDs
-    ids = [stmt.id for stmt in container.items]
-    seen_ids = set()
-    for stmt_id in ids:
-        if stmt_id in seen_ids:
-            issues.append(
-                ValidationIssue(
-                    severity="error",
-                    code="TETYP_DUPLICATE_ID",
-                    message=f"Duplicate TETYP ID {stmt_id} found in container",
-                    location=f"TETYP.{stmt_id}",
-                    suggestion="Use unique IDs for each TETYP statement",
-                )
-            )
-        seen_ids.add(stmt_id)
+    # Check for duplicate IDs using utility function
+    issues.extend(check_duplicate_ids(container, "TETYP"))
 
     # Check for consistent material references using generic container methods
     materials = set()
@@ -144,26 +124,7 @@ def validate_TETYP_model(
                 )
             )
 
-    # Check if this TETYP is referenced by any TELOC statements
-    if hasattr(model, "teloc"):
-        # Use generic filtering to find TELOC statements that reference this TETYP
-        referencing_telocs = []
-        if hasattr(model.teloc, "items"):
-            referencing_telocs = [
-                teloc
-                for teloc in model.teloc.items
-                if hasattr(teloc, "rt") and teloc.rt == statement.id
-            ]
-
-        if not referencing_telocs:
-            issues.append(
-                ValidationIssue(
-                    severity="warning",
-                    code="TETYP_UNUSED",
-                    message=f"TETYP {statement.id} is not referenced by any TELOC statements",
-                    location=f"TETYP.{statement.id}",
-                    suggestion="Remove unused TETYP or add corresponding TELOC statements",
-                )
-            )
+    # Check if this TETYP is referenced by any TELOC statements using utility function
+    issues.extend(check_unused_definition(statement, "TETYP", model, "teloc", "rt"))
 
     return issues

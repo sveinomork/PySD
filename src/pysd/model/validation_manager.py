@@ -118,8 +118,12 @@ class ValidationManager:
                     statement, context, level="model"
                 )
                 issues.extend(validation_issues)
-            except Exception as e:
-                # Convert any validation errors to issues
+            except (ValueError, TypeError, AttributeError, KeyError) as e:
+                # Convert expected validation errors to issues
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Model validation failed for {type(statement).__name__}: {e}", exc_info=True)
+                
                 statement_type = type(statement).__name__
                 statement_id = getattr(
                     statement, "id", getattr(statement, "key", "unknown")
@@ -193,7 +197,10 @@ class ValidationManager:
                         issue_msg += f" Suggestion: {issue.suggestion}"
                     issues_by_severity[severity_key].append(issue_msg)
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, KeyError) as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Validation collection failed: {e}", exc_info=True)
             issues_by_severity["errors"].append(f"Validation system error: {str(e)}")
 
         return issues_by_severity

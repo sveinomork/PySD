@@ -1,7 +1,7 @@
 [project]
 name = "pysd"
 version = "0.1.0"
-description = "Python library for ShellDesign (SD) modeling and analysis"
+description = "Python library for generating Shell Design input"
 readme = "README.md"
 requires-python = ">=3.13"
 authors = [
@@ -33,8 +33,13 @@ Documentation = "https://github.com/sveinomork/pysd#readme"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# Package build configuration (Hatchling)
 [tool.hatch.build.targets.wheel]
 packages = ["src/pysd"]
+# Ensure all .pyi stubs are packaged in the wheel
+include = [
+    "src/pysd/**/*.pyi",
+]
 
 [tool.hatch.build.targets.sdist]
 include = [

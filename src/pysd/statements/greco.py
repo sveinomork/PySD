@@ -18,6 +18,7 @@ GrecoID = Literal[
     "G",
     "H",
     "I",
+    "I",
     "J",
     "K",
     "L",

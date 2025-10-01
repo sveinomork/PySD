@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import List, Union, Sequence, Any, Protocol, runtime_checkable
+from pathlib import Path
+from typing import List, Union, Sequence, Any, Protocol, runtime_checkable, TYPE_CHECKING
 from pydantic import BaseModel, Field, model_validator
 
 # Note: No per-statement runtime imports needed; auto-registry handles discovery
@@ -17,10 +18,14 @@ class StatementProtocol(Protocol):
     """Protocol that all statement classes must implement."""
 
     input: str
+    identifier: Union[int, str, float]
 
 
-# Keep runtime light to avoid Pydantic schema issues
-StatementType = Any
+# Use Any for runtime (Pydantic), Protocol for type checking
+if TYPE_CHECKING:
+    StatementType = StatementProtocol
+else:
+    StatementType = Any
 
 
 class SD_BASE(BaseModel):
@@ -216,7 +221,7 @@ class SD_BASE(BaseModel):
             self.validator.disable_deferred_validation()
             try:
                 self.validator.validate_cross_references()
-            except Exception as e:
+            except (ValueError, TypeError, AttributeError, KeyError) as e:
                 # If validation fails, remove the items that were just added
                 if isinstance(item, list):
                     for _ in item:
@@ -234,15 +239,23 @@ class SD_BASE(BaseModel):
                 if original_deferred:
                     self.validator.enable_deferred_validation()
 
-    def write(self, output_file: str) -> None:
-        """Simple write method - delegates to ModelWriter for I/O.
+    def write(self, output_file: Union[str, Path]) -> Path:
+        """Write model to file with path validation.
 
         Args:
-            output_file: Path to the output file
+            output_file: Path to the output file (str or Path)
+
+        Returns:
+            Path: Resolved absolute path where file was written
+
+        Raises:
+            ValueError: If parent directory doesn't exist
+            PermissionError: If path is not writable
+            TypeError: If output_file is not a string or Path
         """
         from .model.model_writer import ModelWriter
 
-        ModelWriter.write_model(self, output_file)
+        return ModelWriter.write_model(self, output_file)
 
     # === 4. VALIDATION ===
 
@@ -265,3 +278,16 @@ class SD_BASE(BaseModel):
     def _finalize_model(self) -> None:
         """Mark model as complete and trigger final validation."""
         self.validator.finalize_model_and_validation()
+
+    def finalize(self) -> None:
+        """Finalize model and run deferred validation.
+
+        Useful for testing or when you want to validate without writing to file.
+        In normal usage, write() automatically handles finalization.
+
+        Example:
+            >>> model = SD_BASE()
+            >>> model.add(LOADC(run_number=1, alc=1, olc=110))
+            >>> model.finalize()  # Manually trigger finalization
+        """
+        self._finalize_model()

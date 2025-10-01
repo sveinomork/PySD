@@ -149,7 +149,7 @@ def validate_olc_overlap(
             return issues  # Skip validation for unsupported types
 
         obj_olc_set = set(obj_olc_list)
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
         return issues  # Skip validation if conversion fails
 
     for existing_loadc in context.parent_container:
@@ -171,7 +171,7 @@ def validate_olc_overlap(
                     continue  # Skip comparison for unsupported types
 
                 existing_olc_set = set(existing_olc_list)
-            except Exception:
+            except (ValueError, TypeError, AttributeError):
                 continue  # Skip comparison if conversion fails
 
             overlap = obj_olc_set.intersection(existing_olc_set)
@@ -225,7 +225,7 @@ def validate_loadc_usage_in_statements(
             olc_numbers = {obj.olc}
         else:
             return issues  # Skip validation for unsupported types
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
         return issues  # Skip validation if conversion fails
 
     # Check if any BASCO uses this LOADC's OLCs as ELC

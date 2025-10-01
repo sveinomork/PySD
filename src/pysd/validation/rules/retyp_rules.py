@@ -10,6 +10,14 @@ Implements three levels of validation:
 from typing import List, TYPE_CHECKING
 from ..core import ValidationIssue
 from ..rule_system import instance_rule, container_rule, model_rule
+from ..validation_utils import (
+    check_duplicate_ids,
+    check_positive_values,
+    check_non_negative_values,
+    check_label_length,
+    check_material_reference,
+    check_unused_definition,
+)
 
 if TYPE_CHECKING:
     from ...statements.retyp import RETYP
@@ -24,7 +32,7 @@ def validate_retyp_instance(
     """Validate individual RETYP statement."""
     issues = []
 
-    # ID range validation (moved from Pydantic validator)
+    # ID range validation (instance-level)
     if not (1 <= statement.id <= 99999999):
         issues.append(
             ValidationIssue(
@@ -36,19 +44,10 @@ def validate_retyp_instance(
             )
         )
 
-    # Label length validation (moved from Pydantic validator)
-    if statement.lb is not None and len(statement.lb) > 16:
-        issues.append(
-            ValidationIssue(
-                severity="error",
-                code="RETYP_LABEL_LENGTH",
-                message=f"RETYP {statement.id} label '{statement.lb}' exceeds 16 characters",
-                location=f"RETYP.{statement.id}",
-                suggestion="Use a label with 16 characters or less",
-            )
-        )
+    # Label length validation using utility function
+    issues.extend(check_label_length(statement, "RETYP", max_length=16))
 
-    # Positive values validation (moved from Pydantic validator)
+    # Positive values validation using utility function
     positive_fields = {
         "ar": "cross-sectional area",
         "nr": "number of rebars",
@@ -58,31 +57,15 @@ def validate_retyp_instance(
         "th": "thickness",
         "bc": "bond coefficient",
     }
+    issues.extend(check_positive_values(statement, "RETYP", positive_fields))
 
-    for field_name, field_desc in positive_fields.items():
-        field_value = getattr(statement, field_name, None)
-        if field_value is not None and field_value <= 0:
-            issues.append(
-                ValidationIssue(
-                    severity="error",
-                    code="RETYP_NEGATIVE_VALUE",
-                    message=f"RETYP {statement.id} {field_desc} ({field_name.upper()}={field_value}) must be positive",
-                    location=f"RETYP.{statement.id}",
-                    suggestion=f"Use a positive value for {field_desc}",
-                )
-            )
-
-    # Offset validation (moved from Pydantic validator) - can be zero or positive
-    if statement.os is not None and statement.os < 0:
-        issues.append(
-            ValidationIssue(
-                severity="error",
-                code="RETYP_NEGATIVE_OFFSET",
-                message=f"RETYP {statement.id} offset (OS={statement.os}) cannot be negative",
-                location=f"RETYP.{statement.id}",
-                suggestion="Use zero or positive offset value",
-            )
+    # Offset validation using utility function - can be zero or positive
+    non_negative_fields = {"os": "offset"}
+    issues.extend(
+        check_non_negative_values(
+            statement, "RETYP", non_negative_fields, error_code_suffix="NEGATIVE_OFFSET"
         )
+    )
 
     # Method consistency validation
     has_area_method = statement.ar is not None
@@ -149,21 +132,8 @@ def validate_retyp_container(
     """Validate RETYP container for consistency and uniqueness."""
     issues = []
 
-    # Check for duplicate IDs
-    ids = [stmt.id for stmt in container.items]
-    seen_ids = set()
-    for stmt_id in ids:
-        if stmt_id in seen_ids:
-            issues.append(
-                ValidationIssue(
-                    severity="error",
-                    code="RETYP_DUPLICATE_ID",
-                    message=f"Duplicate RETYP ID {stmt_id} found in container",
-                    location=f"RETYP.{stmt_id}",
-                    suggestion="Use unique IDs for each RETYP statement",
-                )
-            )
-        seen_ids.add(stmt_id)
+    # Check for duplicate IDs using utility function
+    issues.extend(check_duplicate_ids(container, "RETYP"))
 
     # Check for consistent material references using generic container methods
     materials = set()
@@ -214,41 +184,11 @@ def validate_retyp_model(
 
     model = context.full_model
 
-    # Check material property references
-    if statement.mp is not None:
-        # Check if material exists in RMPEC container
-        if hasattr(model, "rmpec") and not model.rmpec.has_id(statement.mp):
-            issues.append(
-                ValidationIssue(
-                    severity="error",
-                    code="RETYP_MATERIAL_NOT_FOUND",
-                    message=f"RETYP {statement.id} references material {statement.mp} not found in RMPEC",
-                    location=f"RETYP.{statement.id}",
-                    suggestion="Define the referenced material in RMPEC or update the MP reference",
-                )
-            )
+    # Check material property references using utility function
+    issues.extend(check_material_reference(statement, "RETYP", model, "rmpec"))
 
-    # Check if this RETYP is referenced by any RELOC statements
-    if hasattr(model, "reloc"):
-        # Use generic filtering to find RELOC statements that reference this RETYP
-        referencing_relocs = []
-        if hasattr(model.reloc, "items"):
-            referencing_relocs = [
-                reloc
-                for reloc in model.reloc.items
-                if hasattr(reloc, "rt") and reloc.rt == statement.id
-            ]
-
-        if not referencing_relocs:
-            issues.append(
-                ValidationIssue(
-                    severity="warning",
-                    code="RETYP_UNUSED",
-                    message=f"RETYP {statement.id} is not referenced by any RELOC statements",
-                    location=f"RETYP.{statement.id}",
-                    suggestion="Remove unused RETYP or add corresponding RELOC statements",
-                )
-            )
+    # Check if this RETYP is referenced by any RELOC statements using utility function
+    issues.extend(check_unused_definition(statement, "RETYP", model, "reloc", "rt"))
 
     # Cross-validate with other RETYP statements for consistency
     if hasattr(model, "retyp"):

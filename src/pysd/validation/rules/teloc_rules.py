@@ -10,6 +10,7 @@ Implements three levels of validation:
 from typing import List, TYPE_CHECKING, cast
 from ..core import ValidationIssue
 from ..rule_system import instance_rule, container_rule, model_rule
+from ..validation_utils import check_duplicate_ids
 
 if TYPE_CHECKING:
     from ...sdmodel import SD_BASE
@@ -86,21 +87,8 @@ def validate_teloc_container(
     """Validate TELOC container for consistency and uniqueness."""
     issues = []
 
-    # Check for duplicate IDs
-    ids = [stmt.id for stmt in container.items]
-    seen_ids = set()
-    for stmt_id in ids:
-        if stmt_id in seen_ids:
-            issues.append(
-                ValidationIssue(
-                    severity="error",
-                    code="TELOC_DUPLICATE_ID",
-                    message=f"Duplicate TELOC ID '{stmt_id}' found in container",
-                    location=f"TELOC.{stmt_id}",
-                    suggestion="Use unique IDs for each TELOC statement",
-                )
-            )
-        seen_ids.add(stmt_id)
+    # Check for duplicate IDs using utility function
+    issues.extend(check_duplicate_ids(container, "TELOC"))
 
     # Check for consistent rebar type usage using generic filtering
     referenced_types = set()
