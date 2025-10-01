@@ -142,3 +142,7 @@ def test_decas_only_int_no_greco():
     """Test the DECAS statement list containing tuples"""
     decas = DECAS(ls="ULS", bas=101)
     assert decas.input == "DECAS LS=ULS BAS=101"
+
+def test_decas_ilc():
+    """Test DECAS with ILC parameter"""
+    pass  # TODO: Add test implementation

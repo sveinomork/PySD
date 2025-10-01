@@ -1,6 +1,7 @@
 import sys
 
 sys.path.append("C:\\Users\\som\\coding\\PySD\\src")
+from pysd.sdmodel import SD_BASE
 from pysd.statements import CMPEC
 
 
@@ -49,7 +50,17 @@ def test_cmpec_full():
     assert cmpec.input == expected_input
 
 
+def test_cempec_model():
+    """Test the CMPEC statement from CEMPEC model"""
+    model=SD_BASE()
+    cmpec = CMPEC(id=3, gr="B30", fck=30000.0, ecm=25000.0, la=5)
+    model.add(cmpec)
+    retrieved_cmpec = model.cmpec.get_by_id(3)
+    print(retrieved_cmpec.input)
+    assert retrieved_cmpec.input == "CMPEC ID=3 GR=B30 FCK=30000 ECM=25000 LA=5"
+
 if __name__ == "__main__":
     test_cmpec_basic()
     test_cmpec_full()
+    test_cempec_model()
     print("All tests passed.")

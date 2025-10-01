@@ -1,6 +1,4 @@
-import sys
 
-sys.path.append("C:\\Users\\som\\coding\\PySD\\src")
 from pysd.statements import GRECO, Cases
 
 
