@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Reinforced Slab Cross-Section (Band + Circles)</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 1.5rem; }
+    form { display: grid; grid-template-columns: repeat(6, minmax(160px, 1fr)); gap: .6rem .8rem; margin-bottom: 1rem; }
+    fieldset { grid-column: 1 / -1; border: 1px solid #ddd; padding: .8rem; }
+    legend { padding: 0 .4rem; font-weight: 600; }
+    label { display: flex; flex-direction: column; font-size: .9rem; gap: .25rem; }
+    input { padding: .4rem; }
+    .row { grid-column: 1 / -1; display: flex; gap: .6rem; align-items: center; }
+    button { padding: .5rem .9rem; }
+    #wrap { border: 1px solid #eee; padding: .5rem; display: inline-block; }
+    #legend { font-size: .9rem; margin-top: .5rem; color: #555; }
+    .hint { color: #666; font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <h1>Reinforced Slab Cross-Section</h1>
+  <p class="hint">
+    In-plane bars: full-width rectangles (band) with height = Ø.<br>
+    Out-of-plane bars: circles with given spacing.<br>
+    Vertical center distance between layers (each face) = Ø_in/2 + Ø_out/2.
+  </p>
+
+  <form id="cfg">
+    <fieldset>
+      <legend>Geometry</legend>
+      <label>Slab width (mm)
+        <input type="number" id="slabWidth" value="3000" min="200" step="10">
+      </label>
+      <label>Slab thickness (mm)
+        <input type="number" id="slabThk" value="250" min="80" step="5">
+      </label>
+      <label>Side cover (mm)
+        <input type="number" id="sideCover" value="30" min="0" step="5">
+      </label>
+      <label>Top cover (mm)
+        <input type="number" id="topCover" value="30" min="0" step="5">
+      </label>
+      <label>Bottom cover (mm)
+        <input type="number" id="botCover" value="30" min="0" step="5">
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Top face</legend>
+      <label>Top in-plane dia (mm)
+        <input type="number" id="topXDia" value="16" min="6" step="2">
+      </label>
+      <label>Top in-plane bundle (bars)
+        <input type="number" id="topXBund" value="1" min="1" step="1">
+      </label>
+      <label>Top out-of-plane dia (mm)
+        <input type="number" id="topYDia" value="12" min="6" step="2">
+      </label>
+      <label>Top out-of-plane spacing (mm)
+        <input type="number" id="topYSp" value="200" min="30" step="5">
+      </label>
+      <label>Top out-of-plane bundle (bars)
+        <input type="number" id="topYBund" value="1" min="1" step="1">
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Bottom face</legend>
+      <label>Bottom in-plane dia (mm)
+        <input type="number" id="botXDia" value="16" min="6" step="2">
+      </label>
+      <label>Bottom in-plane bundle (bars)
+        <input type="number" id="botXBund" value="1" min="1" step="1">
+      </label>
+      <label>Bottom out-of-plane dia (mm)
+        <input type="number" id="botYDia" value="12" min="6" step="2">
+      </label>
+      <label>Bottom out-of-plane spacing (mm)
+        <input type="number" id="botYSp" value="200" min="30" step="5">
+      </label>
+      <label>Bottom out-of-plane bundle (bars)
+        <input type="number" id="botYBund" value="1" min="1" step="1">
+      </label>
+    </fieldset>
+
+    <div class="row">
+      <button type="button" id="renderBtn">Update drawing</button>
+      <span class="hint">Labels: “Top X / Top Y / Bot X / Bot Y” show Ø, spacing (for Y), and bundle.</span>
+    </div>
+  </form>
+
+  <div id="wrap">
+    <svg id="view" width="900" height="480" viewBox="0 0 900 480"></svg>
+    <div id="legend">
+      Top: blue band (in-plane), light blue circles (out-of-plane).<br>
+      Bottom: red band (in-plane), orange circles (out-of-plane).
+    </div>
+  </div>
+
+  <script>
+    const svg = document.getElementById('view');
+
+    function readNumber(id) {
+      const v = parseFloat(document.getElementById(id).value);
+      return Number.isFinite(v) ? v : 0;
+    }
+
+    function mmToPxFactory(scale, originX, originY, slabThk) {
+      return {
+        x: (mm) => originX + mm * scale,
+        y: (mm) => originY + (slabThk - mm) * scale // flip y
+      };
+    }
+
+    function clearSVG(el) {
+      while (el.firstChild) el.removeChild(el.firstChild);
+    }
+
+    function drawRect(x, y, w, h, opts = {}) {
+      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      r.setAttribute('x', x); r.setAttribute('y', y);
+      r.setAttribute('width', w); r.setAttribute('height', h);
+      r.setAttribute('fill', opts.fill ?? '#f9f9fb');
+      r.setAttribute('stroke', opts.stroke ?? '#999');
+      r.setAttribute('stroke-width', opts.strokeWidth ?? 2);
+      svg.appendChild(r);
+    }
+
+    function drawRectCentered(cx, cy, w, h, opts = {}) {
+      drawRect(cx - w/2, cy - h/2, w, h, opts);
+    }
+
+    function drawCircle(cx, cy, r, opts = {}) {
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', cx); c.setAttribute('cy', cy);
+      c.setAttribute('r', r);
+      c.setAttribute('fill', opts.fill ?? '#4682b4');
+      c.setAttribute('stroke', opts.stroke ?? '#234');
+      c.setAttribute('stroke-width', opts.strokeWidth ?? 1.5);
+      svg.appendChild(c);
+    }
+
+    function drawLine(x1, y1, x2, y2, opts = {}) {
+      const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+      l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+      l.setAttribute('stroke', opts.stroke ?? '#444');
+      l.setAttribute('stroke-width', opts.strokeWidth ?? 1.5);
+      svg.appendChild(l);
+    }
+
+    function drawArrowDim(x1, y, x2, text, color = '#444') {
+      const head = 6;
+      drawLine(x1, y, x2, y, { stroke: color, strokeWidth: 1.4 });
+      drawLine(x1, y, x1 + head, y - head, { stroke: color, strokeWidth: 1.4 });
+      drawLine(x1, y, x1 + head, y + head, { stroke: color, strokeWidth: 1.4 });
+      drawLine(x2, y, x2 - head, y - head, { stroke: color, strokeWidth: 1.4 });
+      drawLine(x2, y, x2 - head, y + head, { stroke: color, strokeWidth: 1.4 });
+      drawText((x1 + x2) / 2, y - 10, text, { anchor: 'middle', fill: color, fontSize: 12 });
+    }
+
+    function drawText(x, y, text, opts = {}) {
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', x); t.setAttribute('y', y);
+      t.setAttribute('font-size', opts.fontSize ?? 12);
+      t.setAttribute('fill', opts.fill ?? '#333');
+      t.setAttribute('text-anchor', opts.anchor ?? 'start');
+      t.setAttribute('dominant-baseline', opts.baseline ?? 'middle');
+      t.textContent = text;
+      svg.appendChild(t);
+    }
+
+    // Draw a full-width band (in-plane layer)
+    function drawBand({ tx, ty, scale, slabWidth, sideCover, yMm, dia, color, bundle }) {
+      const yPx = ty(yMm);
+      const hPx = dia * scale;                  // band height = Ø
+      const wPx = (slabWidth - 2 * sideCover) * scale;
+      const cx  = tx(slabWidth / 2);
+      const leftBandX = tx(sideCover);
+      drawRect(leftBandX, yPx - hPx / 2, wPx, hPx, { fill: color, stroke: '#333', strokeWidth: 1.2 });
+      if (bundle > 1) {
+        drawText(leftBandX + wPx + 8, yPx, `×${bundle}`, { fontSize: 12, fill: '#444' });
+      }
+      return { yPx, hPx };
+    }
+
+    // Draw repeated circles (out-of-plane layer)
+    function drawCircles({ tx, ty, scale, slabWidth, sideCover, yMm, dia, spacing, bundle, color }) {
+      if (dia <= 0 || spacing <= 0) return { centers: [], yPx: ty(yMm), rPx: 0 };
+      const left = sideCover, right = slabWidth - sideCover;
+      const rPx = (dia / 2) * scale, yPx = ty(yMm);
+      const centers = [];
+      let xMm = left + spacing / 2;
+      while (xMm < right) {
+        const xPx = tx(xMm);
+        drawCircle(xPx, yPx, rPx, { fill: color, stroke: '#333', strokeWidth: 1.2 });
+        if (bundle > 1) drawText(xPx + rPx + 6, yPx, `×${bundle}`, { fontSize: 12, fill: '#444' });
+        centers.push(xPx);
+        xMm += spacing;
+      }
+      return { centers, yPx, rPx };
+    }
+
+    function labelLayer(text, xPx, yPx, color) {
+      drawText(xPx, yPx, text, { anchor: 'start', fill: color, fontSize: 12 });
+    }
+
+    function render() {
+      clearSVG(svg);
+
+      // Read inputs
+      const slabWidth = readNumber('slabWidth');
+      const slabThk   = readNumber('slabThk');
+      const sideCover = readNumber('sideCover');
+      const topCover  = readNumber('topCover');
+      const botCover  = readNumber('botCover');
+
+      const topXDia   = readNumber('topXDia');
+      const topXBund  = readNumber('topXBund');
+      const topYDia   = readNumber('topYDia');
+      const topYSp    = readNumber('topYSp');
+      const topYBund  = readNumber('topYBund');
+
+      const botXDia   = readNumber('botXDia');
+      const botXBund  = readNumber('botXBund');
+      const botYDia   = readNumber('botYDia');
+      const botYSp    = readNumber('botYSp');
+      const botYBund  = readNumber('botYBund');
+
+      // Scale to fit
+      const vb = { w: 900, h: 480 };
+      const marginPx = 30;
+      const usableW = vb.w - 2 * marginPx;
+      const usableH = vb.h - 2 * marginPx;
+      const scale = Math.min(usableW / slabWidth, usableH / slabThk);
+      const originX = (vb.w - slabWidth * scale) / 2;
+      const originY = (vb.h - slabThk * scale) / 2;
+      const { x: tx, y: ty } = mmToPxFactory(scale, originX, originY, slabThk);
+
+      // Slab
+      drawRect(tx(0), ty(slabThk), slabWidth * scale, slabThk * scale, { fill: '#f7f7fb', stroke: '#666', strokeWidth: 2 });
+
+      // Cover guides
+      const topLineY = ty(slabThk - topCover);
+      drawRect(tx(sideCover), topLineY - 1, (slabWidth - 2 * sideCover) * scale, 2, { fill: '#bcd', stroke: 'none' });
+      const botLineY = ty(botCover);
+      drawRect(tx(sideCover), botLineY - 1, (slabWidth - 2 * sideCover) * scale, 2, { fill: '#f8c', stroke: 'none' });
+
+      // Vertical centers by rule: Y layer is offset by (Ø_in/2 + Ø_out/2)
+      const yTopInMm  = slabThk - (topCover + topXDia / 2);
+      const yTopOutMm = yTopInMm - (topXDia / 2 + topYDia / 2);
+
+      const yBotInMm  = botCover + botXDia / 2;
+      const yBotOutMm = yBotInMm + (botXDia / 2 + botYDia / 2);
+
+      // Draw layers
+      const phi = "Ø";
+      const leftLabelX = tx(sideCover) + 8;
+
+      const topBand = drawBand({ tx, ty, scale, slabWidth, sideCover, yMm: yTopInMm, dia: topXDia, color: '#1f77b4', bundle: topXBund });
+      labelLayer(`Top X: ${phi}${topXDia} ×${topXBund}`, leftLabelX, topBand.yPx - 16, '#1f77b4');
+
+      const topCircles = drawCircles({ tx, ty, scale, slabWidth, sideCover, yMm: yTopOutMm, dia: topYDia, spacing: topYSp, bundle: topYBund, color: '#63a7db' });
+      labelLayer(`Top Y: ${phi}${topYDia} @${topYSp} ×${topYBund}`, leftLabelX, topCircles.yPx - 16, '#63a7db');
+
+      const botBand = drawBand({ tx, ty, scale, slabWidth, sideCover, yMm: yBotInMm, dia: botXDia, color: '#d62728', bundle: botXBund });
+      labelLayer(`Bot X: ${phi}${botXDia} ×${botXBund}`, leftLabelX, botBand.yPx + 16, '#d62728');
+
+      const botCircles = drawCircles({ tx, ty, scale, slabWidth, sideCover, yMm: yBotOutMm, dia: botYDia, spacing: botYSp, bundle: botYBund, color: '#f29b7f' });
+      labelLayer(`Bot Y: ${phi}${botYDia} @${botYSp} ×${botYBund}`, leftLabelX, botCircles.yPx + 16, '#f29b7f');
+
+      // Optional: spacing dimension for out-of-plane (circles), between first two
+      if (topCircles.centers.length >= 2) {
+        drawArrowDim(topCircles.centers[0], topCircles.yPx - 24, topCircles.centers[1], `${topYSp} mm`, '#63a7db');
+      }
+      if (botCircles.centers.length >= 2) {
+        drawArrowDim(botCircles.centers[0], botCircles.yPx + 24, botCircles.centers[1], `${botYSp} mm`, '#f29b7f');
+      }
+
+      // Show the Δ center-to-center text as a quick visual check
+      const dTopCc = (topXDia / 2 + topYDia / 2).toFixed(1);
+      drawText(tx(slabWidth) - 10, (topBand.yPx + topCircles.yPx) / 2, `Δ_top = ${dTopCc} mm`, { anchor: 'end', fill: '#376' });
+
+      const dBotCc = (botXDia / 2 + botYDia / 2).toFixed(1);
+      drawText(tx(slabWidth) - 10, (botBand.yPx + botCircles.yPx) / 2, `Δ_bot = ${dBotCc} mm`, { anchor: 'end', fill: '#763' });
+
+      // Axes/text
+      drawText(tx(0), ty(slabThk) - 10, `Width ${slabWidth} mm`, { anchor: 'start', baseline: 'baseline', fill: '#555' });
+      drawText(tx(0), ty(0) + 18, `Thk ${slabThk} mm`, { anchor: 'start', fill: '#555' });
+    }
+
+    document.getElementById('renderBtn').addEventListener('click', render);
+    render();
+  </script>
+</body>
+</html>
