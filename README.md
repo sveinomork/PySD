@@ -12,22 +12,86 @@ PySD is a Python library for structural modeling with a modern, container-based 
 
 ## Installation
 
-Using uv (recommended):
+### Installing uv (Windows)
+
+First, install uv package manager if you haven't already:
+
 ```powershell
-uv venv
-uv pip install -e .
+# Using PowerShell (recommended)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Or using winget
+winget install --id=astral-sh.uv -e
+
+# Or using pip
+pip install uv
 ```
 
-Using pip:
+After installation, restart your terminal or refresh your PATH.
+
+### Install PySD from GitHub
+
+For a new project, install PySD directly from GitHub:
+
 ```powershell
+# Create a new project
+uv init myproject
+cd myproject
+
+# Add PySD as a dependency from GitHub
+uv add git+https://github.com/sveinomork/PySD.git
+```
+
+This will add PySD to your `pyproject.toml` and install it in your project's virtual environment.
+
+**Install from specific branch or tag:**
+```powershell
+# Install from main branch
+uv add git+https://github.com/sveinomork/PySD.git@main
+
+# Install from a specific version tag
+uv add git+https://github.com/sveinomork/PySD.git@v1.0.0
+
+# Install from a specific commit
+uv add git+https://github.com/sveinomork/PySD.git@abc1234
+```
+
+**Update to latest version:**
+```powershell
+uv sync --upgrade-package pysd
+```
+
+### Development Installation (for contributors)
+
+If you're developing PySD itself, clone the repository and install in editable mode:
+
+```powershell
+# Clone the repository
+git clone https://github.com/sveinomork/PySD.git
+cd PySD
+
+# Create virtual environment and install dependencies
+uv venv
+uv pip install -e .
+
+# Run tests
+uv run pytest -q
+```
+
+### Alternative: Using pip
+
+If you prefer traditional pip:
+
+```powershell
+# Install from GitHub
+pip install git+https://github.com/sveinomork/PySD.git
+
+# Or for development
+git clone https://github.com/sveinomork/PySD.git
+cd PySD
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -e .
-```
-
-Run tests:
-```powershell
-pytest -q
 ```
 
 ## Quick Start

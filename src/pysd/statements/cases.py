@@ -8,7 +8,7 @@ CaseRange = Union[int, Tuple[int, int], Tuple[int, int, int]]
 
 class Cases(BaseModel):
     """
-    Universal case sequence handler for ShellDesign statements.
+    Universal case sequence handler for DECAS statements.
     Supports single values, ranges, stepped ranges, and optional GRECO letters.
 
     ### Examples:
@@ -74,6 +74,27 @@ class Cases(BaseModel):
             raise ValueError("GRECO must be uppercase letters only")
         return v
 
+    @staticmethod
+    def _expand_range(range_item: CaseRange) -> Iterator[int]:
+        """Expand a single range item into individual numbers.
+        
+        Extracted to eliminate duplication between __iter__ and to_list.
+        
+        Args:
+            range_item: Single value, 2-tuple (start, end), or 3-tuple (start, end, step)
+            
+        Yields:
+            Individual case numbers from the range
+        """
+        if isinstance(range_item, int):
+            yield range_item
+        elif len(range_item) == 2:
+            start, end = range_item
+            yield from range(start, end + 1)
+        elif len(range_item) == 3:
+            start, end, step = range_item
+            yield from range(start, end + 1, step)
+
     def formatted(self) -> str:
         """Get formatted string representation."""
         parts: list[str] = []
@@ -100,18 +121,7 @@ class Cases(BaseModel):
             Cases(ranges=[(10, 20, 2)]) -> yields 10, 12, 14, 16, 18, 20
         """
         for range_item in self.ranges:
-            if isinstance(range_item, int):
-                yield range_item
-            elif len(range_item) == 2:
-                # Simple range (start, end) - inclusive
-                start, end = range_item
-                for i in range(start, end + 1):
-                    yield i
-            elif len(range_item) == 3:
-                # Stepped range (start, end, step) - inclusive
-                start, end, step = range_item
-                for i in range(start, end + 1, step):
-                    yield i
+            yield from self._expand_range(range_item)
 
     def to_list(self) -> List[int]:
         """
@@ -124,19 +134,7 @@ class Cases(BaseModel):
             Cases(ranges=[1, (3, 6)]).to_list() -> [1, 3, 4, 5, 6]
             Cases(ranges=[(10, 15, 2)]).to_list() -> [10, 12, 14]
         """
-        result: List[int] = []
-        for range_item in self.ranges:
-            if isinstance(range_item, int):
-                result.append(range_item)
-            elif len(range_item) == 2:
-                # Simple range (start, end) - inclusive
-                start, end = range_item
-                result.extend(range(start, end + 1))
-            elif len(range_item) == 3:
-                # Stepped range (start, end, step) - inclusive
-                start, end, step = range_item
-                result.extend(range(start, end + 1, step))
-        return result
+        return list(self)
 
     @classmethod
     def parse(cls, text: str) -> Cases:
@@ -168,11 +166,12 @@ class Cases(BaseModel):
 
 
 class CaseBuilder:
-    """Fluent builder for Cases with automatic building."""
+    """Fluent builder for Cases with automatic building and caching."""
 
     def __init__(self):
         self._ranges: List[CaseRange] = []
         self._greco: str = ""
+        self._cached_cases: Optional[Cases] = None
 
     @classmethod
     def create(cls) -> "CaseBuilder":
@@ -210,6 +209,7 @@ class CaseBuilder:
             builder.add(101, 105) -> range 101-105
             builder.add(101, 110, 2) -> stepped range 101-110-2
         """
+        self._cached_cases = None  # Invalidate cache
         if end is None:
             # Single value
             self._ranges.append(value)
@@ -223,6 +223,7 @@ class CaseBuilder:
 
     def add_greco(self, greco: str) -> "CaseBuilder":
         """Add GRECO letter identifier."""
+        self._cached_cases = None  # Invalidate cache
         self._greco = greco
         return self
 
@@ -239,44 +240,46 @@ class CaseBuilder:
         """Backward compatibility: Add range with step."""
         return self.add(start, end, step)
 
-    def with_suffix(self, suffix: str) -> "CaseBuilder":
-        """Backward compatibility: Add suffix."""
-        return self.add_greco(suffix)
-
     def with_greco(self, greco: str) -> "CaseBuilder":
         """Backward compatibility: Add GRECO suffix."""
         return self.add_greco(greco)
 
+    def build(self) -> Cases:
+        """Build the Cases object (cached)."""
+        if self._cached_cases is None:
+            self._cached_cases = Cases(ranges=self._ranges, greco=self._greco)
+        return self._cached_cases
+
     def _build(self) -> Cases:
-        """Internal method to build Cases object."""
-        return Cases(ranges=self._ranges, greco=self._greco)
+        """Backward compatibility: Alias for build()."""
+        return self.build()
 
     def __str__(self) -> str:
         """Auto-build when converted to string."""
-        return str(self._build())
+        return str(self.build())
 
     def formatted(self) -> str:
         """Get formatted string (auto-builds)."""
-        return self._build().formatted()
+        return self.build().formatted()
 
     # Support for Cases interface
     @property
     def ranges(self) -> List[CaseRange]:
         """Get ranges (auto-builds)."""
-        return self._build().ranges
+        return self.build().ranges
 
     @property
     def greco(self) -> str:
         """Get GRECO letter (auto-builds)."""
-        return self._build().greco
+        return self.build().greco
 
     def __iter__(self) -> Iterator[int]:
         """Iterate over all individual case numbers (auto-builds)."""
-        return iter(self._build())
+        return iter(self.build())
 
     def to_list(self) -> List[int]:
         """Convert to list of individual case numbers (auto-builds)."""
-        return self._build().to_list()
+        return self.build().to_list()
 
 
 # Helper function to normalize inputs
@@ -305,8 +308,8 @@ def normalize_cases(
         # Handle single integer as a single case: 101 -> [101]
         return Cases(ranges=[value])
     elif isinstance(value, CaseBuilder):
-        # Use the public interface instead of protected method
-        return Cases(ranges=value.ranges, greco=value.greco)
+        # Use the build method to get cached Cases object
+        return value.build()
     elif isinstance(value, Cases):
         return value
     else:

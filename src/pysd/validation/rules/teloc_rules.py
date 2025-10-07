@@ -15,7 +15,6 @@ from ..validation_utils import check_duplicate_ids
 if TYPE_CHECKING:
     from ...sdmodel import SD_BASE
     from ...statements.teloc import TELOC
-    from ...statements.tetyp import TETYP
     from ...model.base_container import BaseContainer
     from ..core import ValidationContext
 

@@ -143,8 +143,8 @@ class SD_BASE(BaseModel):
     loadc: BaseContainer[LOADC]
     """Container for LOADC statements — Load Case Control statements."""
 
-    inplc: BaseContainer[IMPLC]
-    """Container for IMPLC statements — Input Load Case definitions."""
+    inplc: BaseContainer[INPLC]
+    """Container for INPLC statements — Input Load Case definitions."""
 
     shsec: BaseContainer[SHSEC]
     """Container for SHSEC statements — Shell Section definitions."""

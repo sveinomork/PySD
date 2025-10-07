@@ -4,7 +4,6 @@ from pydantic import Field, field_validator
 from .cases import Cases, normalize_cases, CaseRange
 from .statement_base import StatementBase
 from .greco import GrecoID
-import hashlib
 
 
 class DECAS(StatementBase):

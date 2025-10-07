@@ -7,7 +7,8 @@ Implements three levels of validation:
 3. Model-level: Cross-container validation (material references, etc.)
 """
 
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, cast
+
 from ..core import ValidationIssue
 from ..rule_system import instance_rule, container_rule, model_rule
 from ..validation_utils import (
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
     from ...statements.retyp import RETYP
     from ...model.base_container import BaseContainer
     from ..core import ValidationContext
+    from ...sdmodel import SD_BASE
 
 
 @instance_rule("RETYP")
@@ -182,7 +184,7 @@ def validate_retyp_model(
     if context.full_model is None:
         return issues
 
-    model = context.full_model
+    model = cast("SD_BASE", context.full_model)
 
     # Check material property references using utility function
     issues.extend(check_material_reference(statement, "RETYP", model, "rmpec"))

@@ -7,6 +7,9 @@ from ..rule_system import instance_rule, container_rule, model_rule
 
 if TYPE_CHECKING:
     from ...statements.greco import GRECO
+    from ...statements.basco import BASCO
+    from ...statements.loadc import LOADC
+    from ...model.base_container import BaseContainer
 
 
 # Instance-level validation rules (run during object creation)
@@ -94,7 +97,9 @@ def validate_bas_references_exist(
     if not context.full_model or not obj.bas:
         return issues
 
-    basco_container = getattr(context.full_model, "basco", None)
+    basco_container: "BaseContainer[BASCO] | None" = getattr(
+        context.full_model, "basco", None
+    )
     if not basco_container:
         if obj.bas:
             issues.append(
@@ -134,7 +139,9 @@ def validate_elc_references_exist(
     if not context.full_model or not obj.elc:
         return issues
 
-    loadc_container = getattr(context.full_model, "loadc", None)
+    loadc_container: "BaseContainer[LOADC] | None" = getattr(
+        context.full_model, "loadc", None
+    )
     if not loadc_container:
         if obj.elc:
             issues.append(
@@ -151,7 +158,7 @@ def validate_elc_references_exist(
     elc_numbers = obj.elc.to_list()
     for elc_num in elc_numbers:
         # Check if ELC exists as OLC in any LOADC
-        elc_found = any(loadc.is_olc(elc_num) for loadc in loadc_container)
+        elc_found = any(loadc.is_olc(elc_num) for loadc in loadc_container.items)
 
         if not elc_found:
             issues.append(

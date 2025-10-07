@@ -7,7 +7,8 @@ Implements three levels of validation:
 3. Model-level: Cross-container validation (rebar type references, etc.)
 """
 
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, cast
+
 from ..core import ValidationIssue
 from ..rule_system import instance_rule, container_rule, model_rule
 
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
     from ...statements.reloc import RELOC
     from ...model.base_container import BaseContainer
     from ..core import ValidationContext
+    from ...sdmodel import SD_BASE
 
 
 @instance_rule("RELOC")
@@ -194,7 +196,7 @@ def validate_reloc_model(
     if context.full_model is None:
         return issues
 
-    model = context.full_model
+    model = cast("SD_BASE", context.full_model)
 
     # Check rebar type references
     if isinstance(statement.rt, tuple):

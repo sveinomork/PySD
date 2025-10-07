@@ -13,6 +13,9 @@ from ..rule_system import instance_rule, container_rule, model_rule
 
 if TYPE_CHECKING:
     from ...statements.decas import DECAS
+    from ...statements.greco import GRECO
+    from ...statements.basco import BASCO
+    from ...model.base_container import BaseContainer
     from ..core import ValidationContext
 
 
@@ -79,13 +82,13 @@ def validate_decas_instance(
 
 @container_rule("DECAS")
 def validate_decas_container(
-    container, context: "ValidationContext"
+    container: "BaseContainer[DECAS]", context: "ValidationContext"
 ) -> List[ValidationIssue]:
     """Validate DECAS container for consistency."""
     issues = []
 
     # Check for duplicate load scenarios
-    scenarios = [stmt.ls for stmt in container]
+    scenarios = [stmt.ls for stmt in container.items]
     scenario_counts = {}
     for scenario in scenarios:
         scenario_counts[scenario] = scenario_counts.get(scenario, 0) + 1
@@ -97,7 +100,7 @@ def validate_decas_container(
                     severity="warning",
                     code="DECAS_DUPLICATE_SCENARIO",
                     message=f"Multiple DECAS statements found for scenario '{scenario}' ({count} occurrences)",
-                    location=f"DECAS container",
+                    location="DECAS container",
                     suggestion="Consider consolidating or verify if multiple cases are intentional",
                 )
             )
@@ -245,8 +248,9 @@ def validate_decas_model(
     if greco_refs:
         # Get all defined GRECO IDs using container access
         defined_greco_ids = []
-        if hasattr(model, "greco") and hasattr(model.greco, "items"):
-            for item in model.greco.items:
+        greco_container: "BaseContainer[GRECO] | None" = getattr(model, "greco", None)
+        if greco_container and hasattr(greco_container, "items"):
+            for item in greco_container.items:
                 if hasattr(item, "id") and item.id:
                     defined_greco_ids.append(item.id)
 
@@ -287,8 +291,9 @@ def validate_decas_model(
         defined_load_cases = set()
 
         # Check BASCO containers
-        if hasattr(model, "basco") and hasattr(model.basco, "items"):
-            for item in model.basco.items:
+        basco_container: "BaseContainer[BASCO] | None" = getattr(model, "basco", None)
+        if basco_container and hasattr(basco_container, "items"):
+            for item in basco_container.items:
                 if hasattr(item, "id") and item.id:
                     defined_load_cases.add(item.id)
 

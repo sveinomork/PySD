@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Tuple, List, Union
+from typing import Optional, Tuple, Union
 from pydantic import Field
 
 

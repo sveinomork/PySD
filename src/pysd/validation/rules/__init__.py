@@ -22,4 +22,25 @@ from . import srtyp_rules
 from . import tetyp_rules
 from . import temat_rules
 
-__all__ = []
+__all__ = [
+    "greco_rules",
+    "basco_rules",
+    "loadc_rules",
+    "cases_rules",
+    "shsec_rules",
+    "rfile_rules",
+    "incdf_rules",
+    "shaxe_rules",
+    "cmpec_rules",
+    "rmpec_rules",
+    "retyp_rules",
+    "reloc_rules",
+    "lores_rules",
+    "xtfil_rules",
+    "desec_rules",
+    "table_rules",
+    "decas_rules",
+    "srtyp_rules",
+    "tetyp_rules",
+    "temat_rules",
+]

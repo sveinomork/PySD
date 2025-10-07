@@ -23,7 +23,7 @@ from .rule_system import (
 )
 
 # Import all validation rules to register them
-from .rules import *
+from .rules import *  # noqa: F403
 
 __all__ = [
     "ValidationContext",

@@ -5,7 +5,6 @@ Core validation framework components.
 from __future__ import annotations
 from typing import Protocol, TypeVar, List, Optional, Union
 from pydantic import BaseModel
-from abc import ABC, abstractmethod
 from enum import Enum
 
 T = TypeVar("T", bound=BaseModel)

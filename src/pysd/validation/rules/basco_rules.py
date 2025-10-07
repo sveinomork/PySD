@@ -6,6 +6,9 @@ from ..rule_system import instance_rule, container_rule, model_rule
 
 if TYPE_CHECKING:
     from ...statements.basco import BASCO
+    from ...statements.greco import GRECO
+    from ...statements.loadc import LOADC
+    from ...model.base_container import BaseContainer
 
 
 # Instance-level validation rules
@@ -123,7 +126,9 @@ def validate_bas_references_exist(
     if not context.full_model:
         return issues
 
-    basco_container = getattr(context.full_model, "basco", None)
+    basco_container: "BaseContainer[BASCO] | None" = getattr(
+        context.full_model, "basco", None
+    )
     if not basco_container:
         return issues
 
@@ -152,7 +157,9 @@ def validate_elc_references_exist(
     if not context.full_model:
         return issues
 
-    greco_container = getattr(context.full_model, "greco", None)
+    greco_container: "BaseContainer[GRECO] | None" = getattr(
+        context.full_model, "greco", None
+    )
     if greco_container is None:
         return issues
 
@@ -168,16 +175,18 @@ def validate_elc_references_exist(
                         code="BASCO-ELC-REF-001",
                         message=f"BASCO {obj.id} ELC {load_case.lc_numb} cannot be used without GRECO statements",
                         location=f"BASCO.{obj.id}.load_cases[{i}]",
-                        suggestion=f"Add GRECO statement or use OLC instead of ELC",
+                        suggestion="Add GRECO statement or use OLC instead of ELC",
                     )
                 )
             else:
                 # If GRECO exists, ELC should reference the same numbers as OLC
-                loadc_container = getattr(context.full_model, "loadc", None)
+                loadc_container: "BaseContainer[LOADC] | None" = getattr(
+                    context.full_model, "loadc", None
+                )
                 if loadc_container is not None:
                     # Check if ELC number exists as OLC in any LOADC
                     olc_found = any(
-                        loadc.is_olc(load_case.lc_numb) for loadc in loadc_container
+                        loadc.is_olc(load_case.lc_numb) for loadc in loadc_container.items
                     )
 
                     if not olc_found:
@@ -203,7 +212,9 @@ def validate_olc_references_exist(
     if not context.full_model:
         return issues
 
-    loadc_container = getattr(context.full_model, "loadc", None)
+    loadc_container: "BaseContainer[LOADC] | None" = getattr(
+        context.full_model, "loadc", None
+    )
     if loadc_container is None:
         return issues
 
@@ -211,7 +222,7 @@ def validate_olc_references_exist(
         if load_case.lc_type == "OLC":
             # Check if OLC exists in any LOADC
             olc_found = any(
-                loadc.is_olc(load_case.lc_numb) for loadc in loadc_container
+                loadc.is_olc(load_case.lc_numb) for loadc in loadc_container.items
             )
 
             if not olc_found:
@@ -237,7 +248,9 @@ def validate_no_circular_bas_references(
     if not context.full_model:
         return issues
 
-    basco_container = getattr(context.full_model, "basco", None)
+    basco_container: "BaseContainer[BASCO] | None" = getattr(
+        context.full_model, "basco", None
+    )
     if not basco_container:
         return issues
 

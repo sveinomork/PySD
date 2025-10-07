@@ -11,19 +11,16 @@ import logging
 from typing import Dict, Any, Type, TYPE_CHECKING
 from pydantic import Field
 
+# Ensure all statements are imported so auto-registry is populated
+from .. import statements as _statements  # noqa: F401  (import for side effects)
+from ..statements.registry import STATEMENT_CLASSES as _AUTO_REG
+from .base_container import BaseContainer
+
 logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
     from ..sdmodel import SD_BASE
-
-
-from ..statements.registry import STATEMENT_CLASSES as _AUTO_REG
-
-# Ensure all statements are imported so auto-registry is populated
-from .. import statements as _statements  # noqa: F401  (import for side effects)
-
-from .base_container import BaseContainer
 
 
 class ContainerFactory:

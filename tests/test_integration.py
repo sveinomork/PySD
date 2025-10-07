@@ -1,5 +1,5 @@
 from pysd.sdmodel import SD_BASE
-from pysd.statements import TEMAT, TETYP, RETYP, RMPEC
+from pysd.statements import TEMAT, TETYP
 from pathlib import Path
 #tests/test_integration.py
 def test_full_model_lifecycle():

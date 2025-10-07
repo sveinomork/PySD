@@ -184,5 +184,4 @@ class BASCO(StatementBase):
         """Check if the load case is in the specified BAS number."""
         return any(lc.is_in_loadcase(bas_number, type=type) for lc in self.load_cases)
 
-    def __str__(self) -> str:
-        return self.input
+    

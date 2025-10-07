@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Tuple, Literal
+from typing import Optional, Tuple
 from pydantic import Field
 
 from .statement_base import StatementBase

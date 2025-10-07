@@ -7,7 +7,8 @@ Implements three levels of validation:
 3. Model-level: Cross-container validation (part references, etc.)
 """
 
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, cast
+
 from ..core import ValidationIssue
 from ..rule_system import instance_rule, container_rule, model_rule
 
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
     from ...statements.desec import DESEC
     from ...model.base_container import BaseContainer
     from ..core import ValidationContext
+    from ...sdmodel import SD_BASE
 
 
 @instance_rule("DESEC")
@@ -136,20 +138,6 @@ def validate_desec_container(
             )
         seen_parts.add(part_name)
 
-    # Check for consistent thickness definitions
-    parts_with_thickness = container.get_with_thickness()
-    parts_without_thickness = [item for item in container.items if item.th == 0.0]
-
-    if len(parts_with_thickness) > 0 and len(parts_without_thickness) > 0:
-        issues.append(
-            ValidationIssue(
-                severity="info",
-                code="DESEC_MIXED_THICKNESS",
-                message=f"Mixed thickness definitions: {len(parts_with_thickness)} with thickness, {len(parts_without_thickness)} without",
-                location="DESEC container",
-                suggestion="Consider consistent thickness definition approach",
-            )
-        )
 
     return issues
 
@@ -164,7 +152,7 @@ def validate_desec_model(
     if context.full_model is None:
         return issues
 
-    model = context.full_model
+    model = cast("SD_BASE", context.full_model)
 
     # Check if part exists in SHSEC
     if hasattr(model, "shsec"):

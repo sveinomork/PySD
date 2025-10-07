@@ -6,7 +6,6 @@ from pysd import ValidationLevel
 from pysd.statements.temat import TEMAT
 
 # from pysd.sdmodel import SD_BASE
-from pysd import ValidationLevel
 from pysd.statements import TETYP
 
 

@@ -5,7 +5,8 @@ from ..core import ValidationIssue, ValidationContext, ValidationSeverity
 from ..rule_system import instance_rule, container_rule, model_rule
 
 if TYPE_CHECKING:
-    from ...statements.shext import SHSEC
+    from ...statements.shsec import SHSEC
+    from ...model.base_container import BaseContainer
 
 
 # Instance-level validation rules (run during object creation)
@@ -135,21 +136,22 @@ def validate_shsec_section_ranges(
 def validate_shsec_uniqueness(
     obj: "SHSEC", context: ValidationContext
 ) -> List[ValidationIssue]:
-    """Validate SHSEC key uniqueness in container."""
+    """Validate SHSEC identifier uniqueness in container."""
     issues = []
 
-    if context.parent_container and hasattr(obj, "key"):
-        # Check if key already exists in container
+    if context.parent_container:
+        container: "BaseContainer[SHSEC]" = context.parent_container
+        # Check if identifier already exists in container
         if any(
-            getattr(item, "key", None) == obj.key
-            for item in context.parent_container.items
+            item.identifier == obj.identifier
+            for item in container.items
         ):
             issues.append(
                 ValidationIssue(
                     severity=ValidationSeverity.ERROR.value,
                     code="SHSEC-DUP-001",
-                    message=f"Duplicate SHSEC key '{obj.key}' found",
-                    location=f"SHSEC.{obj.key}",
+                    message=f"Duplicate SHSEC identifier '{obj.identifier}' found",
+                    location=f"SHSEC.{obj.pa}",
                     suggestion="Use a unique combination of PA and section ranges",
                 )
             )

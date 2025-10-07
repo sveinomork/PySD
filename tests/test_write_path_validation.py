@@ -10,7 +10,6 @@ from pathlib import Path
 from src.pysd.sdmodel import SD_BASE
 from src.pysd.model.model_writer import ModelWriter
 from src.pysd.statements.headl import HEADL
-from src.pysd.statements.basco import BASCO
 from src.pysd.validation.core import ValidationLevel
 
 

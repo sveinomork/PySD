@@ -9,12 +9,11 @@ Implements three levels of validation:
 
 from typing import List, TYPE_CHECKING, cast
 from ..core import ValidationIssue
-from ..rule_system import instance_rule, container_rule, model_rule
+from ..rule_system import model_rule
 
 if TYPE_CHECKING:
     from ...sdmodel import SD_BASE
     from ...statements.xtfil import XTFIL
-    from ...model.base_container import BaseContainer
     from ..core import ValidationContext
 
 

@@ -1,6 +1,5 @@
 import pytest
 
-from pysd.statements import SHSEC
 from pysd.statements.srtyp import SRTYP
 from pysd.validation.core import ValidationLevel
 from pysd.sdmodel import SD_BASE

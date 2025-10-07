@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Iterable, Optional, Sequence
+from typing import Any, Callable, Dict, Optional, Sequence
 from pydantic import BaseModel, Field
 from ..validation.rule_system import execute_validation_rules
 from ..validation.core import ValidationContext

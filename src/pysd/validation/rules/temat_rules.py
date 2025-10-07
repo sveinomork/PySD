@@ -7,7 +7,6 @@ from ..core import ValidationIssue, ValidationContext, ValidationSeverity
 from ..rule_system import instance_rule, container_rule
 
 if TYPE_CHECKING:
-    from ...sdmodel import SD_BASE
     from ...statements.temat import TEMAT
 
 

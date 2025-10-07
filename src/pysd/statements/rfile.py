@@ -19,43 +19,39 @@ class RFILE(StatementBase):
     The RFILE statement specifies the location and properties of input/result files for analysis.
     Usage depends on the type of analysis (CDM vs. CSM), unit consistency, and file structure.
 
-    Examples:
-        Basic file reference:
-            >>> from statements.rfile import RFILE
-            >>> rfile = RFILE(fnm="R1", suf="SIN")
-            >>> print(rfile.input)
-            'RFILE FNM=R1 SUF=SIN'
+    ### Examples:
+    ```python
+        # Basic file reference:         
+            from statements.rfile import RFILE
+            rfile = RFILE(fnm="R1", suf="SIN")
+            print(rfile.input)
+            # ->RFILE FNM=R1 SUF=SIN'
 
-        File reference with a path containing spaces:
-            >>> rfile = RFILE(
-            ...     pre=r"C:\\My Models\\Project A",
-            ...     fnm="R1",
-            ...     suf="SIN",
-            ...     typ="SHE"
-            ... )
-            >>> print(rfile.input)
-            'RFILE PRE="C:\\My Models\\Project A" FNM=R1 SUF=SIN TYP=SHE'
+        # File reference with a path containing spaces:
+            rfile = RFILE(
+                pre=r"C:\\My Models\\Project A",
+                fnm="R1",
+                suf="SIN",
+                typ="SHE"
+            )
+           
+            # ->'RFILE PRE="C:\\My Models\\Project A" FNM=R1 SUF=SIN TYP=SHE'
 
-        Full configuration with unit conversion:
-            >>> rfile = RFILE(
-            ...     pre="path/to/files",
-            ...     fnm="R1",
-            ...     tfi="model.T1",
-            ...     suf="SIN",
-            ...     lfi="loads.L1",
-            ...     lun=1000,  # mm
-            ...     fun=1000,  # N
-            ...     typ="SHE"
-            ... )
+        # Full configuration with unit conversion:
+            rfile = RFILE(
+                pre="path/to/files",
+                fnm="R1",
+                tfi="model.T1",
+                suf="SIN",
+                lfi="loads.L1",
+                lun=1000,  # mm
+                fun=1000,  # N
+                typ="SHE"
+            )
+            # -> 'RFILE PRE=path/to/files FNM=R1 TFI=model.T1 SUF=SIN LFI=loads.L1 LUN=1000 FUN=1000 TYP=SHE'
+    ```     
 
-    ### Validation Rules
-
-    1. **FNM Format**: Filename (FNM) is required and cannot be empty
-    2. **File Dependencies**: L-file (LFI) requires T-file (TFI) to be specified
-    3. **Unit Factors**: Length (LUN) and force (FUN) unit factors must be positive
-    4. **Uniqueness**: Typically only one RFILE per model (warning if multiple)
-
-    Args:
+    ### Args:
         pre (Optional[str]): Path to the folder containing the FE input/result files.
             - Relative or full path accepted
             - If path contains spaces, it will be automatically quoted
@@ -90,7 +86,7 @@ class RFILE(StatementBase):
             - "SOL" for solid elements
             Only needed if both element types exist in the FEM model.
 
-    Note:
+    ### Note:
         - The T-file (tfi) is required when an L-file (lfi) is specified
         - Unit conversion factors (lun, fun) only apply to CDM analyses
         - Paths with spaces are automatically quoted in the output

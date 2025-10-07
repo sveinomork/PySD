@@ -1,4 +1,3 @@
-import sys
 
 from pysd.statements import SHSEC
 from pysd.statements.rmpec import RMPEC
