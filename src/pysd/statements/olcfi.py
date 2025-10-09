@@ -1,4 +1,4 @@
-from __future__ import annotations
+
 from typing import Optional, Literal, TypeAlias, Final
 from pydantic import Field
 
@@ -13,51 +13,34 @@ ElementType: TypeAlias = Literal["SHE", "SOL"]
 DEFAULT_UNIT_FACTOR: Final[int] = 1000  # Default for both length and force units
 
 
-class RFILE(StatementBase):
-    """Defines input and result file references for a Sestra finite element (FE) analysis.
-
-    The RFILE statement specifies the location and properties of input/result files for analysis.
-    Usage depends on the type of analysis (CDM vs. CSM), unit consistency, and file structure.
+class OLCFI(StatementBase):
+    """define OLC-file data when OLC files are created, merged or read. See 
+    Section 5.8.1 in Shell Design manual. An OLC-file is a database generated with ShellDesign 
+    containing results from a FE analysis file, such as geometry and stress resultants 
+    (section forces) for each load case (OLC) and node displacements.
 
     ### Examples:
     ```python
-        # Basic file reference:         
-            from statements.rfile import RFILE
-            rfile = RFILE(fnm="R1", suf="SIN")
-            print(rfile.input)
-            # ->RFILE FNM=R1 SUF=SIN'
+       # Example 1: a new file shall be created
+       OLCFI(nf="DOMEA.OLC", name="Lower_dome_A", vers="1.0", date="8jan-94", resp="kf")
+       # -> OLCFI NF=DOMEA.OLC NAME=Lower_dome_A VERS=1.0 DATE=8jan-94 RESP=kf
 
-        # File reference with a path containing spaces:
-            rfile = RFILE(
-                pre=r"C:\\My Models\\Project A",
-                fnm="R1",
-                suf="SIN",
-                typ="SHE"
-            )
-           
-            # ->'RFILE PRE="C:\\My Models\\Project A" FNM=R1 SUF=SIN TYP=SHE'
+       # Example 2: two old files shall be read
+       OLCFI(of="DOMEA.OLC")
+       OLCFI(of="DOMEB.OLC")
+       # -> OLCFI OF=DOMEA.OLC
+       # -> OLCFI OF=DOMEB.OLC
 
-        # Full configuration with unit conversion:
-            rfile = RFILE(
-                pre="path/to/files",
-                fnm="R1",
-                tfi="model.T1",
-                suf="SIN",
-                lfi="loads.L1",
-                lun=1000,  # mm
-                fun=1000,  # N
-                typ="SHE"
-            )
-            # -> 'RFILE PRE=path/to/files FNM=R1 TFI=model.T1 SUF=SIN LFI=loads.L1 LUN=1000 FUN=1000 TYP=SHE'
+       # Example 3: two old files shall be merged
+       OLCFI(of="DOMEA.OLC", of="DOMEB.OLC", mf="DOMEAB.OLC", name="Lower_dome_AB", vers="1.1", date="8jan-94", resp="BESNY")
+         # -> OLCFI OF=DOMEA.OLC OF=DOMEB.OLC MF=DOMEAB.OLC NAME=Lower_dome_AB VERS=1.1 DATE=8jan-94 RESP=BESNY
+         
     ```     
 
     ### Args:
-        pre (Optional[str]): Path to the folder containing the FE input/result files.
-            - Relative or full path accepted
-            - If path contains spaces, it will be automatically quoted
-            - Defaults to same directory as input file
+        of  OLC-file path (old)
 
-        fnm (str): Basename of the Sestra result file (e.g., "R1").
+        nf (str): Basename of the new OLC file (e.g., "DOMEA.OLC").
             This is typically a short identifier for the analysis.
 
         tfi (Optional[str]): Sestra input file (T-file).
@@ -93,23 +76,19 @@ class RFILE(StatementBase):
     """
 
     # File identifiers
-    fnm: FileName = Field("R1", description="Basename of the Sestra result file")
-    pre: Optional[FilePath] = Field(
-        None, description="Path to the folder containing the FE input/result files"
+    of: Optional[FilePath] = Field(None, description="OLC-file path (old)")
+    nf: Optional[FilePath] = Field(
+        None, description="Path to new OLC-file"
     )
-    tfi: Optional[FileName] = Field(None, description="T-file name")
-    suf: Optional[str] = Field(None, description="Result file suffix")
-    lfi: Optional[FileName] = Field(None, description="L-file name")
-
-    # Unit conversion factors
-    lun: int = Field(DEFAULT_UNIT_FACTOR, description="Length unit in mm")
-    fun: int = Field(DEFAULT_UNIT_FACTOR, description="Force unit in N")
-
-    # Element type selection
-    typ: Optional[ElementType] = Field(None, description="Element type selection")
-
-
-
+    name: Optional[str] = Field(None,description="name max 48 char")
+    vers: Optional[str] = Field(None,description="version max 8 char")
+    date: Optional[str] = Field(None,description="date max 12 char")
+    resp: Optional[str] = Field(None,description="responsible max 8 char")
+    mf: Optional[FilePath] = Field(None,description="Merge file name")
+    pre: Optional[FilePath] = Field(
+        None, description="Path to the folder containing OLC file(s)") 
+    
+    
     @property
     def identifier(self) -> str:
         """Get unique identifier for this RFILE statement."""

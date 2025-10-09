@@ -5,14 +5,14 @@ from pysd.sdmodel import SD_BASE
 def test_loadc():
     """Test the LOADC statements from main.py"""
     loadc1 = LOADC(run_number=1, alc=(1, 7), olc=(101, 107))
-    assert loadc1.input == "LOADC RN=1 ALC=1-7 OLC=101-107"
+    assert loadc1.input == "LOADC RN=1 LC=1-7,101-107"
 
 
 def test_loadc_with_comment():
     loadc1 = LOADC(
         run_number=1, alc=(1, 6), olc=(201, 206), comment="Equilibrium load case"
     )
-    assert loadc1.input == "LOADC RN=1 ALC=1-6 OLC=201-206 % Equilibrium load case"
+    assert loadc1.input == "LOADC RN=1 LC=1-6,201-206 % Equilibrium load case"
 
 
 def test_loadc_table_and_pri():
@@ -36,7 +36,7 @@ def test_loadc_in_model():
     sd_model.add(loadc4)
     print(sd_model.loadc[0].input)
 
-    assert sd_model.loadc[0].input == "LOADC RN=1 ALC=1-6 OLC=201-206"
-    assert sd_model.loadc[1].input == "LOADC RN=1 ALC=11-16 OLC=101-106"
+    assert sd_model.loadc[0].input == "LOADC RN=1 LC=1-6,201-206"
+    assert sd_model.loadc[1].input == "LOADC RN=1 LC=11-16,101-106"
     assert sd_model.loadc[2].input == "LOADC TAB="
     assert sd_model.loadc[3].input == "LOADC PRI="

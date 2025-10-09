@@ -14,6 +14,7 @@ from ..rule_system import model_rule
 if TYPE_CHECKING:
     from ...sdmodel import SD_BASE
     from ...statements.xtfil import XTFIL
+    from ...model.base_container import BaseContainer
     from ..core import ValidationContext
 
 

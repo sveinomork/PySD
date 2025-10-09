@@ -126,8 +126,9 @@ class LOADC(StatementBase):
         if self.alc and self.olc:
             # Cases objects handle their own string formatting via __str__
             self.add_param("RN", self.run_number)
-            self.add_param("ALC", str(self.alc))
-            self.add_param("OLC", str(self.olc))
+            # Combine ALC and OLC into a single LC parameter
+            lc_value = f"{self.alc},{self.olc}"
+            self.add_param("LC", lc_value)
 
         elif self.table:
             self.add_param("TAB", "")  # Empty value becomes "TAB="
