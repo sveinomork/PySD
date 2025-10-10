@@ -23,7 +23,7 @@ class RMPNS(StatementBase):
     esk: Optional[float] = Field(
         None, description="Modulus of elasticity [kPa] [default 200*1.0E6]"
     )
-    fyk: Optional[float] = Field(None, description="Yield strength [kPa]")
+    fsy: Optional[float] = Field(None, description="Yield strength [kPa]")
     fsk: Optional[float] = Field(None, description="Ultimate strength [kPa]")
 
     den: Optional[float] = Field(None, description="Steel density [kg/m3]")

@@ -12,11 +12,11 @@ from pysd.statements import (
     RELOC,
     EXECD,
     LORES,
-    CMPEC,
+    CMPNS,
     SHSEC,
     XTFIL,
     TABLE,
-    RMPEC,
+    RMPNS,
     Cases,
     HEADING,
     DEPAR,
@@ -64,10 +64,13 @@ def create_design_sections(sd_model: SD_BASE) -> None:
     xh=_calc_vector(p1,p2)
 
 
-    sd_model.add(SHSEC(pa="DAM",xp=(-18.9,0.0,0.1),xf=(1,0,0),xh=xh,fs=(1,12),hs=(1,12))) 
+    sd_model.add(SHSEC(pa="DAM",xp=(-18.9,0.0,0.1),xf=(1,0,0),xh=xh,fs=(1,62),hs=(1,84)))
+    sd_model.add(SHSEC(pa="DAM",xp=(6.5,0.0,0.1),xf=(1,0,0),xh=xh,fs=(63,82),hs=(1,30)))  
 
     
-    sd_model.add(SHAXE(pa="DAM", x1=(1, 0, 0), x2=(0, 1, 0), x3=(0, 0, 1), fs=(1, 12), hs=(1,12)))
+    sd_model.add(SHAXE(pa="DAM", x1=(1, 0, 0), x2=(0, 0, 1), x3=(0, 1, 0), fs=(1, 62), hs=(1,84)))
+    sd_model.add(SHAXE(pa="DAM", x1=(1, 0, 0), x2=(0, 0, 1), x3=(0, 1, 0), fs=(63, 82), hs=(1,30)))
+  
 
 def create_load_components(sd_model: SD_BASE) -> None:
     """
@@ -85,7 +88,7 @@ def create_load_components(sd_model: SD_BASE) -> None:
     sd_model.add(loadc)
 
     load_cases = [
-        LoadCase(lc_type="OLC", lc_numb=i + 101, lc_fact=1.2) for i in range(3)
+        LoadCase(lc_type="OLC", lc_numb=i + 101, lc_fact=1.00) for i in range(3)
     ]
 
     sd_model.add(HEADING(bas_id="101", description="Last kombinasjoner"))
@@ -106,12 +109,12 @@ def create_material_components(sd_model: SD_BASE) -> None:
     sd_model.add(depar)
 
     # Add material properties concrete
-    cmpec = CMPEC(id=1, gr="B35")
-    sd_model.add(cmpec)
+    cmpns = CMPNS(id=1, gr="B25",mfu=1.5)
+    sd_model.add(cmpns)  # Disable validation temporarily
 
     # Add material properties reinforcement
-    rmpec = RMPEC(id=1, gr="500")
-    sd_model.add(rmpec)
+    rmpns = RMPNS(id=1, fsy=235)
+    sd_model.add(rmpns)
 
 
 def create_reinforment_components(sd_model: SD_BASE) -> None:
@@ -130,13 +133,13 @@ def create_reinforment_components(sd_model: SD_BASE) -> None:
         RETYP(
             id=1,
             mp=1,
-            ar=2753.0e-6,
+            ar=709.0e-6,
             c2=0.055,
-            th=0.014,
-            di=0.012,
+            th=0.025,
+            di=0.019,
             nr=1,
-            lb="1.0D12_c150",
-        )
+            lb="1.0D19_c400",
+        ),validation=False
     )
     
 

@@ -16,7 +16,6 @@ from ..validation_utils import (
     check_positive_values,
     check_non_negative_values,
     check_label_length,
-    check_material_reference,
     check_unused_definition,
 )
 
@@ -186,8 +185,23 @@ def validate_retyp_model(
 
     model = cast("SD_BASE", context.full_model)
 
-    # Check material property references using utility function
-    issues.extend(check_material_reference(statement, "RETYP", model, "rmpec"))
+    # Check material property references - check all three material containers
+    if statement.mp is not None:
+        # Check if MP exists in any of the three material containers
+        found_in_rmpec = hasattr(model, "rmpec") and model.rmpec is not None and model.rmpec.has_id(statement.mp)
+        found_in_rmpns = hasattr(model, "rmpns") and model.rmpns is not None and model.rmpns.has_id(statement.mp)
+        found_in_rmpos = hasattr(model, "rmpos") and model.rmpos is not None and model.rmpos.has_id(statement.mp)
+        
+        if not (found_in_rmpec or found_in_rmpns or found_in_rmpos):
+            issues.append(
+                ValidationIssue(
+                    severity="error",
+                    code="RETYP_MATERIAL_NOT_FOUND",
+                    message=f"RETYP {statement.id} references material {statement.mp} not found in RMPEC, RMPNS, or RMPOS",
+                    location=f"RETYP.{statement.id}",
+                    suggestion="Define the referenced material in RMPEC, RMPNS, or RMPOS, or update the MP reference",
+                )
+            )
 
     # Check if this RETYP is referenced by any RELOC statements using utility function
     issues.extend(check_unused_definition(statement, "RETYP", model, "reloc", "rt"))

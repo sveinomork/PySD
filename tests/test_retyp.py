@@ -99,5 +99,23 @@ def test_retyp_add_rmpec_failure():
         model.add(retyp, validation=True)  # Immediate validation
 
 
+def test_retyp_add_rmpns_success():
+    """Test RETYP interacting with SD_BASE model, adding RMPNS material to satisfy cross-validation"""
+    from pysd.sdmodel import SD_BASE
+    from pysd import ValidationLevel
+    from pysd.statements.rmpns import RMPNS
+
+    model = SD_BASE(
+        validation_level=ValidationLevel.NORMAL, cross_object_validation=True
+    )
+    model.add(RMPNS(id=1, fc=30.0), validation=True)  # Add RMPNS material
+    retyp = RETYP(
+        id=1, mp=1, ar=753.0e-6, c2=0.055, th=0.014, di=0.012, nr=1, lb="1.0D12_c150"
+    )
+    model.add(retyp, validation=True)  # Should succeed with RMPNS material
+    assert retyp.mp == 1
+    assert model.rmpns[0].id == 1
+
+
 if __name__ == "__main__":
     test_retyp_add_rmpec_succuess()
